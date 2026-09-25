@@ -1,0 +1,96 @@
+{
+    "data_dir": "data",
+    "highscore_filename": "hall_of_fame.json",
+    "window_width": 1600,
+    "window_height": 900,
+    "window_resizeable": true,
+    "window_maximized": true,
+    "window_position": "topright",
+    "frame_and_banner": true,
+    "master_volume": 100,
+    "music_volume": 50,
+    "sound_volume": 100,
+    "language": "francais",
+    "hints": true,
+    "hints_delay": 0.25,
+    "main_menu_idle_time": 30,
+    "main_menu_idle_visitor_min_time": 30,
+    "main_menu_idle_visitor_max_time": 60,
+    "disable_transitions": false,
+    "lives": 3,
+    "pts_pacgum": 10,
+    "pts_super_pacgum": 50,
+    "pts_ghost": 200,
+    "pts_bonus1": 400,
+    "pts_bonus2": 500,
+    "pts_bonus3": 600,
+    "pts_bonus4": 700,
+    "pts_bonus5": 800,
+    "pts_bonus6": 900,
+    "new_life_threshold": 5000,
+    "level_max_time": 90,
+    "timeout_consequence": "speeding_ghosts",
+    "seed": 42,
+    "levels": [
+        {
+            "width": 15,
+            "height": 10
+        },
+        {
+            "width": 16,
+            "height": 10
+        },
+        {
+            "width": 16,
+            "height": 11
+        },
+        {
+            "width": 17,
+            "height": 11
+        },
+        {
+            "width": 17,
+            "height": 12
+        },
+        {
+            "width": 18,
+            "height": 12
+        },
+        {
+            "width": 18,
+            "height": 13
+        },
+        {
+            "width": 19,
+            "height": 13
+        },
+        {
+            "width": 19,
+            "height": 14
+        },
+        {
+            "width": 20,
+            "height": 14
+        },
+        {
+            "width": 20,
+            "height": 15
+        },
+        {
+            "width": 21,
+            "height": 15
+        },
+        {
+            "width": 21,
+            "height": 16
+        },
+        {
+            "width": 22,
+            "height": 16
+        },
+        {
+            "width": 22,
+            "height": 17
+        }
+    ]
+}

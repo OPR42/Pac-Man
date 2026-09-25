@@ -1,0 +1,50 @@
+[project]
+name = "Pac-Man"
+version = "0.1.0"
+description = "Tribute to Namco's Pac-Man"
+requires-python = ">=3.10"
+authors = [
+  { name = "orobert aka OPR"},
+  # { name = "skonzen-"}
+]
+
+dependencies = [
+    "pydantic>=2.0.0",
+    "numpy>=1.24.0",
+    "raylib==5.5.0.4",
+    "mazegenerator",
+]
+
+[dependency-groups]
+dev = [
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "pytest>=7.0.0"
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src"]
+
+[project.scripts]
+Pac-Man = "src.__main__:main"
+
+[tool.mypy]
+python_version = "3.10"
+strict = true
+ignore_missing_imports = true
+disallow_untyped_defs = true
+check_untyped_defs = true
+warn_return_any = true
+warn_unused_ignores = true
+
+[tool.flake8]
+max-line-length = 88
+extend-ignore = "E203"
+exclude = ".git,__pycache__,docs/source/conf.py,old,build,dist"
+
+[tool.uv.sources]
+mazegenerator = { path = "packages/mazegenerator-2.1.0-py3-none-any.whl" }
