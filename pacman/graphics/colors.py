@@ -62,6 +62,7 @@ class RenderColors:
     GRAD1_SKIN_3 = (247, 166, 208, 255)
     GRAD2_SKIN_3 = (211, 76, 134, 255)
     BOWTIE_RED = (155, 25, 45, 255)
+    JAIL_YELLOW = (251, 242, 89, 255)
 
     @staticmethod
     def scale_rgb(rgb: tuple[int, int, int, int],

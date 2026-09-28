@@ -40,9 +40,6 @@ class Audio:
         self.core._emit(
             LogEvent(source=" audio  ", type="info",
                      message="Audio Device ", text_var="activated"))
-        # self.sound_load("transition_0")
-        # self.sound_load("transition_1")
-        # self.sound_load("warp")
 
     def toggle_mute(self) -> None:
         lex = self.core.lexicon

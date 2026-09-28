@@ -449,7 +449,8 @@ class Graphics:
             pr.LOG_INFO)  # type: ignore[attr-defined]
 
     def draw_ui_frame(self) -> None:
-        if self.banner_skin != self.core.gm_state.skin:
+        if (self.banner_skin != self.core.gm_state.skin
+                and self.core.gm_state.frame_and_banner):
             self.create_ui_frame_texture("ui_frame_texture")
         pr.clear_background(rcl.BASE_BLACK)
         if self.core.gm_state.frame_and_banner:

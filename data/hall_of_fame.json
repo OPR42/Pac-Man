@@ -31,6 +31,11 @@
             "corrupted": false
         },
         {
+            "name": "Good",
+            "score": 50000,
+            "corrupted": false
+        },
+        {
             "name": "x  was  x",
             "score": 43800,
             "corrupted": false
@@ -41,23 +46,18 @@
             "corrupted": false
         },
         {
-            "name": "xxxxxxxxx",
-            "score": 24750,
+            "name": "OPR 42",
+            "score": 25290,
             "corrupted": false
         },
         {
-            "name": "AmstradCPC",
-            "score": 18000,
+            "name": "HOMER SMPS",
+            "score": 9500,
             "corrupted": false
         },
         {
-            "name": "42",
-            "score": 6861,
-            "corrupted": false
-        },
-        {
-            "name": "OPR42",
-            "score": 5988,
+            "name": "NotSoBad",
+            "score": 7200,
             "corrupted": false
         },
         {
@@ -71,16 +71,6 @@
             "corrupted": false
         },
         {
-            "name": "hahaha",
-            "score": 2133,
-            "corrupted": false
-        },
-        {
-            "name": "Saphira",
-            "score": 1890,
-            "corrupted": false
-        },
-        {
             "name": "Nick Name",
             "score": 1200,
             "corrupted": false
@@ -88,6 +78,16 @@
         {
             "name": "MrBeanLoL",
             "score": 500,
+            "corrupted": false
+        },
+        {
+            "name": "BAD",
+            "score": 310,
+            "corrupted": false
+        },
+        {
+            "name": "Naze",
+            "score": 280,
             "corrupted": false
         },
         {
@@ -101,5 +101,5 @@
             "corrupted": false
         }
     ],
-    "signature": "707ece77556c601179f6a84bb92860dfd9cc85287f231157e1361e8d8321f103fd66544bc625f25f24fe28476b0e42c8224e33bb41781e1a1c557d7301823f76c6dc9ec6926313afc312f93e711539167db9c1d8daf023d511bcba972b543ff04f0553db6e99a0f06d005cab8d5065284ee78acb7866c757254c527d1b70414b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f299"
+    "signature": "707ece77556c601179f6a84bb92860dfd9cc85287f231157e1361e8d8321f103fd66544bc625f25f24fe28476b0e42c8e75c567b76f340b6224e33bb41781e1a1c557d7301823f76f7f73037cc4f0db6bfdb19a2c602c8eed751e3ca72bb6f0e4f0553db6e99a0f06d005cab8d506528353774c281b073e80f0fd8ebaec21dedeab887fdd6c2614858a8bffd3adea273d109b57a71bed3d04f99d163c8f5f299"
 }

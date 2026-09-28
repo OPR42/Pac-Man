@@ -22,10 +22,9 @@ class Ghosts:
 
     def spawn(self) -> None:
         """Place ghosts at their initial maze positions."""
-        gmstate = self.core.gm_state
         gameboard = self.core.game.graphics.gameboard
-        last_x = max(0, gmstate.maze_width - 1)
-        last_y = max(0, gmstate.maze_height - 1)
+        last_x = max(0, self.core.gm_state.maze_width - 1)
+        last_y = max(0, self.core.gm_state.maze_height - 1)
         positions = [("blinky", last_x, 0, 135), ("pinky", 0, 0, 45),
                      ("inky", last_x, last_y, 225), ("clyde", 0, last_y, 315)]
         for actor, values in zip(self.states, positions):
@@ -74,12 +73,25 @@ class Ghosts:
             disgusted_active = False
             disgusted_radius = 0.0
 
-        for actor in self.states:
+        for i, actor in enumerate(self.states):
             previous_activity = actor.activity
+
             if disgusted_active:
                 distance = self.core.game.player.distance_to(actor.pos_x,
                                                              actor.pos_y)
-            if suppacgum_active:
+            if actor.status == 3:
+                actor.activity = 5
+                last_x = max(0, self.core.gm_state.maze_width - 1)
+                last_y = max(0, self.core.gm_state.maze_height - 1)
+                homes = [(last_x, 0), (0, 0), (last_x, last_y), (0, last_y)]
+                target_x, target_y = homes[i]
+                if actor.cell_x == target_x and actor.cell_y == target_y:
+                    actor.status = 2
+                    actor.activity = 2
+                else:
+                    continue
+
+            if suppacgum_active or self.core.cht_table.gluttonous:
                 if suppacgum_warning and int(remaining * 4) % 2 == 1:
                     if disgusted_active and distance <= disgusted_radius:
                         actor.status = 5
@@ -88,18 +100,22 @@ class Ghosts:
                 else:
                     actor.status = 4
                 actor.activity = 3
+
             elif disgusted_active and distance <= disgusted_radius:
                 actor.status = 5
                 actor.activity = 3
+
             else:
                 actor.status = 2
                 actor.activity = 2
+
             if previous_activity not in (3, 5) and actor.activity in (3, 5):
                 actor.reverse_pending = True
 
     def update(self, dt: float) -> None:
         """Update ghosts dynamic behavior."""
-        if self.core.game.graphics.gameboard.status != "play":
+        if (self.core.game.graphics.gameboard.status != "play"
+                or self.core.cht_table.outatime):
             return
 
         pacman = self.core.chr_states[0]
@@ -123,17 +139,28 @@ class Ghosts:
                     else:
                         dest_x, dest_y = pacman_x, pacman_y - 2
                     pinky_dest_x, pinky_dest_y = dest_x, dest_y
-                    dest_x, dest_y = self.core.game.maze.closer_available_cell(
-                        dest_x, dest_y)
+                    dest_x, dest_y = (
+                        self.core.game.maze.closest_available_cell(dest_x,
+                                                                   dest_y))
                 elif i == 2:
                     blinky_x = self.states[0].cell_x
                     blinky_y = self.states[0].cell_y
                     dest_x = (blinky_x + (pinky_dest_x - blinky_x) * 2)
                     dest_y = (blinky_y + (pinky_dest_y - blinky_y) * 2)
-                    dest_x, dest_y = self.core.game.maze.closer_available_cell(
-                        dest_x, dest_y)
+                    dest_x, dest_y = (
+                        self.core.game.maze.closest_available_cell(dest_x,
+                                                                   dest_y))
                 elif i == 3:
                     dest_x, dest_y = pacman_x, pacman_y
+
+            elif actor.activity == 5:
+                last_x = max(0, self.core.gm_state.maze_width - 1)
+                last_y = max(0, self.core.gm_state.maze_height - 1)
+                positions = [("blinky", last_x, 0), ("pinky", 0, 0),
+                             ("inky", last_x, last_y), ("clyde", 0, last_y)]
+                position = positions[i]
+                dest_x, dest_y = position[1], position[2]
+
             actor.goal_cell_x = dest_x
             actor.goal_cell_y = dest_y
 
@@ -181,9 +208,9 @@ class Ghosts:
 
         pacman = self.core.chr_states[0]
         pacman_cell = pacman.cell_x, pacman.cell_y
-        fleeing = actor.activity in (3, 5)
+        fleeing = actor.activity == 3
 
-        if actor.name == "clyde":
+        if actor.name == "clyde" and actor.activity == 2:
             distance = math.hypot(actor.cell_x - pacman.cell_x,
                                   actor.cell_y - pacman.cell_y)
             if distance <= 4:
@@ -265,7 +292,7 @@ class Ghosts:
                 draw.line(start[0], start[1], end[0], end[1], cl=path_color)
             for x, y in points[1:]:
                 draw.circle(x, y, waypoint_radius, cl=path_color, filled=True)
-            if actor.activity not in (3, 5):
+            if actor.activity != 3:
                 goal_x, goal_y = gameboard.cell_center_coords(
                     actor.goal_cell_x, actor.goal_cell_y)
                 draw.circle(goal_x, goal_y, target_radius,

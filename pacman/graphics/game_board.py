@@ -15,6 +15,7 @@ from .colors import RenderColors as rcl
 from .shapes import Shapes
 
 RaylibObject: TypeAlias = Any
+Color: TypeAlias = tuple[int, int, int, int]
 
 
 class GameBoard:
@@ -44,6 +45,8 @@ class GameBoard:
         self.maze_cell_size: int = 0
         self.huds_ready: bool = False
         self.maze_skin: int = -1
+        self.inboard_texts: list[tuple[float, float, str, Color, float,
+                                       float, float, float]] = []
 
     def launch(self) -> None:
         self.core._emit(
@@ -78,6 +81,7 @@ class GameBoard:
         self.status = "init"
         self.maze_cell_size = 0
         self.gamehuds.reset()
+        self.inboard_texts = []
 
     def resize(self) -> None:
         self.build_done = False
@@ -109,6 +113,37 @@ class GameBoard:
             gum.pos_y = sround(
                 new_mvp.ct.y - ((old_mvp.ct.y - gum.pos_y) * ratio_y))
         self.game.pacgums.invalidate_paths()
+
+    def add_board_text(self, x: int, y: int, txt: str, cl: Color,
+                       size: float, duration: float,
+                       slide_up: float = 0.0) -> None:
+        rg = self.graphics.rg
+        rel_x = (x - self.mvp.ct.x) / rg(100)
+        rel_y = (y - self.mvp.ct.y) / rg(100)
+        rel_size = size / rg(100)
+        self.inboard_texts.append((rel_x, rel_y, txt, cl, rel_size,
+                                   time.perf_counter(), duration, slide_up))
+
+    def write_board_texts(self) -> None:
+        if len(self.inboard_texts) <= 0:
+            return
+        rg = self.graphics.rg
+        sround = self.utils.sym_round
+        draw = self.shapes
+        now = time.perf_counter()
+        self.inboard_texts = [inboard_text
+                              for inboard_text in self.inboard_texts
+                              if inboard_text[5] + inboard_text[6] > now]
+        for inboard_text in self.inboard_texts:
+            rel_x, rel_y, txt, cl, rel_size, starttime, duration, slide_up = (
+                inboard_text)
+            progress = (now - starttime) / duration
+            size = sround(rel_size * rg(100))
+            slide = sround(slide_up * progress * size)
+            x = sround(rel_x * rg(100)) + self.mvp.ct.x
+            y = sround(rel_y * rg(100)) + self.mvp.ct.y - slide
+            cl_text = rcl.scale_alpha(cl, 1.0 - progress)
+            draw.stick_text(x, y, txt, size, thick=rg(2), cl=cl_text)
 
     def draw_gameboard(self) -> None:
         self.game.audio.ingame_update()
@@ -151,6 +186,7 @@ class GameBoard:
             self.game.player.draw_pilot_path()
             self.game.ghosts.draw_ghosts_path()
         self.draw_characters()
+        self.write_board_texts()
 
         self.gamehuds.draw_huds()
 

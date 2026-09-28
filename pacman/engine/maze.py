@@ -73,7 +73,7 @@ class Maze:
 
         return 0 <= self.grid[y][x] < 15
 
-    def closer_available_cell(self, x: int, y: int) -> tuple[int, int]:
+    def closest_available_cell(self, x: int, y: int) -> tuple[int, int]:
         if self.is_cell_available((x, y)):
             return x, y
         closest = (-1, -1)

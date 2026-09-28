@@ -973,11 +973,18 @@ class Shapes:
 
         if variant == "dalton" and name != "dead":
             cl_stripes = rcl.BLACK_DARKGLASS
+            cl_jail = rcl.JAIL_YELLOW
             stripe_hgt = sround((body_height - radius) / 3.05)
             self.rectangle(left, body_bottom - stripe_hgt,
                            body_width, stripe_hgt, cl=cl_stripes, filled=True)
+            self.rectangle(left, body_bottom - sround(stripe_hgt * 1.5),
+                           body_width, sround(stripe_hgt * 0.5),
+                           cl=cl_jail, filled=True)
             self.rectangle(left, body_bottom - sround(stripe_hgt * 2.5),
                            body_width, stripe_hgt, cl=cl_stripes, filled=True)
+            self.rectangle(left, body_bottom - sround(stripe_hgt * 3),
+                           body_width, sround(stripe_hgt * 0.5),
+                           cl=cl_jail, filled=True)
             self.rectangle(left, body_bottom - sround(stripe_hgt * 4),
                            body_width, stripe_hgt, cl=cl_stripes, filled=True)
 
@@ -1003,9 +1010,12 @@ class Shapes:
                 lobe_center_x = left + lobe_radius_x
             if lobe_center_x + lobe_radius_x > right:
                 lobe_center_x = right - lobe_radius_x
+            cl_lobe = body_color
+            if variant == "dalton" and name != "dead":
+                cl_lobe = rcl.JAIL_YELLOW
             self.ellipse_sector(sround(lobe_center_x), sround(lobe_center_y),
                                 lobe_radius_x, max(1, sround(lobe_radius_y)),
-                                0, 180, 0, 1, cl=body_color, filled=True)
+                                0, 180, 0, 1, cl=cl_lobe, filled=True)
             if contour or name == "dead":
                 self.ellipse(sround(lobe_center_x), sround(lobe_center_y),
                              lobe_radius_x, max(1, sround(lobe_radius_y)),
@@ -1335,7 +1345,7 @@ class Shapes:
             if superpg:
                 self.burger(center_x, center_y, sround(size * 1.50))
             else:
-                self.bretzel(center_x, center_y, size)
+                self.bagel(center_x, center_y, size)
             return
 
         size_ref = size if not superpg else sround(size * 1.50)
@@ -1453,6 +1463,36 @@ class Shapes:
         sr = max(1, sround(size * 0.04))
         self.circle(cx - r, cy - r, sr, cl=salt, filled=True)
         self.circle(cx + r, cy - r, sr, cl=salt, filled=True)
+
+    def bagel(self, center_x: int, center_y: int, size: int) -> None:
+        """Draw a sesame bagel with a genuinely transparent hole."""
+        import math
+        sround = self.utils.sym_round
+        cx, cy = center_x, center_y
+        thick = max(2, sround(size * 0.23))
+        radius = max(2, sround((size - thick) / 2))
+        thin = max(1, sround(size * 0.035))
+        crust = (166, 91, 32, 255)
+        dough = (211, 139, 45, 255)
+        light = (246, 185, 78, 255)
+        shadow = (125, 65, 28, 255)
+        sesame = (255, 235, 190, 255)
+        self.ellipse(cx, cy, radius, radius, thick=thick,
+                     cl=crust, filled=False)
+        self.ellipse(cx, cy - thin, radius - thin, radius - thin,
+                     thick=max(1, thick - 2 * thin), cl=dough, filled=False)
+        self.ellipse(cx, cy - thin, radius - thick // 4, radius - thick // 4,
+                     thick=max(1, thick // 3), cl=light, filled=False)
+        inner_radius = max(1, radius - thick // 2)
+        self.ellipse(cx, cy, inner_radius, inner_radius,
+                     thick=thin, cl=shadow, filled=False)
+        seed_radius = max(1, sround(size * 0.025))
+        seed_distance = radius - thick // 4
+        for angle in (20, 65, 115, 160, 205, 250, 295, 335):
+            rad = math.radians(angle)
+            x = cx + sround(math.cos(rad) * seed_distance)
+            y = cy + sround(math.sin(rad) * seed_distance)
+            self.circle(x, y, seed_radius, cl=sesame, filled=True)
 
     def slimer(self, center_x: int, center_y: int, radius: int,
                angle: int, mouth_angle: float, eye_opening: float,

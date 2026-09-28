@@ -7,6 +7,7 @@ from pacman.core import Core
 from pacman.engine.player import Player
 from pacman.engine.ghosts import Ghosts
 from pacman.engine.pacgums import Pacgums
+from pacman.graphics.colors import RenderColors as rcl
 
 from .highscores import HighScores
 
@@ -534,6 +535,8 @@ class Game:
         if self.graphics.gameboard.status != "play":
             return
         gmstate = self.core.gm_state
+        if self.cheats.outatime_reftime != -1.0:
+            gmstate.time_cur = self.cheats.outatime_reftime
         if gmstate.time_cur <= 0.0 and not self.timout_reached:
             if self.core.config.timeout_consequence == "speeding_ghosts":
                 ghosts_states = self.core.chr_states[1:]
@@ -550,6 +553,8 @@ class Game:
                 self.timout_reached = True
             elif self.core.config.timeout_consequence == "sudden_death":
                 self.pacman_dies()
+                self._flip_hourglass(init=True)
+                self.timout_reached = True
                 return
             elif self.core.config.timeout_consequence == "game_over":
                 self.game_over()
@@ -591,7 +596,7 @@ class Game:
         self.set_step(11)
 
     def pacman_dies(self) -> None:
-        pass
+        self.audio.sound_play("death")
 
     def game_over(self) -> None:
         pass
@@ -623,7 +628,8 @@ class Game:
 
         if (self.graphics.gameboard.status == "play"
                 and gmstate.time_cur > 0.0):
-            gmstate.time_cur -= now - self.time_ref
+            if not self.core.cht_table.outatime:
+                gmstate.time_cur -= now - self.time_ref
             gmstate.time_cur = max(0.0, gmstate.time_cur)
             self.time_ref = now
 
@@ -643,6 +649,29 @@ class Game:
             None if eaten_gum is None else eaten_gum.superpacgum, now)
         self.ghosts.update_cycle(now)
         self.ghosts.update_state()
+        self.check_collision()
+
+    def check_collision(self) -> None:
+        for i, ghost in enumerate(self.ghosts.states):
+            distance = self.player.distance_to(ghost.pos_x, ghost.pos_y)
+            if distance < self.core.gm_state.character_size:
+                if ((ghost.status == 2 and ghost.activity != 3)
+                        or ghost.status == 5):
+                    self.pacman_dies()
+                    return
+                elif ghost.status == 4:
+                    self.audio.sound_play("eat_ghost")
+                    ghost.status = 3
+                    ghost.activity = 5
+                    ghost.reverse_pending = True
+                    earned = self.core.pts_table.ghost
+                    self.core.gm_state.score += earned
+                    colors = [rcl.BLINKY_RED, rcl.PINKY_PINK,
+                              rcl.INKY_CYAN, rcl.CLYDE_ORANGE]
+                    cl_text = colors[i]
+                    self.graphics.gameboard.add_board_text(
+                        ghost.pos_x, ghost.pos_y, f"{earned:,}", cl_text,
+                        self.core.gm_state.character_size * 0.8, 5.0, 2.0)
 
     def _apply_pacgum_effect(
             self, gum: PacgumState | None) -> None:

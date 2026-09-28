@@ -8,6 +8,7 @@ class Cheats:
         self.game = core.game
         self.cht_table = core.cht_table
         self.gm_state = core.gm_state
+        self.outatime_reftime: float = -1.0
 
     def receive_command(self, cmd: str = "") -> None:
         if not cmd or cmd == "" or self.game.step <= 6:
@@ -106,10 +107,15 @@ class Cheats:
         self.game.start_new_level(self.gm_state.level)
 
     def _trigger_phase_out_ghosts(self) -> None:
-        pass
+        for ghost in self.game.ghosts.states:
+            ghost.status = 3
+            ghost.activity = 5
+            ghost.reverse_pending = True
 
     def _trigger_phase_in_ghosts(self) -> None:
-        pass
+        for ghost in self.game.ghosts.states:
+            ghost.status = 2
+            ghost.activity = 2
 
     def _trigger_next_level(self) -> None:
         if self.core.gm_state.level < len(self.core.config.levels):
@@ -173,8 +179,10 @@ class Cheats:
     def _toggle_outatime(self) -> None:
         if self.core.cht_table.outatime:
             self.core.cht_table.outatime = False
+            self.outatime_reftime = -1.0
         else:
             self.core.cht_table.outatime = True
+            self.outatime_reftime = self.core.gm_state.time_cur
 
     def _toggle_walldenier(self) -> None:
         if self.core.cht_table.walldenier:

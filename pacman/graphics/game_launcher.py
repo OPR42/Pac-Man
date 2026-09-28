@@ -34,9 +34,16 @@ class GameLauncher:
                                                 "darkerwood",
                                                 "granular"]
     # brushed_metal, lightwood
-        self.sounds_to_load: list[str] = ["eat_pacgum",
+        self.sounds_to_load: list[str] = ["applause",
+                                          "death",
+                                          "eat_ghost",
+                                          "eat_item",
+                                          "eat_pacgum",
                                           "eat_superpacgum",
                                           "enter_cheats",
+                                          "explode",
+                                          "game_over",
+                                          "mocking",
                                           "tadaaa",
                                           "transition_0",
                                           "transition_1",
