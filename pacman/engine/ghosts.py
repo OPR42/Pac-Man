@@ -114,7 +114,7 @@ class Ghosts:
 
     def update(self, dt: float) -> None:
         """Update ghosts dynamic behavior."""
-        if (self.core.game.graphics.gameboard.status != "play"
+        if (self.core.game.graphics.gameboard.status not in ("play", "death")
                 or self.core.cht_table.outatime):
             return
 
@@ -238,6 +238,9 @@ class Ghosts:
         if actor.activity == 3:
             if actor.status == 4:
                 speed *= 0.75
+        elif actor.activity == 5:
+            if actor.status == 3:
+                speed *= 0.50
         step = gmstate.cell_size * speed * dt
         if distance <= step:
             actor.pos_x = target_x

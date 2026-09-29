@@ -28,6 +28,8 @@ class Game:
         self.player = Player(core)
         self.ghosts = Ghosts(core)
         self.time_ref = time.perf_counter()
+        self.gamerun_starttime: float = 0.0
+        self.gamerun_endtime: float = 0.0
         self.flip_hourglass: bool = False
         self.flip_hourglass_starttime: float = time.perf_counter()
         self.flip_hourglass_time_start: float = 0.0
@@ -54,7 +56,8 @@ class Game:
         10. Confirmation to leave game for quit
         11. Enter highscore
         12. Cheats
-        13. End game without highscore
+        13. Game Over
+        14. Victory
         """
 
     def launch(self) -> None:
@@ -235,8 +238,8 @@ class Game:
                     if cmd == "pause_menu":
                         self.set_step(self.toggle_pause())
                     elif cmd == "cheat_menu" and self.core.cht_table.unlocked:
-                        self.toggle_pause()
-                        self.set_step(12)
+                        if self.toggle_pause() == 8:
+                            self.set_step(12)
                 elif (src in ("leftclick", "rightclick", "key", "pad")
                       and (cmd == "hourglass" or cmd[:10] == "inventory_")):
                     self.inventory.command(cmd)
@@ -318,7 +321,7 @@ class Game:
                 gamehuds = self.graphics.gameboard.gamehuds
                 scoremenu = gamehuds.gamemenus.gamescoremenu
                 if scoremenu.score_is_done:
-                    if scoremenu.before_score_gamestep == 9:
+                    if scoremenu.before_score_gamestep in (9, 13, 14):
                         self._play_transition(9, 1, 1)
                         self.graphics.gameboard.reset()
                         self.graphics.main_menu.enter()
@@ -379,11 +382,38 @@ class Game:
                     else:
                         self.cheats.receive_command(cmd)
 
+            elif self.step in (13, 14):
+                if src in ("key", "pad") and cmd in (
+                        "up", "down", "left", "right", "tab", "backtab"):
+                    if cmd in ("down", "right", "tab"):
+                        self.graphics.interface.focus_next(
+                            avoid=("pause_menu",))
+                    elif cmd in ("up", "left", "backtab"):
+                        self.graphics.interface.focus_previous(
+                            avoid=("pause_menu",))
+                if (src in ("leftclick", "rightclick")
+                        or (src in ("key", "pad")
+                            and cmd in ("enter", "pause_menu"))):
+                    if src in ("key", "pad") and cmd == "enter":
+                        cmd = self.graphics.interface.focus or ""
+                    if cmd in ("continue", "pause_menu"):
+                        if self.highscores.qualifies(self.core.gm_state.score):
+                            gmmenu = self.graphics.gameboard.gamehuds.gamemenus
+                            gmmenu.gamescoremenu.before_score_gamestep = (
+                                self.step)
+                            self.set_step(11)
+                        if self.step in (13, 14):
+                            self._play_transition(9, 1, 1)
+                            self.graphics.gameboard.reset()
+                            self.graphics.main_menu.enter()
+                            self.set_step(1)
+                            self._play_transition(9, 1, 2)
+
             self.graphics.draw_window()
             self.dashboard.update_dashboard()
 
     def set_step(self, step: int) -> None:
-        if not 0 <= step <= 13:
+        if not 0 <= step <= 14:
             return
 
         self.old_step = self.step
@@ -409,6 +439,8 @@ class Game:
             gmstate.pacgum_cur, gmstate.suppacgum_cur = 0, 0
             self.pause_menu = False
             self.pause_starttime = 0.0
+            self.gamerun_starttime = 0.0
+            self.gamerun_endtime = 0.0
 
             self.core._emit(
                 LogEvent(source="  game  ", type="finish",
@@ -476,6 +508,24 @@ class Game:
             self.core._emit(
                 LogEvent(source=" cheats ", type="info",
                          message="Entering Cheats menu"))
+        elif step == 13:
+            self.audio.sound_play("game_over")
+            self.core._emit(
+                LogEvent(source="  game  ", type="finish",
+                         message=("Game over with "
+                                  + f"{self.core.gm_state.score:,} points at "
+                                  + f"level {self.core.gm_state.level} "),
+                         duration=(time.perf_counter()
+                                   - self.core.gm_state.starttime)))
+        elif step == 14:
+            self.audio.sound_play("applause")
+            self.core._emit(
+                LogEvent(source="  game  ", type="finish",
+                         message=("Game finished with "
+                                  + f"{self.core.gm_state.score:,} points at "
+                                  + f"level {self.core.gm_state.level} "),
+                         duration=(time.perf_counter()
+                                   - self.core.gm_state.starttime)))
 
     def start_new_level(self, level: int) -> None:
         gmstate = self.core.gm_state
@@ -538,6 +588,7 @@ class Game:
         if self.cheats.outatime_reftime != -1.0:
             gmstate.time_cur = self.cheats.outatime_reftime
         if gmstate.time_cur <= 0.0 and not self.timout_reached:
+            self.audio.sound_play("time's_up")
             if self.core.config.timeout_consequence == "speeding_ghosts":
                 ghosts_states = self.core.chr_states[1:]
                 for ghost in ghosts_states:
@@ -593,18 +644,29 @@ class Game:
                 self.graphics.gameboard.status = "warp_out"
 
     def all_levels_completed(self) -> None:
-        self.set_step(11)
+        self.toggle_pause(force_pause=True)
+        self.set_step(14)
 
     def pacman_dies(self) -> None:
+        if self.graphics.gameboard.pacman_deathtime != -1.0:
+            return
         self.audio.sound_play("death")
+        self.player.dies()
+        self.graphics.gameboard.pacman_deathtime = time.perf_counter()
+        self.graphics.gameboard.status = "death"
 
     def game_over(self) -> None:
-        pass
+        if self.step in (11, 13, 14):
+            return
+        self.toggle_pause(force_pause=True)
+        self.gamerun_endtime = time.perf_counter()
+        self.set_step(13)
 
-    def toggle_pause(self) -> int:
-        if self.graphics.gameboard.status not in ("play", "pause"):
+    def toggle_pause(self, force_pause: bool = False) -> int:
+        if (self.graphics.gameboard.status not in ("play", "pause")
+                and not force_pause):
             return -1
-        if self.pause_menu:
+        if self.pause_menu and not force_pause:
             pause_duration = time.perf_counter() - self.pause_starttime
             self.time_ref += pause_duration
             self.inventory.resume_effects(pause_duration)
@@ -652,11 +714,14 @@ class Game:
         self.check_collision()
 
     def check_collision(self) -> None:
+        if self.player.state.status == 0:
+            return
         for i, ghost in enumerate(self.ghosts.states):
             distance = self.player.distance_to(ghost.pos_x, ghost.pos_y)
             if distance < self.core.gm_state.character_size:
-                if ((ghost.status == 2 and ghost.activity != 3)
-                        or ghost.status == 5):
+                if (((ghost.status == 2 and ghost.activity != 3)
+                        or ghost.status == 5)
+                        and not self.core.cht_table.invulnerable):
                     self.pacman_dies()
                     return
                 elif ghost.status == 4:
@@ -665,7 +730,7 @@ class Game:
                     ghost.activity = 5
                     ghost.reverse_pending = True
                     earned = self.core.pts_table.ghost
-                    self.core.gm_state.score += earned
+                    self._add_points_to_score(earned)
                     colors = [rcl.BLINKY_RED, rcl.PINKY_PINK,
                               rcl.INKY_CYAN, rcl.CLYDE_ORANGE]
                     cl_text = colors[i]

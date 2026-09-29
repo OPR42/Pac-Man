@@ -174,5 +174,18 @@
     "INV_I02?" : "Explosif à retardement.\nClic gauche ou 3 pour utiliser.",
     "INV_I03?" : "Transition de genre.\nClic gauche ou 4 pour utiliser ou revenir à l'état initial.",
     "INV_I04?" : "Environnement aride.\nClic gauche ou 5 pour utiliser ou revenir à l'état initial.",
-    "INV_I05?" : "Environnement urbain.\nClic gauche ou 6 pour utiliser ou revenir à l'état initial."
+    "INV_I05?" : "Environnement urbain.\nClic gauche ou 6 pour utiliser ou revenir à l'état initial.",
+    "__END__": "─━─━─━─━─━─━─━─━─━─━─ ENDGAME ━─━─━─━─━─━─━─━─━─━─━─",
+    "END_Ctn": "Continuer",
+    "END_Ctn?": "Quitte cette partie.",
+    "END_Ttl": "Partie terminée",
+    "END_It1": "Points gagnés : ",
+    "END_It2": "Niveau atteint : ",
+    "END_It3": "Temps de jeu : ",
+    "END_Hr_": " heure, ",
+    "END_Hrs": " heures, ",
+    "END_Mn_": " minute, ",
+    "END_Mns": " minutes, ",
+    "END_Sc_": " seconde",
+    "END_Scs": " secondes"
 }

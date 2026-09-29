@@ -713,8 +713,10 @@ class Shapes:
         opacity = max(0.0, min(1.0, opacity))
 
         if variant == "slimer":
+            color = ((-1, -1, -1, -1) if face_color == rcl.PACMAN_YELLOW
+                     else face_color)
             self.slimer(center_x, center_y, radius, body_angle, mouth_angle,
-                        eye_opening, last_hor_dir)
+                        eye_opening, last_hor_dir, face_color=color)
             return
 
         if scale_x < 0.0:
@@ -914,7 +916,8 @@ class Shapes:
               eye_color: Color = rcl.BASE_BR_WHITE,
               pupil_color: Color = rcl.EYE_BLUE, eye_opening: float = 1.0,
               wave: float = 1.0, name: str = "", contour: bool = False,
-              variant: str = "", actor_name: str = "") -> None:
+              variant: str = "", actor_name: str = "",
+              texture_free: bool = False) -> None:
         sround = self.utils.sym_round
 
         if variant == "ghostbuster":
@@ -959,17 +962,24 @@ class Shapes:
         body_texture = "ghost_body"
         body_width = radius * 2
         body_height = radius * 2 - wave_height
-        if (self.graphics.textures.size(body_texture)
-                != (body_width, body_height)):
-            self.graphics.textures.begin(body_texture, body_width, body_height)
-            self.circle_sector(radius, radius, radius, 180, 360, thick=1,
-                               cl=rcl.BASE_BR_WHITE, filled=True)
-            self.rectangle(0, radius, body_width, body_height - radius,
-                           cl=rcl.BASE_BR_WHITE, filled=True)
-            self.graphics.textures.end()
 
-        self.graphics.textures.draw(body_texture, left, center_y - radius,
-                                    tint=body_color)
+        if texture_free:
+            self.circle_sector(center_x, center_y, radius, 180, 360, thick=1,
+                               cl=body_color, filled=True)
+            self.rectangle(left, center_y, body_width, body_height - radius,
+                           cl=body_color, filled=True)
+        else:
+            if (self.graphics.textures.size(body_texture)
+                    != (body_width, body_height)):
+                self.graphics.textures.begin(body_texture, body_width,
+                                             body_height)
+                self.circle_sector(radius, radius, radius, 180, 360, thick=1,
+                                   cl=rcl.BASE_BR_WHITE, filled=True)
+                self.rectangle(0, radius, body_width, body_height - radius,
+                               cl=rcl.BASE_BR_WHITE, filled=True)
+                self.graphics.textures.end()
+            self.graphics.textures.draw(body_texture, left, center_y - radius,
+                                        tint=body_color)
 
         if variant == "dalton" and name != "dead":
             cl_stripes = rcl.BLACK_DARKGLASS
@@ -1496,13 +1506,17 @@ class Shapes:
 
     def slimer(self, center_x: int, center_y: int, radius: int,
                angle: int, mouth_angle: float, eye_opening: float,
-               last_hor_dir: str = "") -> None:
+               last_hor_dir: str = "",
+               face_color: Color = (-1, -1, -1, -1)) -> None:
         sround = self.utils.sym_round
         rad = math.radians(angle)
         fx, fy = math.cos(rad), math.sin(rad)
         ux, uy = -fy, math.cos(rad)
         green = (88, 218, 52, 255)
         light = (132, 239, 76, 255)
+        if face_color != (-1, -1, -1, -1):
+            green = face_color
+            light = rcl.scale_rgb(green, 1.35)
         tongue = (239, 91, 126, 255)
         mouth_angle *= 0.75
         side_a = -1

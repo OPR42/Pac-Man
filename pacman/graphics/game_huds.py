@@ -223,6 +223,8 @@ class GameHUDs:
             ui_items = self.gamemenus.gamescoremenu.score_ui_items
         elif self.game.step == 12:
             ui_items = self.gamemenus.gamecheatsmenu.cheats_ui_items
+        elif self.game.step in (13, 14):
+            ui_items = self.gamemenus.endgame_ui_items
 
         item = ui_items[index]
 

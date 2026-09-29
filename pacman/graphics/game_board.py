@@ -47,6 +47,8 @@ class GameBoard:
         self.maze_skin: int = -1
         self.inboard_texts: list[tuple[float, float, str, Color, float,
                                        float, float, float]] = []
+        self.pacman_deathtime: float = -1.0
+        self.pacman_spawntime: float = -1.0
 
     def launch(self) -> None:
         self.core._emit(
@@ -80,8 +82,10 @@ class GameBoard:
         self.debug = False
         self.status = "init"
         self.maze_cell_size = 0
-        self.gamehuds.reset()
         self.inboard_texts = []
+        self.pacman_deathtime = -1.0
+        self.pacman_spawntime = -1.0
+        self.gamehuds.reset()
 
     def resize(self) -> None:
         self.build_done = False
@@ -161,6 +165,7 @@ class GameBoard:
                 self.anim_start = -1.0
                 self.status = "play"
                 self.game.time_ref = time.perf_counter()
+                self.game.gamerun_starttime = time.perf_counter()
                 self.game.set_step(7)
         elif self.status == "warp_out":
             if self.warp_signal:
@@ -187,8 +192,85 @@ class GameBoard:
             self.game.ghosts.draw_ghosts_path()
         self.draw_characters()
         self.write_board_texts()
+        if self.game.player.state.status == 0:
+            if self.game.player.state.activity != 5:
+                if self.death_anim():
+                    self.pacman_deathtime = -1.0
+                    if self.core.gm_state.lives_cur > 0:
+                        self.game._add_life(-1)
+                        self.game.player.state.activity = 5
+                        self.pacman_spawntime = time.perf_counter()
+                    elif self.game.step not in (11, 13, 14):
+                        self.game.game_over()
+            else:
+                if self.spawn_anim():
+                    start_x, start_y = self.core.gm_state.start_pos
+                    self.game.player.spawn(start_x, start_y)
+                    self.status = "play"
 
         self.gamehuds.draw_huds()
+
+    def death_anim(self) -> bool:
+        if self.pacman_deathtime == -1.0:
+            return True
+
+        sround = self.utils.sym_round
+        draw = self.shapes
+        actor = self.game.player.state
+        now = time.perf_counter()
+        elapsed = now - self.pacman_deathtime
+        duration = 1.75
+        progress = elapsed / duration
+
+        if progress >= 1.0:
+            return True
+
+        size = self.core.gm_state.character_size * (1.0 - progress / 5)
+        radius = sround(size / 2)
+        angle = sround(actor.direction)
+        opening = (self.core.defaults.pacman_min_mouth_opening
+                   + self.core.defaults.pacman_max_mouth_opening_to_pg
+                   * progress)
+        variant = ""
+        if self.core.gm_state.skin == 1:
+            variant = "ms.pacman"
+        elif self.core.gm_state.skin == 2:
+            variant = "packy_pake"
+        elif self.core.gm_state.skin == 3:
+            variant = "slimer"
+        color = rcl.mix_rgba(rcl.BOWTIE_RED, rcl.PACMAN_YELLOW, progress)
+        if variant == "slimer":
+            color = rcl.mix_rgba(rcl.BOWTIE_RED, (88, 218, 52, 255), progress)
+
+        color = rcl.scale_alpha(color, (1.0 - progress / 2))
+        draw.pacman(actor.pos_x, actor.pos_y, radius, angle,
+                    mouth_opening=opening, eye_opening=0.25,
+                    face_color=color, variant=variant)
+        return False
+
+    def spawn_anim(self) -> bool:
+        if self.pacman_spawntime == -1.0:
+            return True
+
+        sround = self.utils.sym_round
+        now = time.perf_counter()
+        duration = self.core.defaults.hud_livebox_halo_duration
+        elapsed = now - self.pacman_spawntime
+        progress = min(1.0, elapsed / duration)
+
+        if progress >= 1.0:
+            return True
+
+        progress = 1.0 - (1.0 - progress) ** 2
+        radius = sround(self.core.gm_state.character_size / 2
+                        * (1.0 - (1.0 - progress) ** 2))
+        if radius > 0:
+            start_x, start_y = self.core.gm_state.start_pos
+            x, y = self.cell_center_coords(start_x, start_y)
+            self.graphics.shapes.circle_gradient(x, y, radius,
+                                                 rcl.BASE_BR_WHITE,
+                                                 rcl.BASE_CYAN)
+        return False
 
     def warp_anim(self, out: bool = False) -> bool:
         def pulse(elapsed: float, start: float, duration: float) -> float:
@@ -439,7 +521,7 @@ class GameBoard:
                             / self.core.defaults.actors_blink_duration)
                 eye_opening = 1.0 - math.sin(min(1.0, progress) * math.pi)
 
-            if actor.name == "pacman":
+            if actor.name == "pacman" and actor.status == 1:
                 variant = ""
                 if self.core.gm_state.skin == 1:
                     variant = "ms.pacman"
@@ -452,7 +534,7 @@ class GameBoard:
                             actor.direction, mouth_opening=actor.cycle,
                             eye_opening=eye_opening, contour=False,
                             last_hor_dir=actor.last_hor_dir, variant=variant)
-            else:
+            elif actor.name != "pacman":
                 name = actor.name
                 if actor.status == 3:
                     name = "dead"

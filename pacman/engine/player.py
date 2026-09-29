@@ -41,6 +41,14 @@ class Player:
         actor.max_speed = self.core.defaults.pacman_max_speed
         actor.pos_x, actor.pos_y = gameboard.cell_center_coords(
             cell_x, cell_y)
+        actor.status = 1
+        actor.activity = 0
+        self._stop_pilot()
+
+    def dies(self) -> None:
+        actor = self.state
+        actor.status = 0
+        actor.activity = 4
 
     def distance_to(self, x: float, y: float) -> float:
         """Return the distance from Pac-Man to a world position."""

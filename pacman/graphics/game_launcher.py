@@ -45,6 +45,7 @@ class GameLauncher:
                                           "game_over",
                                           "mocking",
                                           "tadaaa",
+                                          "time's_up",
                                           "transition_0",
                                           "transition_1",
                                           "warp"]

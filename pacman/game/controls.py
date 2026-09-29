@@ -310,13 +310,13 @@ class Controls:
             if pr.is_key_pressed(keys.KEY_GRAVE):
                 return "cheat_menu"
 
-        if self.game.step in (6, 7, 8, 9, 10, 12):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14):
             if (pr.is_key_pressed(keys.KEY_ESCAPE)
                     or pr.is_key_pressed(keys.KEY_P)
                     or pr.is_key_pressed(keys.KEY_BACKSPACE)):
                 return "pause_menu"
 
-        if 8 <= self.game.step < 11 or self.game.step == 12:
+        if 8 <= self.game.step < 11 or self.game.step >= 12:
             if (pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_UP)):
                 return "up"
@@ -537,7 +537,7 @@ class Controls:
             if pad_btn(RBL) or pad_btn(MBL):
                 return ("pad", "back")
 
-        if self.game.step in (6, 7, 8, 9, 10, 12):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14):
             if pad_btn(MBR) or pad_btn(RBL):
                 return ("pad", "pause_menu")
 

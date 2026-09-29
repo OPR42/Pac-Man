@@ -252,7 +252,7 @@ class Graphics:
         elif self.game.step in (1, 3, 4, 5):
             self.main_menu.draw_main_menu()
 
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14):
             self.gameboard.draw_gameboard()
 
         if (self.show_hints
@@ -406,7 +406,7 @@ class Graphics:
         self.interface.rebuild()
         if self.game.step in (1, 3, 4, 5):
             self.main_menu.resize()
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14):
             self.gameboard.resize()
 
     def reload_fonts(self) -> None:

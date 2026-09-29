@@ -8,7 +8,7 @@
     "window_position": "topright",
     "frame_and_banner": true,
     "master_volume": 100,
-    "music_volume": 25,
+    "music_volume": 50,
     "sound_volume": 100,
     "language": "francais",
     "hints": true,
@@ -29,7 +29,7 @@
     "pts_bonus6": 900,
     "new_life_threshold": 5000,
     "level_max_time": 90,
-    "timeout_consequence": "speeding_ghosts",
+    "timeout_consequence": "sudden_death",
     "seed": 42,
     "levels": [
         {

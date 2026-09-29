@@ -28,13 +28,17 @@ class GameMenus:
         self.pvp: RectangleGeometry
         self.cvp: RectangleGeometry
         self.hvp: RectangleGeometry
+        self.evp: RectangleGeometry
+        self.svp: RectangleGeometry
         self.background_built: bool = False
         self.background_texture: RaylibObject | None = None
         self.focus_anim_start = time.perf_counter()
         self.pause_ui_items: list[InterfaceItem] = []
         self.confirm_ui_items: list[InterfaceItem] = []
+        self.endgame_ui_items: list[InterfaceItem] = []
         self.cheats_unlocked: bool = False
         self.ref_row_height: int = 0
+        self.endgame_anim_starttime: float = -1.0
 
     def launch(self) -> None:
         self.mvp = self.gameboard.mvp
@@ -43,6 +47,7 @@ class GameMenus:
         self.graphics.textures.shader_load("grayscale")
         self.build_pause_geometry()
         self.build_confirm_geometry()
+        self.build_endgame_geometry()
         from .game_score_menu import GameScoreMenu
         self.gamescoremenu = GameScoreMenu(self.core)
         self.gamescoremenu.launch()
@@ -55,7 +60,9 @@ class GameMenus:
         self.focus_anim_start = time.perf_counter()
         self.pause_ui_items = []
         self.confirm_ui_items = []
+        self.endgame_ui_items = []
         self.ref_row_height = 0
+        self.endgame_anim_starttime = -1.0
         self.gamescoremenu.reset()
         self.gamecheatsmenu.reset()
 
@@ -66,6 +73,7 @@ class GameMenus:
         self.rvp = self.gameboard.rvp
         self.build_pause_geometry()
         self.build_confirm_geometry()
+        self.build_endgame_geometry()
         self.gamescoremenu.resize()
         self.gamecheatsmenu.resize()
 
@@ -96,6 +104,8 @@ class GameMenus:
             self.gamescoremenu.draw_score_menu()
         elif self.game.step == 12:
             self.gamecheatsmenu.draw_cheats_menu()
+        elif self.game.step == 13:
+            self.draw_gameover_menu()
 
     def build_pause_geometry(self) -> None:
         sround = self.utils.sym_round
@@ -195,6 +205,30 @@ class GameMenus:
             rel_to_center=False))
         self.confirm_ui_items.append(InterfaceItem(
             rx, y, item_width, item_height, "CNF_No", "no", "button",
+            rel_to_center=False))
+
+    def build_endgame_geometry(self) -> None:
+        sround = self.utils.sym_round
+        mvp = self.mvp
+        evp = self.geometry.rectangle_geometry(
+            mvp.ct.x - sround(mvp.wdt * 0.4), mvp.ct.y - sround(mvp.hgt * 0.4),
+            sround(mvp.wdt * 0.8), sround(mvp.hgt * 0.8))
+        self.evp = evp
+        row_height = evp.hgt // 4
+        margin = sround(row_height * 0.1)
+        svp = self.geometry.rectangle_geometry(
+            evp.x + margin, evp.y + row_height + margin,
+            evp.wdt - margin * 2, row_height * 2 - margin * 2)
+        self.svp = svp
+        item_height = sround(row_height * 0.7)
+        item_width = sround(evp.wdt / 2 * 0.8)
+        self.endgame_ui_items = []
+        for item in self.gamehuds.ui_items:
+            self.endgame_ui_items.append(item)
+        y = svp.bct.y + (row_height - item_height) // 2
+        x = evp.ct.x - sround(item_width / 2)
+        self.endgame_ui_items.append(InterfaceItem(
+            x, y, item_width, item_height, "END_Ctn", "continue", "button",
             rel_to_center=False))
 
     def build_background(self) -> None:
@@ -417,3 +451,144 @@ class GameMenus:
         txt = lex("CNF_Txt")
         draw.text_block_max(txt_x, txt_y, txt_wdt, txt_hgt, txt,
                             self.graphics.font_regular, cl, justify="center")
+
+    def draw_gameover_menu(self) -> None:
+        sround = self.utils.sym_round
+        elapsed = time.perf_counter() - self.focus_anim_start
+        rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
+        draw = self.graphics.shapes
+        rg = self.graphics.rg
+        lex = self.core.lexicon
+        evp = self.evp
+        svp = self.svp
+        draw.rectangle(evp.x, evp.y, evp.wdt, evp.hgt, roundness=0.25,
+                       cl=rcl.BLACK_GLASS, filled=True)
+        draw.rectangle(evp.x, evp.y, evp.wdt, evp.hgt, roundness=0.25,
+                       thick=rg(4), cl=rcl.PACMAN_YELLOW, filled=False)
+        self.graphics.interface.set_items(self.endgame_ui_items)
+        self.graphics.interface.update_mouse()
+        for i, item in enumerate(self.endgame_ui_items):
+            if item.kind == "button":
+                self.gamehuds.display_hud_buttons(i, rgb_factor)
+        draw.rectangle(svp.x, svp.y, svp.wdt, svp.hgt, roundness=0.25,
+                       cl=rcl.BLACK_GLASS, filled=True)
+        draw.rectangle(svp.x, svp.y, svp.wdt, svp.hgt, roundness=0.25,
+                       thick=rg(2), cl=rcl.PACMAN_YELLOW, filled=False)
+        line_hgt = (svp.y - evp.y) / 6
+        x = evp.x
+        y = evp.y + sround(line_hgt / 2)
+        txt = lex("END_Ttl")
+        draw.text_block_max(x, y, evp.wdt, sround(line_hgt * 2), txt,
+                            self.graphics.font_bold, rcl.PACMAN_YELLOW,
+                            justify="center")
+        y += sround(line_hgt * 2)
+        score_txt = f"{self.core.gm_state.score:,}"
+        score_txt = score_txt.replace(",", lex("kilo_sep"))
+        txt = lex("END_It1") + f"{score_txt}"
+        draw.text_block_max(x, y, evp.wdt, sround(line_hgt), txt,
+                            self.graphics.font_regular, rcl.SAND,
+                            justify="center")
+        y += sround(line_hgt)
+        txt = lex("END_It2") + f"{self.core.gm_state.level}"
+        draw.text_block_max(x, y, evp.wdt, sround(line_hgt), txt,
+                            self.graphics.font_regular, rcl.SAND,
+                            justify="center")
+        y += sround(line_hgt * 1.15)
+        gametime = int(self.game.gamerun_endtime - self.game.gamerun_starttime)
+        seconds = gametime % 60
+        minutes = (gametime // 60) % 60
+        hours = gametime // 3600
+        gametime_txt = ""
+        if hours > 1:
+            gametime_txt += f"{hours}{lex("END_Hrs")}"
+        elif hours > 0:
+            gametime_txt += f"{hours}{lex("END_Hr_")}"
+        if minutes > 1:
+            if hours > 0:
+                gametime_txt += f"{minutes:02}{lex("END_Mns")}"
+            else:
+                gametime_txt += f"{minutes}{lex("END_Mns")}"
+        elif minutes > 0:
+            if hours > 0:
+                gametime_txt += f"{minutes:02}{lex("END_Mn_")}"
+            else:
+                gametime_txt += f"{minutes}{lex("END_Mn_")}"
+        elif minutes == 0 and hours > 0:
+            gametime_txt += f"{minutes:02}{lex("END_Mn_")}"
+        if seconds > 1:
+            if hours > 0 or minutes > 0:
+                gametime_txt += f"{seconds:02}{lex("END_Scs")}"
+            else:
+                gametime_txt += f"{seconds}{lex("END_Scs")}"
+        elif seconds > 0:
+            if hours > 0 or minutes > 0:
+                gametime_txt += f"{seconds:02}{lex("END_Sc_")}"
+            else:
+                gametime_txt += f"{seconds}{lex("END_Sc_")}"
+        elif seconds == 0 and (hours > 0 or minutes > 0):
+            gametime_txt += f"{seconds:02}{lex("END_Sc_")}"
+        txt = lex("END_It3") + f"{gametime_txt}"
+        draw.text_block_max(x, y, evp.wdt, sround(line_hgt * 0.7), txt,
+                            self.graphics.font_italic, rcl.SAND,
+                            justify="center")
+        self.draw_gameover_anim()
+
+    def draw_gameover_anim(self) -> None:
+        now = time.perf_counter()
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        svp = self.svp
+        radius = sround(svp.hgt * 0.4)
+
+        if self.endgame_anim_starttime == -1.0:
+            self.endgame_anim_starttime = now
+
+        elapsed = now - self.endgame_anim_starttime
+        wave = 0.10 + 0.90 * abs(math.sin(now * 6.0))
+        with self.graphics.clip(svp.x, svp.y, svp.wdt, svp.hgt):
+            if 0 < elapsed <= 3.0:
+                progress = elapsed / 3.0
+                start_x, end_x = svp.x - radius, svp.ct.x + radius
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.pacman(pos_x, svp.ct.y, radius, 0, 1.0, 0.50, 1.0)
+            elif 3.0 < elapsed <= 3.5:
+                progress = (elapsed - 3.0) / 0.5
+                draw.pacman(svp.ct.x + radius, svp.ct.y, radius, 0,
+                            1.0 - progress, 0.25, 0.75)
+            elif 3.5 < elapsed <= 4.0:
+                progress = (elapsed - 3.5) / 0.5
+                draw.pacman(svp.ct.x + radius, svp.ct.y, radius, 180,
+                            progress, 0.25, 0.75)
+            elif 4.0 < elapsed <= 5.0:
+                progress = (elapsed - 4.0) / 1.0
+                start_x, end_x = svp.ct.x + radius, svp.ct.x
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.pacman(pos_x, svp.ct.y, radius, 180, 1.0, 0.25, 1.0)
+            elif 5.0 < elapsed <= 6.5:
+                draw.pacman(svp.ct.x, svp.ct.y, radius, 180, 1.0, 0.20, 0.75)
+            elif 6.5 < elapsed <= 7.0:
+                progress = (elapsed - 6.5) / 0.5
+                angle = 180 - sround(25 * progress)
+                draw.pacman(svp.ct.x, svp.ct.y, radius, angle, 1.0, 0.15, 0.25)
+            elif 7.0 < elapsed:
+                draw.pacman(svp.ct.x, svp.ct.y, radius, 155, 1.0, 0.10, 0.15)
+
+            if 2.5 < elapsed <= 5.5:
+                progress = (elapsed - 2.5) / 3.0
+                start_x, end_x = svp.rct.x + radius, svp.ct.x + radius * 3
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.ghost(pos_x, svp.ct.y, radius, 180.0,
+                           wave=wave, name="inky", texture_free=True)
+            elif 5.5 < elapsed:
+                draw.ghost(svp.ct.x + radius * 3, svp.ct.y, radius, 180.0,
+                           wave=wave, name="inky", texture_free=True)
+
+            if 4.5 < elapsed <= 6.0:
+                progress = (elapsed - 4.5) / 1.5
+                start_x, end_x = svp.x - radius, svp.ct.x - radius * 3
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.ghost(pos_x, svp.ct.y, radius, 0.0,
+                           wave=wave, name="pinky", texture_free=True)
+            elif 6.0 < elapsed:
+                draw.ghost(svp.ct.x - radius * 3, svp.ct.y, radius, 0.0,
+                           wave=wave, name="pinky", texture_free=True)
