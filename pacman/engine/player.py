@@ -94,6 +94,18 @@ class Player:
 
         return self._update_cell()
 
+    def _nearest_available_cell_to_pos(self, world_x: int, world_y: int,
+                                       origin: tuple[int, int]
+                                       ) -> tuple[int, int] | None:
+        maze = self.core.game.maze
+        gameboard = self.core.game.graphics.gameboard
+        candidates = maze.find_nearest_available_cells(*origin)
+        if not candidates:
+            return None
+        return min(candidates, key=lambda cell: sum(
+            (a - b) ** 2 for a, b in zip(gameboard.cell_center_coords(
+                *cell), (world_x, world_y))))
+
     def pilot(self, cmd: str = "", direct: bool = False) -> None:
         """Set or cancel mouse piloting target."""
         if cmd == "maze_stop_move":
@@ -125,10 +137,15 @@ class Player:
 
         if not maze.is_cell_available(target):
             if direct:
-                nearest = maze.find_nearest_available_cell(*target)
-                if nearest is None:
+                candidates = maze.find_nearest_available_cells(*target)
+                if not candidates:
                     return
-                target = nearest
+                target = min(
+                    candidates,
+                    key=lambda cell: (
+                        (gameboard.cell_center_coords(*cell)[0] - world_x) ** 2
+                        + (gameboard.cell_center_coords(
+                            *cell)[1] - world_y) ** 2))
                 world_x, world_y = gameboard.cell_center_coords(*target)
             else:
                 self._stop_pilot()
@@ -302,6 +319,8 @@ class Player:
         if not moved_x and move_px_x != 0 and move_px_y == 0:
             if self._assist_opening(actor, radius, move_px_x, horizontal=True):
                 self._move_body_axis(actor, radius, move_px_x, horizontal=True)
+            if not moved_x and self.core.cht_table.jackhammer:
+                self._jackhammer(actor, move_px_x, horizontal=True)
 
         moved_y = self._move_body_axis(actor, radius, move_px_y,
                                        horizontal=False)
@@ -311,6 +330,8 @@ class Player:
                                     horizontal=False):
                 self._move_body_axis(actor, radius, move_px_y,
                                      horizontal=False)
+            if not moved_y and self.core.cht_table.jackhammer:
+                self._jackhammer(actor, move_px_y, horizontal=False)
 
         if (move_px_x != 0 and move_px_y != 0 and actor.pos_x == start_x
                 and actor.pos_y == start_y):
@@ -551,3 +572,26 @@ class Player:
                 self.local_to_world(length, -half_height),
                 self.local_to_world(length, half_height),
                 self.local_to_world(0.0, half_height))
+
+    def _jackhammer(self, actor: CharacterState,
+                    delta: int, horizontal: bool) -> bool:
+        """Break a maze wall blocking Pac-Man."""
+        if delta == 0:
+            return False
+
+        maze = self.core.game.maze
+        gameboard = self.core.game.graphics.gameboard
+
+        cell = (actor.cell_x, actor.cell_y)
+
+        if horizontal:
+            direction = "right" if delta > 0 else "left"
+        else:
+            direction = "down" if delta > 0 else "up"
+
+        if not maze.break_wall(cell, direction):
+            return False
+
+        gameboard.build_done = False
+        gameboard.add_wall_debris(*cell, direction)
+        return True

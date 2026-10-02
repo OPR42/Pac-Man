@@ -63,6 +63,17 @@ class RenderColors:
     GRAD2_SKIN_3 = (211, 76, 134, 255)
     BOWTIE_RED = (155, 25, 45, 255)
     JAIL_YELLOW = (251, 242, 89, 255)
+    BLAST_OUT = (225, 77, 32, 255)
+    BLAST_MED = (255, 223, 45, 255)
+    BLAST_CNT = (255, 255, 255, 255)
+    CUBE_FRAME = (229, 229, 229, 255)
+    CUBE_BOX = (127, 131, 132, 255)
+    CUBE_LINES = (192, 97, 203, 255)
+    CUBE_PANEL = (63, 63, 63, 255)
+    STETSON_IVORY = (242, 234, 211, 255)
+    SLIME_GREEN = (105, 220, 55, 255)
+    HOURGLASS_WOOD = (125, 85, 55, 255)
+    BOMB_VIOLET = (105, 55, 175, 255)
 
     @staticmethod
     def scale_rgb(rgb: tuple[int, int, int, int],

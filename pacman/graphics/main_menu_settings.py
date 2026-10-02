@@ -10,7 +10,7 @@ from pacman.base.geometry import Geometry
 from pacman.core import Core
 from pacman.engine.interface import InterfaceItem
 
-# from .colors import RenderColors as rcl
+from .colors import RenderColors as rcl
 from .shapes import Shapes
 
 RaylibObject: TypeAlias = Any
@@ -34,3 +34,6 @@ class MainMenuSettings:
 
         for i in range(len(self.ui_items)):
             self.main_menu.main_menu_button(i, rgb_factor)
+
+        draw = self.shapes
+        draw.companion_square(800, 600, 500, lines_color=rcl.BOWTIE_RED)

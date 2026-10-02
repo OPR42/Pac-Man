@@ -113,6 +113,7 @@ class Inventory:
             self.inv_items[2].quantity -= 1
             self.inv_items[2].effect_progress = 0.0
             self.inv_items[2].effect_start_time = time.perf_counter()
+            self.graphics.gameboard.drop_bomb()
             self.core._emit(LogEvent(
                 source="  item  ", type="info", message="Bomb dropped. ",
                 text_var=f"{self.inv_items[2].quantity}",
@@ -143,6 +144,8 @@ class Inventory:
             if item.effect_progress >= 1.0:
                 item.effect_progress = -1.0
                 item.effect_start_time = 0.0
+                if item.icon_name == "item_bomb":
+                    self.graphics.gameboard.detonate_bomb()
 
     def resume_effects(self, pause_duration: float) -> None:
         """Resume pause-sensitive inventory effects."""
@@ -329,7 +332,7 @@ class Inventory:
         if self.graphics.textures.exists("item_hourglass"):
             self.graphics.textures.unload("item_hourglass")
         self.graphics.textures.begin("item_hourglass", wdt, hgt)
-        pr.clear_background(pr.BLACK)
+        pr.clear_background(pr.BLANK)
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
         half_width = sround(cont.rad / math.sqrt(5.0))
         half_height = sround(half_width * 2.0)
@@ -393,7 +396,7 @@ class Inventory:
         if self.graphics.textures.exists("item_sage"):
             self.graphics.textures.unload("item_sage")
         self.graphics.textures.begin("item_sage", wdt, hgt)
-        pr.clear_background(pr.BLACK)
+        pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
         cl_leaf = rcl.scale_rgb(rcl.DISGUSTED_GHOST_GREEN, 0.65)
@@ -491,7 +494,7 @@ class Inventory:
         if self.graphics.textures.exists("item_bomb"):
             self.graphics.textures.unload("item_bomb")
         self.graphics.textures.begin("item_bomb", wdt, hgt)
-        pr.clear_background(pr.BLACK)
+        pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
         cl_bomb = (105, 55, 175, 255)
@@ -851,7 +854,7 @@ class Inventory:
         if self.graphics.textures.exists("item_slime"):
             self.graphics.textures.unload("item_slime")
         self.graphics.textures.begin("item_slime", wdt, hgt)
-        pr.clear_background(pr.BLACK)
+        pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
         cl_dark = (28, 105, 42, 255)
@@ -953,7 +956,7 @@ class Inventory:
         if self.graphics.textures.exists("item_pacman"):
             self.graphics.textures.unload("item_pacman")
         self.graphics.textures.begin("item_pacman", wdt, hgt)
-        pr.clear_background(pr.BLACK)
+        pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
         cl_pacman = rcl.PACMAN_YELLOW

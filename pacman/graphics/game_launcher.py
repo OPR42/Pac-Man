@@ -35,6 +35,7 @@ class GameLauncher:
                                                 "granular"]
     # brushed_metal, lightwood
         self.sounds_to_load: list[str] = ["applause",
+                                          "break",
                                           "death",
                                           "eat_ghost",
                                           "eat_item",

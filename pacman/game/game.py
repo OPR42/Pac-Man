@@ -41,6 +41,7 @@ class Game:
         self.complete_lvl_src_init: float = 0.0
         self.complete_lvl_dst_init: int = 0
         self.complete_lvl_transfer_duration: float = 0.0
+        self.revival_starttime: float = -1.0
 
         """ STEPS
         00. Init
@@ -645,6 +646,7 @@ class Game:
 
     def all_levels_completed(self) -> None:
         self.toggle_pause(force_pause=True)
+        self.gamerun_endtime = time.perf_counter()
         self.set_step(14)
 
     def pacman_dies(self) -> None:
@@ -672,6 +674,8 @@ class Game:
             self.inventory.resume_effects(pause_duration)
             self.pacgums.trigger_superpacgum_effect(
                 pause_duration=pause_duration)
+            if self.revival_starttime != -1.0:
+                self.revival_starttime += pause_duration
             self.pause_starttime = 0.0
             self.controls.last_commands.clear()
             self.pause_menu = False
@@ -721,7 +725,8 @@ class Game:
             if distance < self.core.gm_state.character_size:
                 if (((ghost.status == 2 and ghost.activity != 3)
                         or ghost.status == 5)
-                        and not self.core.cht_table.invulnerable):
+                        and not self.core.cht_table.invulnerable
+                        and self.revival_starttime == -1.0):
                     self.pacman_dies()
                     return
                 elif ghost.status == 4:

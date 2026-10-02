@@ -172,3 +172,60 @@ class Maze:
                 visited.add((nx, ny))
                 queue.append((nx, ny))
         return None
+
+    def find_nearest_available_cells(self, x: int,
+                                     y: int) -> list[tuple[int, int]]:
+        width = self.width
+        height = self.height
+        queue = deque([(x, y, 0)])
+        visited = {(x, y)}
+        candidates: list[tuple[int, int]] = []
+        found_distance: int | None = None
+        directions = ((0, -1), (1, 0), (0, 1), (-1, 0))
+        while queue:
+            cx, cy, distance = queue.popleft()
+            if found_distance is not None and distance > found_distance:
+                break
+            if self.is_cell_available((cx, cy)):
+                candidates.append((cx, cy))
+                found_distance = distance
+                continue
+            for dx, dy in directions:
+                nx = cx + dx
+                ny = cy + dy
+                if not (0 <= nx < width and 0 <= ny < height):
+                    continue
+                if (nx, ny) in visited:
+                    continue
+                visited.add((nx, ny))
+                queue.append((nx, ny, distance + 1))
+        return candidates
+
+    def break_wall(self, coord: tuple[int, int], direction: str) -> bool:
+        """Open a wall toward an adjacent available cell."""
+        if not self.is_cell_available(coord):
+            return False
+
+        x, y = coord
+        directions = {"up": (1, 0, -1, 4), "right": (2, 1, 0, 8),
+                      "down": (4, 0, 1, 1), "left": (8, -1, 0, 2)}
+
+        if direction not in directions:
+            return False
+
+        wall, dx, dy, opposite_wall = directions[direction]
+        target_x = x + dx
+        target_y = y + dy
+
+        if not self.is_cell_available((target_x, target_y)):
+            return False
+
+        cell = self.grid[y][x]
+
+        if not cell & wall:
+            return False
+
+        self.grid[y][x] &= ~wall
+        self.grid[target_y][target_x] &= ~opposite_wall
+
+        return True

@@ -66,19 +66,14 @@
             "corrupted": false
         },
         {
-            "name": "LoRdOfKaOs",
-            "score": -999999999,
-            "corrupted": true
-        },
-        {
             "name": "thatsuxxx",
             "score": 3000,
             "corrupted": false
         },
         {
-            "name": "PrestonG",
-            "score": -999999999,
-            "corrupted": true
+            "name": "Complete01",
+            "score": 1880,
+            "corrupted": false
         },
         {
             "name": "Nick Name",
@@ -99,7 +94,12 @@
             "name": "AFK",
             "score": 0,
             "corrupted": false
+        },
+        {
+            "name": "LoRdOfKaOs",
+            "score": -999999999,
+            "corrupted": true
         }
     ],
-    "signature": "707ece77556c601179f6a84bb92860dfd9cc85287f231157e1361e8d8321f103fd66544bc625f25f24fe28476b0e42c8224e33bb41781e1a1c557d7301823f76c6dc9ec6926313afc312f93e71153916bfdb19a2c602c8eed751e3ca72bb6f0e4f0553db6e99a0f012390814e2af2b3e6d005cab8d5065284c30a9d3463ce2ae353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f299"
+    "signature": "707ece77556c601179f6a84bb92860dfd9cc85287f231157e1361e8d8321f103fd66544bc625f25f24fe28476b0e42c8224e33bb41781e1a1c557d7301823f76c6dc9ec6926313afc312f93e71153916bfdb19a2c602c8eed751e3ca72bb6f0e4f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f29912390814e2af2b3e"
 }

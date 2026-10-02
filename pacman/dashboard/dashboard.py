@@ -253,8 +253,8 @@ class Dashboard:
         gm_state = self.core.gm_state
         labels = ["Start", "Main Menu", "Exit", "Help", "Settings",
                   "Highscore", "Generating", "Playing", "Pause",
-                  "Back Confirm", "Exit Confirm", "Enter Name", "Game Over",
-                  "Cheat Menu"]
+                  "Back Confirm", "Exit Confirm", "Enter Name", "Cheat Menu",
+                  "Game Over", "Victory"]
         display_value(86, 13, 12, labels[gm_state.status])
         labels = ["Pac-Man", "Ms. Pac-Man",
                   "Packy Pake", "Pacbusters"]

@@ -54,11 +54,13 @@ class Defaults(BaseModel):
 
     inventory_sage_radius: int = 4
     inventory_bomb_radius: int = 6
+    inventory_bomb_blast_duration: float = 2.0
 
     logbook_min_height: int = 34
 
     maze_min_width: int = 14
     maze_min_height: int = 10
+    maze_wall_debris_duration: float = 2.0
 
     pacman_base_mouth_opening: float = 0.50
     pacman_min_mouth_opening: float = 0.25
@@ -66,6 +68,9 @@ class Defaults(BaseModel):
     pacman_max_mouth_opening_to_spg: float = 1.25
     pacman_mouth_close_duration: float = 0.15
     pacman_max_speed: float = 4.0
+    pacman_revival_invulnerability: float = 3.0
+    pacman_revival_blink_count: int = 5
+    pacman_revival_blink_acceleration: float = 0.65
 
     playername_keyboard_alphanumeric_hints: bool = False
 

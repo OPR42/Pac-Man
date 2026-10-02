@@ -29,7 +29,7 @@
     "pts_bonus6": 900,
     "new_life_threshold": 5000,
     "level_max_time": 90,
-    "timeout_consequence": "sudden_death",
+    "timeout_consequence": "speeding_ghosts",
     "seed": 42,
     "levels": [
         {

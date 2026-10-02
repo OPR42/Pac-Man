@@ -106,6 +106,8 @@ class GameMenus:
             self.gamecheatsmenu.draw_cheats_menu()
         elif self.game.step == 13:
             self.draw_gameover_menu()
+        elif self.game.step == 14:
+            self.draw_gameover_menu(victory=True)
 
     def build_pause_geometry(self) -> None:
         sround = self.utils.sym_round
@@ -452,7 +454,7 @@ class GameMenus:
         draw.text_block_max(txt_x, txt_y, txt_wdt, txt_hgt, txt,
                             self.graphics.font_regular, cl, justify="center")
 
-    def draw_gameover_menu(self) -> None:
+    def draw_gameover_menu(self, victory: bool = False) -> None:
         sround = self.utils.sym_round
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
@@ -470,14 +472,15 @@ class GameMenus:
         for i, item in enumerate(self.endgame_ui_items):
             if item.kind == "button":
                 self.gamehuds.display_hud_buttons(i, rgb_factor)
+        cl_frame = rcl.scale_rgb(rcl.SAND, 0.40)
         draw.rectangle(svp.x, svp.y, svp.wdt, svp.hgt, roundness=0.25,
                        cl=rcl.BLACK_GLASS, filled=True)
         draw.rectangle(svp.x, svp.y, svp.wdt, svp.hgt, roundness=0.25,
-                       thick=rg(2), cl=rcl.PACMAN_YELLOW, filled=False)
+                       thick=rg(2), cl=cl_frame, filled=False)
         line_hgt = (svp.y - evp.y) / 6
         x = evp.x
         y = evp.y + sround(line_hgt / 2)
-        txt = lex("END_Ttl")
+        txt = lex("END_Vct") if victory else lex("END_Ttl")
         draw.text_block_max(x, y, evp.wdt, sround(line_hgt * 2), txt,
                             self.graphics.font_bold, rcl.PACMAN_YELLOW,
                             justify="center")
@@ -531,7 +534,10 @@ class GameMenus:
         draw.text_block_max(x, y, evp.wdt, sround(line_hgt * 0.7), txt,
                             self.graphics.font_italic, rcl.SAND,
                             justify="center")
-        self.draw_gameover_anim()
+        if victory:
+            self.draw_victory_anim()
+        else:
+            self.draw_gameover_anim()
 
     def draw_gameover_anim(self) -> None:
         now = time.perf_counter()
@@ -545,12 +551,13 @@ class GameMenus:
 
         elapsed = now - self.endgame_anim_starttime
         wave = 0.10 + 0.90 * abs(math.sin(now * 6.0))
+        chew = abs(math.sin(now * 6.0))
         with self.graphics.clip(svp.x, svp.y, svp.wdt, svp.hgt):
             if 0 < elapsed <= 3.0:
                 progress = elapsed / 3.0
                 start_x, end_x = svp.x - radius, svp.ct.x + radius
                 pos_x = sround(start_x + (end_x - start_x) * progress)
-                draw.pacman(pos_x, svp.ct.y, radius, 0, 1.0, 0.50, 1.0)
+                draw.pacman(pos_x, svp.ct.y, radius, 0, 1.0, chew, 1.0)
             elif 3.0 < elapsed <= 3.5:
                 progress = (elapsed - 3.0) / 0.5
                 draw.pacman(svp.ct.x + radius, svp.ct.y, radius, 0,
@@ -563,7 +570,7 @@ class GameMenus:
                 progress = (elapsed - 4.0) / 1.0
                 start_x, end_x = svp.ct.x + radius, svp.ct.x
                 pos_x = sround(start_x + (end_x - start_x) * progress)
-                draw.pacman(pos_x, svp.ct.y, radius, 180, 1.0, 0.25, 1.0)
+                draw.pacman(pos_x, svp.ct.y, radius, 180, 1.0, chew, 1.0)
             elif 5.0 < elapsed <= 6.5:
                 draw.pacman(svp.ct.x, svp.ct.y, radius, 180, 1.0, 0.20, 0.75)
             elif 6.5 < elapsed <= 7.0:
@@ -592,3 +599,89 @@ class GameMenus:
             elif 6.0 < elapsed:
                 draw.ghost(svp.ct.x - radius * 3, svp.ct.y, radius, 0.0,
                            wave=wave, name="pinky", texture_free=True)
+
+    def draw_victory_anim(self) -> None:
+        now = time.perf_counter()
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        svp = self.svp
+        radius = sround(svp.hgt * 0.4)
+
+        if self.endgame_anim_starttime == -1.0:
+            self.endgame_anim_starttime = now
+
+        elapsed = now - self.endgame_anim_starttime
+        wave = 0.10 + 0.90 * abs(math.sin(now * 6.0))
+        chew = abs(math.sin(now * 6.0))
+        with self.graphics.clip(svp.x, svp.y, svp.wdt, svp.hgt):
+            if 0 < elapsed <= 4:
+                progress = elapsed / 4.0
+                start_x, end_x = svp.x - radius, svp.rct.x + radius * 13
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.pacman(pos_x, svp.ct.y, radius, 0, 1.0, chew, 1.0)
+                draw.ghost(pos_x - radius * 4, svp.ct.y, radius, 0.0,
+                           wave=wave, name="blinky", texture_free=True)
+                draw.ghost(pos_x - sround(radius * 6.5), svp.ct.y, radius, 0.0,
+                           wave=wave, name="pinky", texture_free=True)
+                draw.ghost(pos_x - radius * 9, svp.ct.y, radius, 0.0,
+                           wave=wave, name="inky", texture_free=True)
+                draw.ghost(pos_x - radius * 12, svp.ct.y, radius, 0.0,
+                           wave=wave, name="clyde", texture_free=True)
+            elif 4.5 < elapsed <= 8.5:
+                progress = (elapsed - 4.5) / 4.0
+                start_x, end_x = svp.rct.x + radius * 13, svp.x - radius
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.pacman(pos_x, svp.ct.y, radius, 180, 1.0, chew, 1.0)
+                draw.ghost(pos_x - radius * 4, svp.ct.y, radius, 180.0,
+                           wave=wave, name="scared", texture_free=True)
+                draw.ghost(pos_x - sround(radius * 6.5), svp.ct.y, radius,
+                           180.0, wave=wave, name="scared", texture_free=True)
+                draw.ghost(pos_x - radius * 9, svp.ct.y, radius, 180.0,
+                           wave=wave, name="scared", texture_free=True)
+            elif 9.0 < elapsed <= 15.0:
+                progress = (elapsed - 9.0) / 4.0
+                start_x, end_x = svp.x - radius, svp.rct.x + radius * 7
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.ghost(pos_x, svp.ct.y, radius, 0.0,
+                           wave=wave, name="dead", texture_free=True)
+                draw.ghost(pos_x - sround(radius * 2.5), svp.ct.y, radius, 0.0,
+                           wave=wave, name="dead", texture_free=True)
+                draw.ghost(pos_x - radius * 5, svp.ct.y, radius, 0.0,
+                           wave=wave, name="dead", texture_free=True)
+                progress = (elapsed - 12.0) / 3.0
+                start_x, end_x = svp.x - radius, svp.ct.x
+                pos_x = sround(start_x + (end_x - start_x) * progress)
+                draw.pacman(pos_x, svp.ct.y, radius, 0, 1.0, chew, 1.0)
+                if 11.0 < elapsed <= 13.0:
+                    progress = (elapsed - 11.0) / 2.0
+                    start_x = svp.rct.x + radius
+                    end_x = svp.rct.x - sround(radius * 0.65)
+                    pos_x = sround(start_x + (end_x - start_x) * progress)
+                    draw.ghost(pos_x, svp.ct.y, radius, 180.0,
+                               wave=wave, name="clyde", texture_free=True)
+                elif 13.0 < elapsed <= 14.5:
+                    progress = (elapsed - 13.0) / 1.5
+                    opening = 1.0 + progress * 0.5
+                    draw.ghost(svp.rct.x - sround(radius * 0.65), svp.ct.y,
+                               radius, 180.0, wave=wave, name="clyde",
+                               eye_opening=opening, texture_free=True)
+                elif 14.5 < elapsed <= 15.0:
+                    progress = (elapsed - 14.5) / 0.5
+                    start_x = svp.rct.x - sround(radius * 0.65)
+                    end_x = svp.rct.x + radius
+                    pos_x = sround(start_x + (end_x - start_x) * progress)
+                    draw.ghost(pos_x, svp.ct.y, radius, 0.0,
+                               wave=wave, name="clyde", eye_opening=1.3,
+                               texture_free=True)
+            elif 15.0 < elapsed <= 15.5:
+                progress = (elapsed - 15.0) / 0.5
+                draw.pacman(svp.ct.x, svp.ct.y, radius, sround(progress * 15),
+                            1.0, 0.25 + 0.12 * progress,
+                            1.0 - progress * 0.95)
+            elif 15.5 < elapsed <= 16.0:
+                progress = (elapsed - 15.5) / 0.5
+                draw.pacman(svp.ct.x, svp.ct.y, radius,
+                            15 - sround(progress * 15), 1.0,
+                            0.37 + 0.13 * progress, 0.05 + progress * 0.95)
+            elif 16.0 < elapsed:
+                draw.pacman(svp.ct.x, svp.ct.y, radius, 0, 1.0, 0.50, 1.0)
