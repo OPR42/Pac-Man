@@ -537,6 +537,8 @@ class Game:
 
         lvdims = self.core.config.levels[level - 1]
         gmstate.maze_width, gmstate.maze_height = lvdims.width, lvdims.height
+        self.inventory.crates = []
+        gmstate.item_init, gmstate.item_eaten, gmstate.item_cur = 0, 0, 0
         if level == 1:
             gmstate.seed = self.core.config.seed
             if self.old_step == 1:
@@ -581,6 +583,14 @@ class Game:
         self.timeout_reached = False
         self.controls.last_commands.clear()
         self.pause_menu = False
+
+        self.inventory.add_crate(1, 1, "hourglass")
+        self.inventory.add_crate(3, 1, "sage")
+        self.inventory.add_crate(2, 2, "bomb")
+        self.inventory.add_crate(1, 3, "bowtie")
+        self.inventory.add_crate(3, 3, "stetson")
+        self.inventory.add_crate(2, 4, "slime")
+        self.inventory.add_crate(1, 5, "pacman")
 
     def check_conditions(self) -> None:
         if self.graphics.gameboard.status != "play":
@@ -718,7 +728,8 @@ class Game:
         self.check_collision()
 
     def check_collision(self) -> None:
-        if self.player.state.status == 0:
+        pacman = self.player.state
+        if pacman.status == 0:
             return
         for i, ghost in enumerate(self.ghosts.states):
             distance = self.player.distance_to(ghost.pos_x, ghost.pos_y)
@@ -742,6 +753,11 @@ class Game:
                     self.graphics.gameboard.add_board_text(
                         ghost.pos_x, ghost.pos_y, f"{earned:,}", cl_text,
                         self.core.gm_state.character_size * 0.8, 5.0, 2.0)
+        for crate in self.inventory.crates:
+            if pacman.cell_x == crate.cell_x and pacman.cell_y == crate.cell_y:
+                self.audio.sound_play("eat_item")
+                self.inventory.take_crate(crate.cell_x, crate.cell_y)
+                break
 
     def _apply_pacgum_effect(
             self, gum: PacgumState | None) -> None:

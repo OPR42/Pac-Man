@@ -3,11 +3,15 @@ import math
 import pyray as pr
 import time
 
+from typing import TypeAlias
+
 from pacman.base.geometry import Geometry, RectangleGeometry
 from pacman.base.models import LogEvent
 from pacman.base.utils import Utils
 from pacman.core import Core
 from pacman.graphics.colors import RenderColors as rcl
+
+Color: TypeAlias = tuple[int, int, int, int]
 
 
 @dataclass
@@ -21,6 +25,15 @@ class InventoryItem:
     effect_start_time: float
     effect_progress: float
     freeze_on_pause: bool
+
+
+@dataclass
+class CrateItem:
+    item_name: str = ""
+    item_pts: int = -1
+    item_color: Color = (0, 0, 0, 0)
+    cell_x: int = -1
+    cell_y: int = -1
 
 
 class Inventory:
@@ -50,6 +63,7 @@ class Inventory:
             ]
         self.textures = core.game.graphics.textures
         self.boxes_built: bool = False
+        self.crates: list[CrateItem] = []
 
     def reset(self) -> None:
         default_rect = self.geometry.rectangle_geometry(0, 0, 1, 1)
@@ -70,6 +84,7 @@ class Inventory:
                           0, 0.0, 0.0, -1.0, False),
             ]
         self.boxes_built = False
+        self.crates = []
 
     def resize(self) -> None:
         self.boxes_built = False
@@ -179,6 +194,7 @@ class Inventory:
 
     def update_boxes_geometry(self) -> None:
         sround = self.utils.sym_round
+        rg = self.graphics.rg
         self.boxes_built = False
         if self.game.step < 6:
             return
@@ -190,6 +206,20 @@ class Inventory:
                     self.inv_items[index].icon_box = geo_rect(
                         item.x, item.y, item.width, item.height)
                     break
+
+        maze_cell_size = self.graphics.gameboard.maze_cell_size
+        wall_thick = max(2, sround(maze_cell_size / 8))
+        wall_line_thick = 2
+        wall_physics_thick = 1 + (wall_thick + max(
+            4, rg(sround((wall_line_thick + 4) / 2))))
+        character_size = int((maze_cell_size - wall_physics_thick) * 0.6)
+
+        self._create_item_crates(
+            sround(maze_cell_size * 0.75))
+        self._create_world_items(
+            sround(character_size / 2) * 3,
+            sround(2.2 * character_size / 2) * 3,
+            sround(maze_cell_size * 0.8) * 3)
         self._create_inventory_textures(
             sround(min(item.width, item.height) * 0.90))
         self.boxes_built = True
@@ -251,15 +281,25 @@ class Inventory:
             icon_size = sround(box_size * inv_item.icon_ratio)
             icon_half = sround(icon_size / 2)
             self.update_ui_items(index, inv_item.quantity)
-            if inv_item.quantity != 0:
-                with self.graphics.clip(box.ct.x - box_half,
-                                        box.ct.y - box_half,
-                                        box_size, box_size):
-                    self.graphics.textures.draw(inv_item.icon_name,
-                                                box.ct.x - icon_half,
-                                                box.ct.y - icon_half,
-                                                icon_size, icon_size,
-                                                angle=inv_item.icon_angle)
+            if inv_item.quantity != 0 or 0.0 <= inv_item.effect_progress < 1.0:
+                if inv_item.quantity != 0:
+                    with self.graphics.clip(box.ct.x - box_half,
+                                            box.ct.y - box_half,
+                                            box_size, box_size):
+                        self.graphics.textures.draw(inv_item.icon_name,
+                                                    box.ct.x - icon_half,
+                                                    box.ct.y - icon_half,
+                                                    icon_size, icon_size,
+                                                    angle=inv_item.icon_angle)
+                else:
+                    x_rad = sround(box.wdt * 0.2)
+                    y_rad = sround(box.wdt * 0.35)
+                    draw.ellipse(box.ct.x, box.ct.y, x_rad, y_rad,
+                                 cl=cl_light, filled=True)
+                    x_rad -= sround(box.wdt * 0.1)
+                    y_rad -= sround(box.wdt * 0.1)
+                    draw.ellipse(box.ct.x, box.ct.y, x_rad, y_rad,
+                                 cl=rcl.BASE_BLACK, filled=True)
                 if 0.0 <= inv_item.effect_progress < 1.0:
                     cl_support = rcl.DARKGREY_TRANSPARENT
                     cl_hotkey = rcl.GREY
@@ -268,6 +308,8 @@ class Inventory:
                     mask_y = box.bct.y - mask_hgt
                     draw.rectangle(box.x, mask_y, box.wdt, mask_hgt,
                                    cl=rcl.BLACK_MEDIUMGLASS, filled=True)
+                if inv_item.quantity <= 0:
+                    continue
                 draw.rectangle(box.x, box.y, sround(key_size * 0.75), key_size,
                                cl=cl_support, filled=True)
                 draw.rectangle(box.x + sround(key_size * 0.75), box.y,
@@ -311,6 +353,97 @@ class Inventory:
                     draw.line(box.x, box.bct.y,
                               box.x + box.wdt - 1, box.bct.y, cl=cl_dark)
 
+    def display_crate(self, x_cell: int, y_cell: int, kind: str = "") -> None:
+        gmstate = self.core.gm_state
+        sround = self.utils.sym_round
+        if (not 0 <= x_cell < gmstate.maze_width
+                or not 0 <= y_cell < gmstate.maze_height
+                or kind == ""):
+            return
+        crate_name = f"crate_{kind}"
+        if not self.graphics.textures.exists(crate_name):
+            return
+        size = sround(self.graphics.gameboard.maze_cell_size * 0.75)
+        half_size = sround(self.graphics.gameboard.maze_cell_size * 0.375)
+        x, y = self.graphics.gameboard.cell_center_coords(x_cell, y_cell)
+        self.graphics.textures.draw(crate_name, x - half_size, y - half_size,
+                                    size, size)
+
+    def add_crate(self, x_cell: int, y_cell: int, kind: str = "") -> None:
+        gmstate = self.core.gm_state
+
+        if (not 0 <= x_cell < gmstate.maze_width
+                or not 0 <= y_cell < gmstate.maze_height
+                or kind == ""):
+            return
+        if not self.game.maze.is_cell_available((x_cell, y_cell)):
+            return
+        for crate in self.crates:
+            if crate.cell_x == x_cell and crate.cell_y == y_cell:
+                return
+
+        if kind == "hourglass":
+            pts = self.core.pts_table.bonus1
+            color = rcl.HOURGLASS_WOOD
+        elif kind == "sage":
+            pts = self.core.pts_table.bonus2
+            color = rcl.DISGUSTED_GHOST_GREEN
+        elif kind == "bomb":
+            pts = self.core.pts_table.bonus3
+            color = rcl.BOMB_VIOLET
+        elif kind == "bowtie":
+            pts = self.core.pts_table.bonus4
+            color = rcl.BOWTIE_RED
+        elif kind == "stetson":
+            pts = self.core.pts_table.bonus5
+            color = rcl.STETSON_IVORY
+        elif kind == "slime":
+            pts = self.core.pts_table.bonus6
+            color = rcl.SLIME_GREEN
+        elif kind == "pacman":
+            pts = self.core.pts_table.ghost
+            color = rcl.PACMAN_YELLOW
+        else:
+            return
+
+        self.crates.append(CrateItem(kind, pts, color, x_cell, y_cell))
+        gmstate.item_init += 1
+        gmstate.item_cur += 1
+
+    def take_crate(self, x_cell: int, y_cell: int) -> None:
+        gmstate = self.core.gm_state
+        if (not 0 <= x_cell < gmstate.maze_width
+                or not 0 <= y_cell < gmstate.maze_height):
+            return
+        taken_crate: CrateItem | None = None
+        for i, crate in enumerate(self.crates):
+            if crate.cell_x == x_cell and crate.cell_y == y_cell:
+                taken_crate = self.crates.pop(i)
+                break
+        if taken_crate is None:
+            return
+        gmstate.item_eaten += 1
+        gmstate.item_cur -= 1
+        self.game._add_points_to_score(taken_crate.item_pts)
+        x, y = self.graphics.gameboard.cell_center_coords(x_cell, y_cell)
+        self.graphics.gameboard.add_board_text(
+            x, y, f"{taken_crate.item_pts:,}", taken_crate.item_color,
+            gmstate.character_size * 0.8, 5.0, 2.0)
+        if taken_crate.item_name == "hourglass":
+            self.change_count(0, 1)
+        elif taken_crate.item_name == "sage":
+            self.change_count(1, 1)
+        elif taken_crate.item_name == "bomb":
+            self.change_count(2, 1)
+        elif taken_crate.item_name == "bowtie":
+            self.change_count(3, 1)
+        elif taken_crate.item_name == "stetson":
+            self.change_count(4, 1)
+        elif taken_crate.item_name == "slime":
+            self.change_count(5, 1)
+        elif taken_crate.item_name == "pacman":
+            self.game._add_life(1)
+
     def _create_inventory_textures(self, size: int = 0) -> None:
         if size <= 0:
             return
@@ -321,6 +454,45 @@ class Inventory:
         self._create_stetson_texture(size)
         self._create_slime_texture(size)
         self._create_pacman_texture(size)
+
+    def _create_item_crates(self, crate_size: int = 0) -> None:
+        if crate_size <= 0:
+            return
+        draw = self.graphics.shapes
+        sround = self.utils.sym_round
+        icon_size = int(crate_size * 0.50)
+        icon_half_size = int(crate_size * 0.25)
+        self._create_inventory_textures(icon_size)
+        crate_items = [("hourglass", rcl.HOURGLASS_WOOD, 30),
+                       ("sage", rcl.DISGUSTED_GHOST_GREEN, 42),
+                       ("bomb", rcl.BOMB_VIOLET, 25),
+                       ("bowtie", rcl.BOWTIE_RED, 10),
+                       ("stetson", rcl.STETSON_IVORY, 15),
+                       ("slime", rcl.SLIME_GREEN, 0),
+                       ("pacman", rcl.PACMAN_YELLOW, 345)]
+        for crate_item in crate_items:
+            name, color, angle = crate_item
+            crate_texture = f"crate_{name}"
+            item_texture = f"item_{name}"
+            if self.graphics.textures.exists(crate_texture):
+                self.graphics.textures.unload(crate_texture)
+            self.graphics.textures.begin(crate_texture, crate_size, crate_size)
+            pr.clear_background(pr.BLANK)
+            offset = sround(crate_size / 2)
+            draw.companion_square(offset, offset, crate_size,
+                                  lines_color=color)
+            offset -= icon_half_size
+            self.graphics.textures.draw(item_texture, offset, offset,
+                                        icon_size, icon_size, angle=angle)
+            self.graphics.textures.end()
+
+    def _create_world_items(self, bowtie_size: int = 0, hat_size: int = 0,
+                            bomb_size: int = 0) -> None:
+        if bowtie_size <= 0 or hat_size <= 0 or bomb_size <= 0:
+            return
+        self._create_bowtie_texture(bowtie_size, world=True)
+        self._create_stetson_texture(hat_size, world=True)
+        self._create_bomb_texture(bomb_size, world=True)
 
     def _create_hourglass_texture(self, size: int = 0) -> None:
         sround = self.utils.sym_round
@@ -480,7 +652,8 @@ class Inventory:
                            cl=cl_rope, filled=True, roundness=1.0)
         self.graphics.textures.end()
 
-    def _create_bomb_texture(self, size: int = 0) -> None:
+    def _create_bomb_texture(self, size: int = 0,
+                             world: bool = False) -> None:
         """Create the bomb texture."""
         if size <= 0:
             return
@@ -491,9 +664,11 @@ class Inventory:
         rg = self.graphics.rg
         wdt, hgt = sround(size * 1.5), sround(size * 1.5)
 
-        if self.graphics.textures.exists("item_bomb"):
-            self.graphics.textures.unload("item_bomb")
-        self.graphics.textures.begin("item_bomb", wdt, hgt)
+        texture_name = "world_bomb" if world else "item_bomb"
+
+        if self.graphics.textures.exists(texture_name):
+            self.graphics.textures.unload(texture_name)
+        self.graphics.textures.begin(texture_name, wdt, hgt)
         pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
@@ -577,7 +752,8 @@ class Inventory:
                     cl=cl_spark_inner, filled=True)
         self.graphics.textures.end()
 
-    def _create_bowtie_texture(self, size: int = 0) -> None:
+    def _create_bowtie_texture(self, size: int = 0,
+                               world: bool = False) -> None:
         """Create the bow tie texture."""
         if size <= 0:
             return
@@ -588,9 +764,11 @@ class Inventory:
         rg = self.graphics.rg
         wdt, hgt = sround(size * 1.5), sround(size * 1.5)
 
-        if self.graphics.textures.exists("item_bowtie"):
-            self.graphics.textures.unload("item_bowtie")
-        self.graphics.textures.begin("item_bowtie", wdt, hgt)
+        texture_name = "world_bowtie" if world else "item_bowtie"
+
+        if self.graphics.textures.exists(texture_name):
+            self.graphics.textures.unload(texture_name)
+        self.graphics.textures.begin(texture_name, wdt, hgt)
         pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)
@@ -711,7 +889,8 @@ class Inventory:
                   cl=cl_bow_light, thick=highlight_thick)
         self.graphics.textures.end()
 
-    def _create_stetson_texture(self, size: int = 0) -> None:
+    def _create_stetson_texture(self, size: int = 0,
+                                world: bool = False) -> None:
         """Create the Stetson texture."""
         if size <= 0:
             return
@@ -722,9 +901,11 @@ class Inventory:
         rg = self.graphics.rg
         wdt, hgt = sround(size * 1.5), sround(size * 1.5)
 
-        if self.graphics.textures.exists("item_stetson"):
-            self.graphics.textures.unload("item_stetson")
-        self.graphics.textures.begin("item_stetson", wdt, hgt)
+        texture_name = "world_stetson" if world else "item_stetson"
+
+        if self.graphics.textures.exists(texture_name):
+            self.graphics.textures.unload(texture_name)
+        self.graphics.textures.begin(texture_name, wdt, hgt)
         pr.clear_background(pr.BLANK)
 
         cont = geo.rectangle_geometry(0, 0, wdt, hgt)

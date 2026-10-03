@@ -217,7 +217,7 @@ class CharacterState(BaseModel):
 
 
 class CheatsTable(BaseModel):
-    unlocked: bool = True
+    unlocked: bool = False
     invulnerable: bool = False
     sprinter: bool = False
     outatime: bool = False

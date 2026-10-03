@@ -201,6 +201,7 @@ class GameBoard:
             self.display_bomb()
         if self.bomb_detonation != (-1, -1, -1.0):
             self.blast_bomb()
+        self.draw_crates()
         self.draw_characters()
         self.write_board_texts()
         if self.game.player.state.status == 0:
@@ -221,45 +222,6 @@ class GameBoard:
                     self.status = "play"
 
         self.gamehuds.draw_huds()
-
-        # size = round(self.maze_cell_size * 0.75)
-        # icon_size, icon_half_size = round(size * 0.50), round(size * 0.25)
-        # x, y = self.cell_center_coords(1, 1)
-        # self.graphics.shapes.companion_square(x, y, size,
-        #                                       lines_color=rcl.HOURGLASS_WOOD)
-        # self.graphics.textures.draw("item_hourglass", x - icon_half_size,
-        #                             y - icon_half_size, icon_size, icon_size,
-        #                             angle=30)
-        # x, y = self.cell_center_coords(2, 1)
-        # self.graphics.shapes.companion_square(
-        #     x, y, size, lines_color=rcl.DISGUSTED_GHOST_GREEN)
-        # self.graphics.textures.draw("item_sage", x - icon_half_size,
-        #                             y - icon_half_size, icon_size, icon_size,
-        #                             angle=45)
-        # x, y = self.cell_center_coords(3, 1)
-        # self.graphics.shapes.companion_square(x, y, size,
-        #                                       lines_color=rcl.BOMB_VIOLET)
-        # self.graphics.textures.draw("item_bomb", x - icon_half_size,
-        #                             y - icon_half_size, icon_size, icon_size,
-        #                             angle=25)
-        # x, y = self.cell_center_coords(1, 2)
-        # self.graphics.shapes.companion_square(x, y, size,
-        #                                       lines_color=rcl.BOWTIE_RED)
-        # self.graphics.textures.draw("item_bowtie", x - icon_half_size,
-        #                             y - icon_half_size, icon_size, icon_size,
-        #                             angle=10)
-        # x, y = self.cell_center_coords(2, 2)
-        # self.graphics.shapes.companion_square(x, y, size,
-        #                                       lines_color=rcl.STETSON_IVORY)
-        # self.graphics.textures.draw("item_stetson", x - icon_half_size,
-        #                             y - icon_half_size, icon_size, icon_size,
-        #                             angle=15)
-        # x, y = self.cell_center_coords(3, 2)
-        # self.graphics.shapes.companion_square(x, y, size,
-        #                                       lines_color=rcl.SLIME_GREEN)
-        # self.graphics.textures.draw("item_slime", x - icon_half_size,
-        #                             y - icon_half_size, icon_size, icon_size,
-        #                             angle=0)
 
     def death_anim(self) -> bool:
         if self.pacman_deathtime == -1.0:
@@ -617,6 +579,14 @@ class GameBoard:
         cell_x = (pos_x - self.mvp.x) // self.maze_cell_size
         cell_y = (pos_y - self.mvp.y) // self.maze_cell_size
         return (cell_x, cell_y)
+
+    def draw_crates(self) -> None:
+        inventory = self.game.inventory
+        if len(inventory.crates) <= 0:
+            return
+        for crate in inventory.crates:
+            inventory.display_crate(crate.cell_x, crate.cell_y,
+                                    crate.item_name)
 
     def draw_characters(self) -> None:
         sround = self.utils.sym_round
@@ -1260,7 +1230,7 @@ class GameBoard:
         size = sround(self.maze_cell_size * 0.8)
         icon_half = sround(size / 2)
         x, y = self.cell_center_coords(cell_x, cell_y)
-        self.graphics.textures.draw("item_bomb", x - icon_half, y - icon_half,
+        self.graphics.textures.draw("world_bomb", x - icon_half, y - icon_half,
                                     size, size)
 
     def detonate_bomb(self) -> None:

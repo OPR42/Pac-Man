@@ -834,7 +834,7 @@ class Shapes:
             flip_x = selected_side == -1
             tint = rcl.scale_alpha((255, 255, 255, 255), opacity)
             self.graphics.textures.draw(
-                "item_bowtie", sround(tie_x - tie_half_size),
+                "world_bowtie", sround(tie_x - tie_half_size),
                 sround(tie_y - tie_half_size), tie_size, tie_size,
                 angle=(tie_angle + 90.0) % 360.0, flip_x=flip_x, tint=tint)
             lip_rad = sround(radius * 1.02)
@@ -873,7 +873,7 @@ class Shapes:
             flip_x = selected_side == -1
             tint = rcl.scale_alpha((255, 255, 255, 255), opacity)
             self.graphics.textures.draw(
-                "item_stetson", sround(hat_x - hat_half_size),
+                "world_stetson", sround(hat_x - hat_half_size),
                 sround(hat_y - hat_half_size), hat_size, hat_size, tint=tint,
                 angle=(hat_angle + 90.0) % 360.0, flip_x=flip_x, y_ratio=0.65)
 

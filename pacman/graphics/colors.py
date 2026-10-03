@@ -69,7 +69,7 @@ class RenderColors:
     CUBE_FRAME = (229, 229, 229, 255)
     CUBE_BOX = (127, 131, 132, 255)
     CUBE_LINES = (192, 97, 203, 255)
-    CUBE_PANEL = (63, 63, 63, 255)
+    CUBE_PANEL = (31, 31, 31, 255)
     STETSON_IVORY = (242, 234, 211, 255)
     SLIME_GREEN = (105, 220, 55, 255)
     HOURGLASS_WOOD = (125, 85, 55, 255)
