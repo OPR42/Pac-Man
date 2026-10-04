@@ -171,8 +171,11 @@ class GameBoard:
             if self.warp_anim():
                 self.anim_start = -1.0
                 self.status = "play"
-                self.game.time_ref = time.perf_counter()
-                self.game.gamerun_starttime = time.perf_counter()
+                now = time.perf_counter()
+                self.game.time_ref = now
+                if self.core.gm_state.level == 1:
+                    self.game.gamerun_starttime = now
+                self.game.inventory.crates_spawn_init()
                 self.game.set_step(7)
         elif self.status == "warp_out":
             if self.warp_signal:

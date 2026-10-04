@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import math
 import pyray as pr
+import random
 import time
 
 from typing import TypeAlias
@@ -36,6 +37,14 @@ class CrateItem:
     cell_y: int = -1
 
 
+@dataclass
+class CrateSpawnRule:
+    item_name: str = ""
+    min_level: int = 0
+    unique: bool = False
+    weight: float = 0.0
+
+
 class Inventory:
     def __init__(self, core: Core) -> None:
         self.core = core
@@ -64,6 +73,18 @@ class Inventory:
         self.textures = core.game.graphics.textures
         self.boxes_built: bool = False
         self.crates: list[CrateItem] = []
+        self.crates_spawn_rules: list[CrateSpawnRule] = [
+            CrateSpawnRule("nothing", 0, False, 0.10),
+            CrateSpawnRule("hourglass", 2, False, 0.40),
+            CrateSpawnRule("sage", 4, False, 0.40),
+            CrateSpawnRule("bomb", 6, False, 0.40),
+            CrateSpawnRule("pacman", 3, False, 0.20),
+            CrateSpawnRule("bowtie", 5, True, 0.80),
+            CrateSpawnRule("stetson", 7, True, 0.80),
+            CrateSpawnRule("slime", 9, True, 0.80),
+            ]
+        self.crates_next_spawntime: float = -1.0
+        self.crates_timeout_spawntime: float = -1.0
 
     def reset(self) -> None:
         default_rect = self.geometry.rectangle_geometry(0, 0, 1, 1)
@@ -85,6 +106,18 @@ class Inventory:
             ]
         self.boxes_built = False
         self.crates = []
+        self.crates_spawn_rules = [
+            CrateSpawnRule("nothing", 1, False, 0.30),
+            CrateSpawnRule("hourglass", 2, False, 0.20),
+            CrateSpawnRule("sage", 4, False, 0.20),
+            CrateSpawnRule("bomb", 6, False, 0.20),
+            CrateSpawnRule("pacman", 3, False, 0.50),
+            CrateSpawnRule("bowtie", 5, True, 0.40),
+            CrateSpawnRule("stetson", 7, True, 0.40),
+            CrateSpawnRule("slime", 9, True, 0.40),
+            ]
+        self.crates_next_spawntime = -1.0
+        self.crates_timeout_spawntime = -1.0
 
     def resize(self) -> None:
         self.boxes_built = False
@@ -443,6 +476,72 @@ class Inventory:
             self.change_count(5, 1)
         elif taken_crate.item_name == "pacman":
             self.game._add_life(1)
+
+    def crates_spawn_init(self, create_timeout: bool = True) -> None:
+        self.crates_next_spawntime = (
+            time.perf_counter() + random.uniform(
+                self.core.defaults.inventory_crates_min_time_interval,
+                self.core.defaults.inventory_crates_max_time_interval))
+        if not create_timeout:
+            return
+        self.crates_timeout_spawntime = random.uniform(
+            self.core.defaults.inventory_crates_hourflipper_min_remaining_time,
+            self.core.defaults.inventory_crates_hourflipper_max_remaining_time)
+
+    def spawn_crate(self, timeout_is_near: bool = False) -> None:
+        gmstate = self.core.gm_state
+        pacman = self.game.player.state
+
+        if timeout_is_near:
+            self.crates_timeout_spawntime = -1.0
+            item_name = "hourglass"
+        else:
+            self.crates_spawn_init(create_timeout=False)
+            eligible_rules: list[CrateSpawnRule] = []
+            for rule in self.crates_spawn_rules:
+                if gmstate.level < rule.min_level:
+                    continue
+                if (rule.unique and (
+                        (rule.item_name == "bowtie"
+                            and self.inv_items[3].quantity > 0)
+                        or (rule.item_name == "stetson"
+                            and self.inv_items[4].quantity > 0)
+                        or (rule.item_name == "slime"
+                            and self.inv_items[5].quantity > 0)
+                        or any(crate.item_name == rule.item_name
+                               for crate in self.crates))):
+                    continue
+                multiply = 3 if rule.min_level == gmstate.level else 1
+                for _ in range(multiply):
+                    eligible_rules.append(rule)
+            if not eligible_rules:
+                return
+            elected_rule = random.choices(
+                eligible_rules,
+                weights=[rule.weight for rule in eligible_rules], k=1)[0]
+            item_name = elected_rule.item_name
+
+        if item_name == "nothing":
+            return
+
+        free_cells: list[tuple[int, int]] = []
+
+        for y in range(gmstate.maze_height):
+            for x in range(gmstate.maze_width):
+                cell = (x, y)
+                if (not self.game.maze.is_cell_available(cell)
+                        or cell in self.game.pacgums.states
+                        or cell == (pacman.cell_x, pacman.cell_y)
+                        or any((crate.cell_x, crate.cell_y) == cell
+                               for crate in self.crates)):
+                    continue
+                free_cells.append((x, y))
+
+        if not free_cells:
+            return
+
+        cell_x, cell_y = random.choice(free_cells)
+        self.add_crate(cell_x, cell_y, item_name)
 
     def _create_inventory_textures(self, size: int = 0) -> None:
         if size <= 0:

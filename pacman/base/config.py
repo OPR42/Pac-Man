@@ -180,6 +180,7 @@ class ConfigManager:
                                           allow=("speeding_ghosts",
                                                  "life_lost",
                                                  "sudden_death", "game_over"))
+        repaired |= self._sanitize_bool(data, "minigames")
         repaired |= self._sanitize_levels(data)
         repaired |= self._sanitize_points(data)
 

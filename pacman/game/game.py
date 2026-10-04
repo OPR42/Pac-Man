@@ -584,18 +584,11 @@ class Game:
         self.controls.last_commands.clear()
         self.pause_menu = False
 
-        self.inventory.add_crate(1, 1, "hourglass")
-        self.inventory.add_crate(3, 1, "sage")
-        self.inventory.add_crate(2, 2, "bomb")
-        self.inventory.add_crate(1, 3, "bowtie")
-        self.inventory.add_crate(3, 3, "stetson")
-        self.inventory.add_crate(2, 4, "slime")
-        self.inventory.add_crate(1, 5, "pacman")
-
     def check_conditions(self) -> None:
         if self.graphics.gameboard.status != "play":
             return
         gmstate = self.core.gm_state
+        now = time.perf_counter()
         if self.cheats.outatime_reftime != -1.0:
             gmstate.time_cur = self.cheats.outatime_reftime
         if gmstate.time_cur <= 0.0 and not self.timout_reached:
@@ -624,13 +617,18 @@ class Game:
         if gmstate.time_cur > gmstate.time_init / 2 and self.timout_reached:
             self.timout_reached = False
         if self.pacgums.superpacgum_starttime != -1.0:
-            now = time.perf_counter()
             if (now - self.pacgums.superpacgum_starttime
                     > self.core.defaults.duration_superpacgum):
                 self.pacgums.trigger_superpacgum_effect(disable=True)
         if gmstate.pacgum_cur == 0 and gmstate.suppacgum_cur == 0:
             self.level_complete()
             return
+        if (self.inventory.crates_timeout_spawntime != -1.0
+                and gmstate.time_cur
+                <= self.inventory.crates_timeout_spawntime):
+            self.inventory.spawn_crate(timeout_is_near=True)
+        if now >= self.inventory.crates_next_spawntime:
+            self.inventory.spawn_crate(timeout_is_near=False)
 
     def level_complete(self) -> None:
         gmstate = self.core.gm_state
@@ -657,6 +655,9 @@ class Game:
     def all_levels_completed(self) -> None:
         self.toggle_pause(force_pause=True)
         self.gamerun_endtime = time.perf_counter()
+        self._add_points_to_score((self.core.gm_state.lives_cur
+                                   * (self.core.pts_table.new_life // 5)),
+                                  new_life=False)
         self.set_step(14)
 
     def pacman_dies(self) -> None:
@@ -682,6 +683,8 @@ class Game:
             pause_duration = time.perf_counter() - self.pause_starttime
             self.time_ref += pause_duration
             self.inventory.resume_effects(pause_duration)
+            if self.inventory.crates_next_spawntime != -1.0:
+                self.inventory.crates_next_spawntime += pause_duration
             self.pacgums.trigger_superpacgum_effect(
                 pause_duration=pause_duration)
             if self.revival_starttime != -1.0:
@@ -778,7 +781,8 @@ class Game:
             gmstate.pacgum_cur -= 1
             gmstate.pacgum_eaten += 1
 
-    def _add_points_to_score(self, quantity: int = 0) -> None:
+    def _add_points_to_score(self, quantity: int = 0,
+                             new_life: bool = True) -> None:
         if quantity == 0:
             return
         if quantity + self.core.gm_state.score < 0:
@@ -787,9 +791,10 @@ class Game:
         new_score = old_score + quantity
         self.core.gm_state.score = new_score
 
-        old_threshold = old_score // self.core.config.new_life_threshold
-        new_threshold = new_score // self.core.config.new_life_threshold
-        self._add_life(max(0, new_threshold - old_threshold))
+        if new_life:
+            old_threshold = old_score // self.core.config.new_life_threshold
+            new_threshold = new_score // self.core.config.new_life_threshold
+            self._add_life(max(0, new_threshold - old_threshold))
 
     def _add_life(self, quantity: int = 0) -> None:
         if quantity == 0:

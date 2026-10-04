@@ -55,6 +55,10 @@ class Defaults(BaseModel):
     inventory_sage_radius: int = 4
     inventory_bomb_radius: int = 6
     inventory_bomb_blast_duration: float = 2.0
+    inventory_crates_hourflipper_min_remaining_time: float = 10.0
+    inventory_crates_hourflipper_max_remaining_time: float = 15.0
+    inventory_crates_min_time_interval: float = 10.0
+    inventory_crates_max_time_interval: float = 15.0
 
     logbook_min_height: int = 34
 
@@ -126,6 +130,7 @@ class Config(BaseModel):
     new_life_threshold: int = 5000
     level_max_time: int = 90
     timeout_consequence: str = "speeding_ghosts"
+    minigames: bool = True
     seed: int = 42
     levels: list[LevelConfig] = Field(default_factory=lambda: [
             LevelConfig(width=15, height=10),
@@ -140,9 +145,6 @@ class Config(BaseModel):
             LevelConfig(width=20, height=14),
             LevelConfig(width=20, height=15),
             LevelConfig(width=21, height=15),
-            LevelConfig(width=21, height=16),
-            LevelConfig(width=22, height=16),
-            LevelConfig(width=22, height=17),
         ]
     )
 
@@ -236,8 +238,8 @@ class Score(BaseModel):
 class PacgumState(BaseModel):
     """Store a Pacgum state."""
     superpacgum: bool = False
-    pos_x: float = 0.0
-    pos_y: float = 0.0
+    pos_x: float = -1.0
+    pos_y: float = -1.0
     path: list[tuple[float, float]] = Field(default_factory=list)
     path_index: int = 0
 
