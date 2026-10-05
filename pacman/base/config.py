@@ -56,23 +56,33 @@ class ConfigManager:
             repaired = True
 
         if repaired:
-            self.save(config, invalid=True)
-            self._info("Configuration file repaired")
+            if self.save(config, invalid=True):
+                self._info("Configuration file repaired")
+            else:
+                self._warning(
+                    "Configuration repaired in memory but could not be saved")
         else:
             self._info("Configuration successfully loaded")
 
         return config
 
-    def save(self, config: Config, invalid: bool = False) -> None:
-        self.path.parent.mkdir(parents=True, exist_ok=True)
+    def save(self, config: Config, invalid: bool = False) -> bool:
+        try:
+            self.path.parent.mkdir(parents=True, exist_ok=True)
+            if not invalid:
+                self._backup(invalid)
+            with self.path.open("w", encoding="utf-8") as file:
+                json.dump(config.model_dump(), file, indent=4,
+                          ensure_ascii=False)
+                file.write("\n")
 
-        if not invalid:
-            self._backup(invalid)
+        except OSError as error:
+            self._warning(
+                f"Could not save configuration file '{self.path}': {error}")
+            return False
 
-        with self.path.open("w", encoding="utf-8") as file:
-            json.dump(config.model_dump(), file, indent=4, ensure_ascii=False)
-            file.write("\n")
         self._info(f"Configuration file saved to {self.path}")
+        return True
 
     def _backup(self, invalid: bool = False) -> None:
         if not self.path.exists():
@@ -167,8 +177,6 @@ class ConfigManager:
                                                  "elsassisch"))
         repaired |= self._sanitize_bool(data, "hints")
         repaired |= self._sanitize_float(data, "hints_delay", minimum=0.0)
-        repaired |= self._sanitize_int(data, "sound_volume",
-                                       minimum=0, maximum=100)
         repaired |= self._sanitize_bool(data, "disable_transitions")
         repaired |= self._sanitize_int(data, "lives", minimum=1)
         repaired |= self._sanitize_int(data, "new_life_threshold", minimum=1)
@@ -222,9 +230,13 @@ class ConfigManager:
         default = getattr(self.defaults, key)
         value = data.get(key)
 
-        if not isinstance(value, float):
+        if (not isinstance(value, (int, float))
+                or isinstance(value, bool)):
             self._replace_with_default(data, key, value, default)
             return True
+
+        value = float(value)
+        data[key] = value
 
         if minimum is not None and value < minimum:
             self._replace_with_default(data, key, value, default)

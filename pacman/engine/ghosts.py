@@ -33,7 +33,7 @@ class Ghosts:
             actor.cell_y = values[2]
             actor.direction = values[3]
             actor.cycle = 0.0
-            actor.max_speed = 3.0
+            actor.max_speed = self.core.defaults.ghosts_max_speed
             actor.goal_cell_x = actor.cell_x
             actor.goal_cell_y = actor.cell_y
             actor.previous_cell_x = -1

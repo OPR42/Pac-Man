@@ -35,6 +35,8 @@ class Defaults(BaseModel):
     graphics_base_margin: int = 4
     graphics_base_frame_thick: int = 2
 
+    ghosts_max_speed: float = 3.0
+
     gumcharmer_speed: float = 3.0
     gumcharmer_threshold_ratio: float = 0.50
 

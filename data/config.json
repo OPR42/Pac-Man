@@ -4,7 +4,7 @@
     "window_width": 1600,
     "window_height": 900,
     "window_resizeable": true,
-    "window_maximized": true,
+    "window_maximized": false,
     "window_position": "topright",
     "frame_and_banner": true,
     "master_volume": 100,
@@ -40,6 +40,46 @@
         {
             "width": 16,
             "height": 10
+        },
+        {
+            "width": 16,
+            "height": 11
+        },
+        {
+            "width": 17,
+            "height": 11
+        },
+        {
+            "width": 17,
+            "height": 12
+        },
+        {
+            "width": 18,
+            "height": 12
+        },
+        {
+            "width": 18,
+            "height": 13
+        },
+        {
+            "width": 19,
+            "height": 13
+        },
+        {
+            "width": 19,
+            "height": 14
+        },
+        {
+            "width": 20,
+            "height": 14
+        },
+        {
+            "width": 20,
+            "height": 15
+        },
+        {
+            "width": 21,
+            "height": 15
         }
     ]
 }
