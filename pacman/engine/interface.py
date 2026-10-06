@@ -12,7 +12,7 @@ from pacman.graphics.colors import RenderColors as rcl
 
 InterfaceKind: TypeAlias = Literal["button", "table", "zone", "key",
                                    "r_checkbox", "maze", "clickable_label",
-                                   "btn_prev", "list_next"]
+                                   "btn_prev", "list_next", "bar_next"]
 
 
 @dataclass
@@ -26,6 +26,7 @@ class InterfaceItem:
     kind: InterfaceKind
     inv_code: str = ""
     rel_to_center: bool = False
+    disabled: bool = False
 
 
 @dataclass
@@ -115,7 +116,8 @@ class Interface:
         return [item.code for item in self.ui_items if (
             item.kind in ("button", "r_checkbox",
                           "clickable_label", "btn_prev",
-                          "list_next") and item.code not in avoid)]
+                          "list_next", "bar_next")
+            and item.code not in avoid and not item.disabled)]
 
     def focus_key(self, direction: str) -> None:
         if self.locked:
@@ -358,7 +360,7 @@ class Interface:
             self.hovered = hovered_item.item.code
             if (hovered_item.item.kind in ("button", "table", "key",
                                            "r_checkbox", "clickable_label",
-                                           "btn_prev", "list_next")
+                                           "btn_prev", "list_next", "bar_next")
                or (hovered_item.item.kind == "zone"
                    and hovered_item.item.code[:7] == "letter_")
                or (hovered_item.item.kind == "maze" and self.game.step == 7)):
@@ -376,7 +378,7 @@ class Interface:
                                               x=mouse.x, y=mouse.y)
                 if hovered_item.item.kind in ("button", "key", "r_checkbox",
                                               "clickable_label", "btn_prev",
-                                              "list_next"):
+                                              "list_next", "bar_next"):
                     self.focus = hovered_item.item.code
                     self.mouse_focus = hovered_item.item.code
                 elif self.mouse_focus is not None:
@@ -389,6 +391,8 @@ class Interface:
     def item_at(self, x: float, y: float) -> InterfaceGeometry | None:
         for geometry in self.geometries:
             if geometry.item.kind == "maze" and self.game.step != 7:
+                continue
+            if geometry.item.disabled:
                 continue
             if self._point_in_item(x, y, geometry):
                 return geometry

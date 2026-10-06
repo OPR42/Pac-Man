@@ -141,7 +141,6 @@ class Core:
                 if not all(isinstance(key, str) and isinstance(value, str)
                            for key, value in data.items()):
                     continue
-                data.pop("language", None)
                 for key in list(data):
                     if key.startswith("__") and key.endswith("__"):
                         data.pop(key)

@@ -150,7 +150,7 @@ class ConfigManager:
 
         repaired |= self._sanitize_int(data, "window_width", minimum=800)
         repaired |= self._sanitize_int(data, "window_height", minimum=450)
-        repaired |= self._sanitize_bool(data, "window_resizeable")
+        repaired |= self._sanitize_bool(data, "window_resizable")
         repaired |= self._sanitize_bool(data, "window_maximized")
         repaired |= self._sanitize_string(data, "window_position",
                                           allow=("center", "right", "left",
@@ -172,7 +172,7 @@ class ConfigManager:
         repaired |= self._sanitize_int(data, "main_menu_idle_visitor_max_time",
                                        minimum=value)
         repaired |= self._sanitize_string(data, "language",
-                                          allow=("english", "francais",
+                                          allow=("english", "français",
                                                  "froggies", "brezhoneg",
                                                  "elsassisch"))
         repaired |= self._sanitize_bool(data, "hints")

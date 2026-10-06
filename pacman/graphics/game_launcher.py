@@ -120,7 +120,7 @@ class GameLauncher:
                      graphics.font_script):
             pr.set_texture_filter(font.texture,
                                   pr.TextureFilter.TEXTURE_FILTER_BILINEAR)
-        if self.core.config.window_resizeable:
+        if self.core.config.window_resizable:
             pr.set_window_state(
                 pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
 

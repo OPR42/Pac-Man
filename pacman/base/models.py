@@ -105,9 +105,9 @@ class Config(BaseModel):
     highscore_filename: str = "hall_of_fame.json"
     window_width: int = 1600
     window_height: int = 900
-    window_resizeable: bool = True
+    window_resizable: bool = True
     window_maximized: bool = False
-    window_position: str = "right"
+    window_position: str = "topright"
     frame_and_banner: bool = True
     master_volume: int = 100
     music_volume: int = 100

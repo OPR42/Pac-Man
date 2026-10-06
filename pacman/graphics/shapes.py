@@ -73,15 +73,25 @@ class Shapes:
 
     def text_block_max(self, x: int, y: int, width: int, height: int, txt: str,
                        font: RaylibObject, cl: Color = rcl.BASE_BLACK,
-                       justify: str = "left") -> None:
+                       justify: str = "left", align: str = "top") -> None:
         if width <= 0 or height <= 0 or not txt:
             return
+
         rg = self.graphics.rg
         sround = self.utils.sym_round
         lines, font_size = self.geometry.fit_wrapped_text(
             txt, max_width=width, max_height=height,
             max_size=rg(500), min_size=max(1, rg(5)))
         _, line_height = self.geometry.measure_text("Ag", font_size)
+        block_height = len(lines) * line_height
+
+        if align == "center":
+            start_y = y + sround((height - block_height) / 2)
+        elif align == "bottom":
+            start_y = y + sround(height - block_height)
+        else:
+            start_y = y
+
         for line_nb, line in enumerate(lines):
             line_width, _ = self.geometry.measure_text(line, font_size)
             if justify == "center":
@@ -90,7 +100,7 @@ class Shapes:
                 line_x = x + sround(width - line_width)
             else:
                 line_x = x
-            line_y = y + line_nb * int(line_height)
+            line_y = start_y + sround(line_nb * line_height)
             self.text(line_x, line_y, line, font, font_size, cl=cl)
 
     def line(self, x1: float, y1: float, x2: float, y2: float, thick: int = 1,

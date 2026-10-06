@@ -205,13 +205,17 @@ class Game:
             elif self.step == 4:
                 if ((src in ("key", "pad") and cmd == "enter")
                    or (src in ("key", "pad", "leftclick", "rightclick")
-                       and cmd == "back")):
+                       and cmd in ("back", "defaults", "save"))):
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd == "back":
                         self._play_transition(4, 1, 1)
                         self.set_step(1)
                         self._play_transition(4, 1, 2)
+                    elif cmd == "defaults":
+                        self.graphics.main_menu.main_menu_settings.defaults()
+                    elif cmd == "save":
+                        self.graphics.main_menu.main_menu_settings.save()
 
             elif self.step == 5:
                 if not inactive:

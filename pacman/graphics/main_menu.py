@@ -327,6 +327,7 @@ class MainMenu:
         labelbox = geo.rectangle_geometry(item.x, item.y,
                                           item.width, item.height)
         line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_color = rcl.GREY if item.disabled else line_color
         line_font = (self.graphics.font_bold if line_active
                      else self.graphics.font_regular)
         label_size = lbl_size
@@ -359,6 +360,7 @@ class MainMenu:
                                         item.width - btn_margin * 2,
                                         item.height - btn_margin * 2)
         btn_color = rcl.PACMAN_YELLOW if btn_active else rcl.SAND
+        btn_color = rcl.GREY if item.disabled else btn_color
 
         draw.rectangle(btnbox.x, btnbox.y, btnbox.wdt, btnbox.hgt,
                        cl=btn_color, filled=True)
@@ -368,7 +370,8 @@ class MainMenu:
                       btnbox.rct.x - margin * 2, btnbox.bct.y - margin,
                       cl=rcl.BASE_BLACK, filled=True)
 
-    def display_list_next(self, index: int, txt_size: int) -> None:
+    def display_list_next(self, index: int, txt_size: int,
+                          btn_size: int, listitem: str) -> None:
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -383,12 +386,14 @@ class MainMenu:
 
         current_focus = self.graphics.interface.current_focused_code()
         list_active = current_focus[:-3] == item.code[:-3]
-        btn_size = txt_size
         btn_margin = sround((item.height - btn_size) / 2)
         btnbox = geo.rectangle_geometry(item.x + item.width - btn_size,
                                         item.y + btn_margin, btn_size,
                                         item.height - btn_margin * 2)
         btn_color = rcl.PACMAN_YELLOW if list_active else rcl.SAND
+        btn_color = rcl.GREY if item.disabled else btn_color
+        list_font = (self.graphics.font_bold if list_active
+                     else self.graphics.font_regular)
         draw.rectangle(btnbox.x, btnbox.y, btnbox.wdt, btnbox.hgt,
                        cl=btn_color, filled=True)
         margin = sround(btnbox.wdt * 0.10)
@@ -398,8 +403,62 @@ class MainMenu:
                       cl=rcl.BASE_BLACK, filled=True)
         txtbox = geo.rectangle_geometry(
             item.x + btn_margin, item.y + btn_margin,
-            item.width - btn_size - btn_margin * 2,
+            item.width - btn_size - btn_margin * 4,
             item.height - btn_margin * 2)
+        draw.text_block_max(
+            txtbox.x, txtbox.y + sround((txtbox.hgt - txt_size) / 2),
+            txtbox.wdt, txt_size, listitem, list_font, btn_color,
+            "center", "center")
+
+    def display_numbar(self, index: int, low: int, high: int, step: int,
+                       value: int, unit: str) -> None:
+        sround = self.utils.sym_round
+        rg = self.graphics.rg
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 4:
+            ui_items = self.main_menu_settings.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "bar_next":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        bar_active = current_focus[:-3] == item.code[:-3]
+        txt_size = sround(item.height * 0.75)
+        txt = f"{value}{unit}"
+        txt_wdt, txt_hgt = geo.measure_text(txt, txt_size)
+        txt_wdt, txt_hgt = int(txt_wdt), int(txt_hgt)
+        bubble_hgt = sround(item.height * 0.9)
+        bubble_wdt = bubble_hgt * 2
+        barbox = geo.rectangle_geometry(
+            item.x + bubble_wdt // 2,
+            item.y + sround((item.height - bubble_hgt) / 2),
+            item.width - bubble_wdt, bubble_hgt)
+        bar_color = rcl.PACMAN_YELLOW if bar_active else rcl.SAND
+        bar_font = (self.graphics.font_bold if bar_active
+                    else self.graphics.font_regular)
+        bar_thick = rg(4) if bar_active else rg(2)
+        draw.line(barbox.x, barbox.ct.y, barbox.rct.x, barbox.ct.y,
+                  bar_thick, bar_color)
+        nb_grad = (high - low) // step
+        grad_top = barbox.y + barbox.hgt // 4
+        grad_bot = barbox.bct.y - barbox.hgt // 4
+        for i in range(nb_grad + 1):
+            grad_x = barbox.x + sround(i * (barbox.wdt / nb_grad))
+            draw.line(grad_x, grad_top, grad_x, grad_bot, bar_thick, bar_color)
+        bubble_x = barbox.x - bubble_wdt // 2 + sround(
+            ((value - low) / (high - low)) * barbox.wdt)
+        draw.rectangle(bubble_x, barbox.y, bubble_wdt, barbox.hgt,
+                       roundness=0.75, cl=rcl.BASE_BLACK, filled=True)
+        draw.rectangle(bubble_x, barbox.y, bubble_wdt, barbox.hgt,
+                       roundness=0.75, thick=bar_thick,
+                       cl=bar_color, filled=False)
+        draw.text(bubble_x + bubble_wdt // 2 - txt_wdt // 2,
+                  barbox.ct.y - txt_hgt // 2, txt,
+                  bar_font, txt_size, bar_color)
 
     def _create_highscores_texture(self, texture_name: str,
                                    scores: list[Score], width: int,

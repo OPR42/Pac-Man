@@ -20,7 +20,8 @@ from .game_board import GameBoard
 from .raylib_log_formatter import RaylibLogFormatter
 from .shapes import Shapes
 from .textures import Textures
-from .x11_geometry import get_frame_extents, get_maximized_window_info
+from .x11_geometry import (get_frame_extents, get_window_info, get_workarea,
+                           WindowInfo)
 
 RaylibObject: TypeAlias = Any
 
@@ -78,6 +79,8 @@ class Graphics:
         self.audio_volume_value: float = 0.0
         self.audio_volume_label: str = ""
         self.banner_skin = -1
+        self.window_info: WindowInfo
+        self.window_id: int | None = None
 
     def launch(self) -> None:
         self.pr = pr
@@ -86,14 +89,17 @@ class Graphics:
         pr.set_trace_log_callback(self._raylib_callback)
         pr.set_trace_log_level(pr.LOG_INFO)  # type: ignore[attr-defined]
         flags = pr.FLAG_WINDOW_HIDDEN  # type: ignore[attr-defined]
-        if self.core.config.window_resizeable:
+        if self.core.config.window_resizable:
             flags |= pr.FLAG_WINDOW_RESIZABLE  # type: ignore[attr-defined]
         pr.set_config_flags(flags)
         pr.init_window(self.screen_width, self.screen_height,
                        self.core.title)
-        maximized_info = None
-        if self.core.config.window_maximized:
-            maximized_info = get_maximized_window_info(self.core.title)
+        window_info = get_window_info(self.core.title)
+        if window_info is not None:
+            self.window_info = window_info
+            self.window_id = window_info.window_id
+        maximized_info = (window_info if self.core.config.window_maximized
+                          else None)
         pr.set_window_min_size(self.base_width // 2, self.base_height // 2)
         monitor = pr.get_current_monitor()
         monitor_width = pr.get_monitor_width(monitor)
@@ -194,6 +200,36 @@ class Graphics:
         self.main_menu = MainMenu(self.core)
         self.gameboard = GameBoard(self.core)
 
+    def reposition_and_resize(self) -> None:
+        maximized_info = (self.window_info if self.core.config.window_maximized
+                          else None)
+        monitor = pr.get_current_monitor()
+        monitor_width = pr.get_monitor_width(monitor)
+        monitor_height = pr.get_monitor_height(monitor)
+        if maximized_info is not None:
+            self.screen_width = maximized_info.workarea.width
+            self.screen_height = maximized_info.workarea.height
+            x_pos = maximized_info.workarea.x
+            y_pos = maximized_info.workarea.y
+        else:
+            self.screen_width = self.core.config.window_width
+            self.screen_height = self.core.config.window_height
+            x_pos, y_pos = self.get_window_position(monitor_width,
+                                                    monitor_height,
+                                                    self.screen_width,
+                                                    self.screen_height)
+        if self.core.config.window_resizable:
+            pr.set_window_state(
+                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
+        else:
+            pr.clear_window_state(
+                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
+        if not self.core.config.window_maximized:
+            pr.restore_window()
+        pr.set_window_size(self.screen_width, self.screen_height)
+        pr.set_window_position(x_pos, y_pos)
+        self.resize()
+
     def get_window_position(self, monitor_width: int, monitor_height: int,
                             screen_width: int,
                             screen_height: int) -> tuple[int, int]:
@@ -226,6 +262,59 @@ class Graphics:
             x_pos = wdw_left_to_center
             y_pos = wdw_top_to_center
         return (x_pos, y_pos)
+
+    def get_window_screensector(self) -> int:
+        if self.is_window_maximized():
+            return 4
+        workarea = get_workarea()
+        if workarea is None:
+            return 4
+        wdw_wdt, wdw_hgt = pr.get_screen_width(), pr.get_screen_height()
+        wdw_pos = pr.get_window_position()
+        wdw_x, wdw_y = round(wdw_pos.x), round(wdw_pos.y)
+        available_x = max(0, workarea.width - wdw_wdt)
+        available_y = max(0, workarea.height - wdw_hgt)
+        left = wdw_x - workarea.x
+        right = available_x - left
+        top = wdw_y - workarea.y
+        bottom = available_y - top
+        tolerance_x = available_x * 0.33
+        tolerance_y = available_y * 0.33
+        if abs(left - right) <= tolerance_x:
+            sector_x = 1
+        elif left < right:
+            sector_x = 0
+        else:
+            sector_x = 2
+        if abs(top - bottom) <= tolerance_y:
+            sector_y = 1
+        elif top < bottom:
+            sector_y = 0
+        else:
+            sector_y = 2
+        return sector_x + sector_y * 3
+
+    def is_window_maximized(self) -> bool:
+        if self.window_id is None:
+            return False
+        workarea = get_workarea()
+        if workarea is None:
+            return False
+        extents = get_frame_extents(self.window_id)
+        if extents is None:
+            return False
+        expected_x = workarea.x + extents.left
+        expected_y = workarea.y + extents.top
+        expected_width = workarea.width - extents.left - extents.right
+        expected_height = workarea.height - extents.top - extents.bottom
+        position = pr.get_window_position()
+        width = pr.get_screen_width()
+        height = pr.get_screen_height()
+        tolerance = 2
+        return (abs(round(position.x) - expected_x) <= tolerance
+                and abs(round(position.y) - expected_y) <= tolerance
+                and abs(width - expected_width) <= tolerance
+                and abs(height - expected_height) <= tolerance)
 
     def draw_window(self) -> None:
         now = time.perf_counter()
