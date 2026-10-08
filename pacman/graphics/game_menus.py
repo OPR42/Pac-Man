@@ -54,6 +54,9 @@ class GameMenus:
         from .game_cheats_menu import GameCheatsMenu
         self.gamecheatsmenu = GameCheatsMenu(self.core)
         self.gamecheatsmenu.launch()
+        from .game_settings_menu import GameSettingsMenu
+        self.gamesettingsmenu = GameSettingsMenu(self.core)
+        self.gamesettingsmenu.launch()
 
     def reset(self) -> None:
         self.clear_background()
@@ -65,6 +68,7 @@ class GameMenus:
         self.endgame_anim_starttime = -1.0
         self.gamescoremenu.reset()
         self.gamecheatsmenu.reset()
+        self.gamesettingsmenu.reset()
 
     def resize(self) -> None:
         self.clear_background()
@@ -76,6 +80,7 @@ class GameMenus:
         self.build_endgame_geometry()
         self.gamescoremenu.resize()
         self.gamecheatsmenu.resize()
+        self.gamesettingsmenu.resize()
 
     def draw_menus(self) -> None:
         if not self.background_built:
@@ -108,6 +113,8 @@ class GameMenus:
             self.draw_gameover_menu()
         elif self.game.step == 14:
             self.draw_gameover_menu(victory=True)
+        elif self.game.step == 15:
+            self.gamesettingsmenu.draw_settings_menu()
 
     def build_pause_geometry(self) -> None:
         sround = self.utils.sym_round

@@ -276,12 +276,10 @@ class MainMenu:
 
         checkbox = geo.rectangle_geometry(item.x, item.y,
                                           item.width, item.height)
-        pacman_color = rcl.PACMAN_YELLOW
-        circle_color = rcl.scale_rgb(rcl.BASE_BR_PURPLE, rgb_factor)
         line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
         line_font = (self.graphics.font_bold if line_active
                      else self.graphics.font_regular)
-        thick = rg(2)
+        thick = rg(4) if line_active else rg(2)
         label_size = lbl_size
 
         label_width, label_height = geo.measure_text(lex(item.label),
@@ -295,17 +293,10 @@ class MainMenu:
         button_x = checkbox.ct.x + sround(checkbox.wdt / 4)
         if check:
             draw.pacman(button_x, checkbox.ct.y, button_rad, 180,
-                        mouth_opening=0.5)
-            if line_active:
-                draw.circle_gradient(button_x, checkbox.ct.y, button_rad,
-                                     cl1=circle_color, cl2=rcl.BLANK)
+                        mouth_opening=0.5, face_color=line_color)
         else:
-            if line_active:
-                draw.circle_gradient(button_x, checkbox.ct.y, button_rad,
-                                     cl1=circle_color, cl2=pacman_color)
-            else:
-                draw.circle(button_x, checkbox.ct.y, button_rad,
-                            thick=thick, cl=pacman_color, filled=False)
+            draw.circle(button_x, checkbox.ct.y, button_rad,
+                        thick=thick, cl=line_color, filled=False)
 
     def display_clickable_label(self, index: int, lbl_size: int) -> None:
         sround = self.utils.sym_round
@@ -339,7 +330,8 @@ class MainMenu:
         draw.text(label_x, label_y, lex(item.label), line_font, label_size,
                   line_color)
 
-    def display_btn_prev(self, index: int, btn_size: int) -> None:
+    def display_btn_prev(self, index: int, btn_size: int,
+                         max_size: int) -> None:
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -354,6 +346,7 @@ class MainMenu:
 
         current_focus = self.graphics.interface.current_focused_code()
         btn_active = current_focus[:-3] == item.code[:-3]
+        btn_size = min(btn_size, max_size)
         btn_margin = sround((item.height - btn_size) / 2)
         btnbox = geo.rectangle_geometry(item.x + btn_margin,
                                         item.y + btn_margin,
@@ -386,6 +379,7 @@ class MainMenu:
 
         current_focus = self.graphics.interface.current_focused_code()
         list_active = current_focus[:-3] == item.code[:-3]
+        btn_size = min(btn_size, txt_size)
         btn_margin = sround((item.height - btn_size) / 2)
         btnbox = geo.rectangle_geometry(item.x + item.width - btn_size,
                                         item.y + btn_margin, btn_size,
@@ -402,8 +396,8 @@ class MainMenu:
                       btnbox.x + margin * 2, btnbox.bct.y - margin,
                       cl=rcl.BASE_BLACK, filled=True)
         txtbox = geo.rectangle_geometry(
-            item.x + btn_margin, item.y + btn_margin,
-            item.width - btn_size - btn_margin * 4,
+            item.x, item.y + btn_margin,
+            item.width - btn_size - btn_margin,
             item.height - btn_margin * 2)
         draw.text_block_max(
             txtbox.x, txtbox.y + sround((txtbox.hgt - txt_size) / 2),
@@ -411,7 +405,7 @@ class MainMenu:
             "center", "center")
 
     def display_numbar(self, index: int, low: int, high: int, step: int,
-                       value: int, unit: str) -> None:
+                       value: int, unit: str, max_size: int) -> None:
         sround = self.utils.sym_round
         rg = self.graphics.rg
         draw = self.graphics.shapes
@@ -427,12 +421,12 @@ class MainMenu:
 
         current_focus = self.graphics.interface.current_focused_code()
         bar_active = current_focus[:-3] == item.code[:-3]
-        txt_size = sround(item.height * 0.75)
+        bubble_hgt = min(sround(item.height * 0.9), max_size)
+        bubble_wdt = bubble_hgt * 2
+        txt_size = sround(bubble_hgt * 0.85)
         txt = f"{value}{unit}"
         txt_wdt, txt_hgt = geo.measure_text(txt, txt_size)
         txt_wdt, txt_hgt = int(txt_wdt), int(txt_hgt)
-        bubble_hgt = sround(item.height * 0.9)
-        bubble_wdt = bubble_hgt * 2
         barbox = geo.rectangle_geometry(
             item.x + bubble_wdt // 2,
             item.y + sround((item.height - bubble_hgt) / 2),

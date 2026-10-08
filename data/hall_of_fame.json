@@ -11,6 +11,11 @@
             "corrupted": false
         },
         {
+            "name": "RedRackham",
+            "score": 101939,
+            "corrupted": false
+        },
+        {
             "name": "SOLE SURVR",
             "score": 98420,
             "corrupted": false
@@ -43,11 +48,6 @@
         {
             "name": "x CJOST x",
             "score": 54200,
-            "corrupted": false
-        },
-        {
-            "name": "x  was  x",
-            "score": 43800,
             "corrupted": false
         },
         {
@@ -101,5 +101,5 @@
             "corrupted": false
         }
     ],
-    "signature": "707ece77556c6011fc04ea74b5400e4579f6a84bb92860dfd9cc85287f231157e1361e8d8321f103c42a3165cfa4eab4fd66544bc625f25fa3c791d281b0340a24fe28476b0e42c8224e33bb41781e1ac312f93e71153916bfdb19a2c602c8eed751e3ca72bb6f0e4f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f299"
+    "signature": "707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157e1361e8d8321f103c42a3165cfa4eab4fd66544bc625f25fa3c791d281b0340a24fe28476b0e42c8c312f93e71153916bfdb19a2c602c8eed751e3ca72bb6f0e4f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f299"
 }

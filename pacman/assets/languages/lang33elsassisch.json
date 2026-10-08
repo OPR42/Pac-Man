@@ -33,6 +33,8 @@
     "__SET__": "─━─━─━─━─━─━─━─━─━─━─ SETTINGS ━─━─━─━─━─━─━─━─━─━─",
     "SET_Btn": "Zeruck ìns Hauptmenü",
     "SET_Btn?": "Verlosst dìser Ìistellungsbildschirm un geht zeruck ìns Hauptmenü.",
+    "SET_Bck": "Zeruck ins Pausemenü",
+    "SET_Bck?": "Verlosst die Iistellunge un geht zeruck ins Pausemenü.",
     "SET_Dft": "Standardìistellunge",
     "SET_Dft?": "Macht d'Änderunge ruckgängig un stellt d'Standardìistellunge widder her.",
     "SET_Vld": "Ìistellunge spìchere",

@@ -225,6 +225,8 @@ class GameHUDs:
             ui_items = self.gamemenus.gamecheatsmenu.cheats_ui_items
         elif self.game.step in (13, 14):
             ui_items = self.gamemenus.endgame_ui_items
+        elif self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
 
         item = ui_items[index]
 
@@ -389,6 +391,204 @@ class GameHUDs:
             else:
                 draw.circle(checkbox.c3ct.x, checkbox.c3ct.y, checkbox.rad,
                             thick=thick, cl=pacman_color, filled=False)
+
+    def display_rc_checkbox(self, index: int, rgb_factor: float,
+                            lbl_size: int, check: bool = False) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        rg = self.graphics.rg
+        geo = self.geometry
+        lex = self.core.lexicon
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "rc_checkbox":
+            return
+
+        line_active = self.graphics.interface.focused(item.code)
+
+        checkbox = geo.rectangle_geometry(item.x, item.y,
+                                          item.width, item.height)
+        line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_font = (self.graphics.font_bold if line_active
+                     else self.graphics.font_regular)
+        thick = rg(4) if line_active else rg(2)
+        label_size = lbl_size
+
+        label_width, label_height = geo.measure_text(lex(item.label),
+                                                     label_size)
+        label_x = checkbox.x
+        label_y = checkbox.y + sround((checkbox.hgt - label_height) / 2)
+
+        draw.text(label_x, label_y, lex(item.label), line_font, label_size,
+                  line_color)
+        button_rad = sround(lbl_size / 2)
+        button_x = checkbox.ct.x + sround(checkbox.wdt / 4)
+        if check:
+            draw.pacman(button_x, checkbox.ct.y, button_rad, 180,
+                        mouth_opening=0.5, face_color=line_color)
+        else:
+            draw.circle(button_x, checkbox.ct.y, button_rad,
+                        thick=thick, cl=line_color, filled=False)
+
+    def display_clickable_label(self, index: int, lbl_size: int) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        geo = self.geometry
+        lex = self.core.lexicon
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "clickable_label":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        line_active = current_focus[:-3] == item.code[:-3]
+
+        labelbox = geo.rectangle_geometry(item.x, item.y,
+                                          item.width, item.height)
+        line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_color = rcl.GREY if item.disabled else line_color
+        line_font = (self.graphics.font_bold if line_active
+                     else self.graphics.font_regular)
+        label_size = lbl_size
+        label_width, label_height = geo.measure_text(lex(item.label),
+                                                     label_size)
+        label_x = labelbox.x
+        label_y = labelbox.y + sround((labelbox.hgt - label_height) / 2)
+
+        draw.text(label_x, label_y, lex(item.label), line_font, label_size,
+                  line_color)
+
+    def display_btn_prev(self, index: int, btn_size: int,
+                         max_size: int) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "btn_prev":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        btn_active = current_focus[:-3] == item.code[:-3]
+        btn_size = min(btn_size, max_size)
+        btn_margin = sround((item.height - btn_size) / 2)
+        btnbox = geo.rectangle_geometry(item.x + btn_margin,
+                                        item.y + btn_margin,
+                                        item.width - btn_margin * 2,
+                                        item.height - btn_margin * 2)
+        btn_color = rcl.PACMAN_YELLOW if btn_active else rcl.SAND
+        btn_color = rcl.GREY if item.disabled else btn_color
+
+        draw.rectangle(btnbox.x, btnbox.y, btnbox.wdt, btnbox.hgt,
+                       cl=btn_color, filled=True)
+        margin = sround(btnbox.wdt * 0.10)
+        draw.triangle(btnbox.x + margin, btnbox.ct.y,
+                      btnbox.rct.x - margin * 2, btnbox.y + margin,
+                      btnbox.rct.x - margin * 2, btnbox.bct.y - margin,
+                      cl=rcl.BASE_BLACK, filled=True)
+
+    def display_list_next(self, index: int, txt_size: int,
+                          btn_size: int, listitem: str) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "list_next":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        list_active = current_focus[:-3] == item.code[:-3]
+        btn_size = min(btn_size, txt_size)
+        btn_margin = sround((item.height - btn_size) / 2)
+        btnbox = geo.rectangle_geometry(item.x + item.width - btn_size,
+                                        item.y + btn_margin, btn_size,
+                                        item.height - btn_margin * 2)
+        btn_color = rcl.PACMAN_YELLOW if list_active else rcl.SAND
+        btn_color = rcl.GREY if item.disabled else btn_color
+        list_font = (self.graphics.font_bold if list_active
+                     else self.graphics.font_regular)
+        draw.rectangle(btnbox.x, btnbox.y, btnbox.wdt, btnbox.hgt,
+                       cl=btn_color, filled=True)
+        margin = sround(btnbox.wdt * 0.10)
+        draw.triangle(btnbox.rct.x - margin, btnbox.ct.y,
+                      btnbox.x + margin * 2, btnbox.y + margin,
+                      btnbox.x + margin * 2, btnbox.bct.y - margin,
+                      cl=rcl.BASE_BLACK, filled=True)
+        txtbox = geo.rectangle_geometry(
+            item.x, item.y + btn_margin,
+            item.width - btn_size - btn_margin,
+            item.height - btn_margin * 2)
+        draw.text_block_max(
+            txtbox.x, txtbox.y + sround((txtbox.hgt - txt_size) / 2),
+            txtbox.wdt, txt_size, listitem, list_font, btn_color,
+            "center", "center")
+
+    def display_numbar(self, index: int, low: int, high: int, step: int,
+                       value: int, unit: str, max_size: int) -> None:
+        sround = self.utils.sym_round
+        rg = self.graphics.rg
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "bar_next":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        bar_active = current_focus[:-3] == item.code[:-3]
+        bubble_hgt = min(sround(item.height * 0.9), max_size)
+        bubble_wdt = bubble_hgt * 2
+        txt_size = sround(bubble_hgt * 0.85)
+        txt = f"{value}{unit}"
+        txt_wdt, txt_hgt = geo.measure_text(txt, txt_size)
+        txt_wdt, txt_hgt = int(txt_wdt), int(txt_hgt)
+        barbox = geo.rectangle_geometry(
+            item.x + bubble_wdt // 2,
+            item.y + sround((item.height - bubble_hgt) / 2),
+            item.width - bubble_wdt, bubble_hgt)
+        bar_color = rcl.PACMAN_YELLOW if bar_active else rcl.SAND
+        bar_font = (self.graphics.font_bold if bar_active
+                    else self.graphics.font_regular)
+        bar_thick = rg(4) if bar_active else rg(2)
+        draw.line(barbox.x, barbox.ct.y, barbox.rct.x, barbox.ct.y,
+                  bar_thick, bar_color)
+        nb_grad = (high - low) // step
+        grad_top = barbox.y + barbox.hgt // 4
+        grad_bot = barbox.bct.y - barbox.hgt // 4
+        for i in range(nb_grad + 1):
+            grad_x = barbox.x + sround(i * (barbox.wdt / nb_grad))
+            draw.line(grad_x, grad_top, grad_x, grad_bot, bar_thick, bar_color)
+        bubble_x = barbox.x - bubble_wdt // 2 + sround(
+            ((value - low) / (high - low)) * barbox.wdt)
+        draw.rectangle(bubble_x, barbox.y, bubble_wdt, barbox.hgt,
+                       roundness=0.75, cl=rcl.BASE_BLACK, filled=True)
+        draw.rectangle(bubble_x, barbox.y, bubble_wdt, barbox.hgt,
+                       roundness=0.75, thick=bar_thick,
+                       cl=bar_color, filled=False)
+        draw.text(bubble_x + bubble_wdt // 2 - txt_wdt // 2,
+                  barbox.ct.y - txt_hgt // 2, txt,
+                  bar_font, txt_size, bar_color)
 
     def create_huds_textures(self) -> None:
         self.ui_items[:] = [item for item in self.ui_items

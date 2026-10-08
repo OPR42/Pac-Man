@@ -469,7 +469,7 @@ class GameBoard:
             gmstate.cell_size = maze_cell_size
             gmstate.character_size = int((maze_cell_size
                                           - wall_physics_thick) * 0.6)
-            pacgum_size = sround(gmstate.character_size * 0.4)
+            pacgum_size = sround(gmstate.character_size * 0.2) * 2
             if pacgum_size % 2:
                 pacgum_size += 1
             if self.graphics.textures.exists("pacgum"):
@@ -480,7 +480,7 @@ class GameBoard:
                                pacgum_size, superpg=False,
                                variant=self.core.gm_state.skin)
             self.graphics.textures.end()
-            superpacgum_size = sround(pacgum_size * 1.5)
+            superpacgum_size = sround(pacgum_size * 0.75) * 2
             if self.graphics.textures.exists("superpacgum"):
                 self.graphics.textures.unload("superpacgum")
             self.graphics.textures.begin("superpacgum", superpacgum_size,
@@ -500,15 +500,19 @@ class GameBoard:
             self.build_done = True
 
         self.display_maze_texture(mvp.x, mvp.y, mvp.wdt, mvp.hgt)
+        pacgum_size = sround(gmstate.character_size * 0.2) * 2
+        superpacgum_size = sround(pacgum_size * 0.75) * 2
         for gum in self.game.pacgums.states.values():
             if gum.superpacgum:
                 self.graphics.textures.draw(
-                    "superpacgum", sround(gum.pos_x), sround(gum.pos_y),
-                    autocenter=True)
+                    "superpacgum", sround(gum.pos_x - superpacgum_size / 2),
+                    sround(gum.pos_y - superpacgum_size / 2),
+                    superpacgum_size, superpacgum_size)
             else:
                 self.graphics.textures.draw(
-                    "pacgum", sround(gum.pos_x), sround(gum.pos_y),
-                    autocenter=True)
+                    "pacgum", sround(gum.pos_x - pacgum_size / 2),
+                    sround(gum.pos_y - pacgum_size / 2),
+                    pacgum_size, pacgum_size)
         self.draw_wall_debris()
 
     def draw_wall_debris(self) -> None:

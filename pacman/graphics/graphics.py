@@ -68,6 +68,8 @@ class Graphics:
         self.ratio_g: float = 1.0
         self.screen_width = 1
         self.screen_height = 1
+        self.notmax_width = 1
+        self.notmax_height = 1
         self.last_resize_time: float = -1.0
         self.viewport_rectangle: tuple[int, int, int, int] = (0, 0, 0, 0)
         self.show_fps: bool = False
@@ -81,6 +83,7 @@ class Graphics:
         self.banner_skin = -1
         self.window_info: WindowInfo
         self.window_id: int | None = None
+        self.restore_resizable = False
 
     def launch(self) -> None:
         self.pr = pr
@@ -105,6 +108,8 @@ class Graphics:
         monitor_width = pr.get_monitor_width(monitor)
         monitor_height = pr.get_monitor_height(monitor)
 
+        self.notmax_width = self.core.config.window_width
+        self.notmax_height = self.core.config.window_height
         if self.core.config.window_maximized and maximized_info is not None:
             self.screen_width = maximized_info.workarea.width
             self.screen_height = maximized_info.workarea.height
@@ -212,23 +217,28 @@ class Graphics:
             x_pos = maximized_info.workarea.x
             y_pos = maximized_info.workarea.y
         else:
-            self.screen_width = self.core.config.window_width
-            self.screen_height = self.core.config.window_height
+            self.screen_width = self.notmax_width
+            self.screen_height = self.notmax_height
             x_pos, y_pos = self.get_window_position(monitor_width,
                                                     monitor_height,
                                                     self.screen_width,
                                                     self.screen_height)
-        if self.core.config.window_resizable:
-            pr.set_window_state(
-                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
-        else:
-            pr.clear_window_state(
-                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
+        if not self.core.config.window_resizable:
+            self.update_resizable_state(force=True)
+            self.restore_resizable = True
         if not self.core.config.window_maximized:
             pr.restore_window()
         pr.set_window_size(self.screen_width, self.screen_height)
         pr.set_window_position(x_pos, y_pos)
         self.resize()
+
+    def update_resizable_state(self, force: bool = False) -> None:
+        if self.core.config.window_resizable or force:
+            pr.set_window_state(
+                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
+        else:
+            pr.clear_window_state(
+                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
 
     def get_window_position(self, monitor_width: int, monitor_height: int,
                             screen_width: int,
@@ -320,6 +330,9 @@ class Graphics:
         now = time.perf_counter()
         pr.begin_drawing()
         pr.clear_background(rcl.BASE_BLACK)
+        if self.restore_resizable:
+            self.update_resizable_state()
+            self.restore_resizable = False
         self.draw_ui_frame()
         if self.core.gm_state.frame_and_banner:
             self.banner_anim.draw_banner_pacmen()
@@ -341,7 +354,7 @@ class Graphics:
         elif self.game.step in (1, 3, 4, 5):
             self.main_menu.draw_main_menu()
 
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
             self.gameboard.draw_gameboard()
 
         if (self.show_hints
@@ -453,14 +466,24 @@ class Graphics:
 
     def check_window_resized(self) -> None:
         if pr.is_window_resized():
-            self.resize()
+            width = pr.get_screen_width()
+            height = pr.get_screen_height()
+            if height > width:
+                self.notmax_width = width
+                self.notmax_height = width
+                self.reposition_and_resize()
+            else:
+                self.resize()
         elif self.last_resize_time > -1.0:
-            if time.perf_counter() - self.last_resize_time >= 1.0:
+            if time.perf_counter() - self.last_resize_time >= 0.5:
                 self.core._emit(
                     LogEvent(source="graphics", type="info",
                              message="Graphic window size: ",
                              text_var=(f"{self.screen_width} x "
                                        + f"{self.screen_height}")))
+                if not self.is_window_maximized():
+                    self.notmax_width = self.screen_width
+                    self.notmax_height = self.screen_height
                 self.last_resize_time = -1.0
 
     def toggle_frame_and_banner(self) -> None:
@@ -495,7 +518,7 @@ class Graphics:
         self.interface.rebuild()
         if self.game.step in (1, 3, 4, 5):
             self.main_menu.resize()
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
             self.gameboard.resize()
 
     def reload_fonts(self) -> None:

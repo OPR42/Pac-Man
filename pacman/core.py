@@ -46,6 +46,7 @@ class Core:
         self.lang: dict[str, str] = {}
         self.languages_path = (
             Path(__file__).resolve().parent / "assets" / "languages")
+        self.languages: list[str] = []
         self.physics = Physics()
 
     def launch(self, arg: str = "") -> None:
@@ -59,6 +60,7 @@ class Core:
         self.config_loaded = True
         self.dashboard.logbook.recover_temp_log()
         self.load_config_to_environment()
+        self.languages = sorted(self.available_languages())
         self.load_language()
         self.title = self.lexicon("GameTitle")
         from pacman.base.geometry import Geometry
@@ -129,22 +131,12 @@ class Core:
 
         def load_file(language: str) -> dict[str, str] | None:
             for path in sorted(self.languages_path.glob("lang*.json")):
-                try:
-                    with path.open("r", encoding="utf-8") as file:
-                        data = json.load(file)
-                except (OSError, json.JSONDecodeError):
+                data = self._load_language_file(path)
+                if data is None:
                     continue
-                if not isinstance(data, dict):
-                    continue
-                if data.get("language") != language:
-                    continue
-                if not all(isinstance(key, str) and isinstance(value, str)
-                           for key, value in data.items()):
-                    continue
-                for key in list(data):
-                    if key.startswith("__") and key.endswith("__"):
-                        data.pop(key)
-                return data
+                if data.get("language") == language:
+                    return data
+
             return None
 
         language = load_file(requested_language)
@@ -179,3 +171,37 @@ class Core:
     def lexicon(self, placeholder: str) -> str:
         """Return translated text associated with a placeholder."""
         return self.lang.get(placeholder, f"<{placeholder}>")
+
+    def available_languages(self) -> list[str]:
+        """Return all valid languages available in language files."""
+        languages: list[str] = []
+
+        for path in sorted(self.languages_path.glob("lang*.json")):
+            data = self._load_language_file(path)
+            if data is None:
+                continue
+            language = data.get("language")
+            if language is not None and language not in languages:
+                languages.append(language)
+
+        return languages
+
+    def _load_language_file(self, path: Path) -> dict[str, str] | None:
+        try:
+            with path.open("r", encoding="utf-8") as file:
+                data = json.load(file)
+        except (OSError, json.JSONDecodeError):
+            return None
+
+        if not isinstance(data, dict):
+            return None
+
+        if not all(isinstance(key, str) and isinstance(value, str)
+                   for key, value in data.items()):
+            return None
+
+        for key in list(data):
+            if key.startswith("__") and key.endswith("__"):
+                data.pop(key)
+
+        return data

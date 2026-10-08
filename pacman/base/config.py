@@ -174,7 +174,7 @@ class ConfigManager:
         repaired |= self._sanitize_string(data, "language",
                                           allow=("english", "français",
                                                  "froggies", "brezhoneg",
-                                                 "elsassisch"))
+                                                 "elsassisch", "pirate"))
         repaired |= self._sanitize_bool(data, "hints")
         repaired |= self._sanitize_float(data, "hints_delay", minimum=0.0)
         repaired |= self._sanitize_bool(data, "disable_transitions")

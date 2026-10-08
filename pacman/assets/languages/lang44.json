@@ -33,6 +33,8 @@
     "__SET__": "─━─━─━─━─━─━─━─━─━─━─ SETTINGS ─━─━─━─━─━─━─━─━─━─━─",
     "SET_Btn": "Back to main menu",
     "SET_Btn?": "Leaves the settings screen and returns to the main menu.",
+    "SET_Bck": "Back to pause menu",
+    "SET_Bck?": "Exits this settings screen and returns to the pause menu.",
     "SET_Dft": "Default settings",
     "SET_Dft?": "Cancels all changes and restores the default settings.",
     "SET_Vld": "Save these settings",

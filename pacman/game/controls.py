@@ -263,7 +263,7 @@ class Controls:
                 return "volsound-"
             return "vol-"
 
-        if self.game.step in (1, 3, 4):
+        if self.game.step in (1, 3):
             if (pr.is_key_pressed(keys.KEY_UP)
                or pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_LEFT)
@@ -281,7 +281,7 @@ class Controls:
                or pr.is_key_pressed(keys.KEY_SPACE)):
                 return "enter"
 
-        if self.game.step in (3, 4):
+        if self.game.step in (3, 4, 15):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
                or pr.is_key_pressed(keys.KEY_ESCAPE)):
                 return "back"
@@ -310,13 +310,14 @@ class Controls:
             if pr.is_key_pressed(keys.KEY_GRAVE):
                 return "cheat_menu"
 
-        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 15):
             if (pr.is_key_pressed(keys.KEY_ESCAPE)
                     or pr.is_key_pressed(keys.KEY_P)
                     or pr.is_key_pressed(keys.KEY_BACKSPACE)):
                 return "pause_menu"
 
-        if 8 <= self.game.step < 11 or self.game.step >= 12:
+        if (self.game.step == 4 or 8 <= self.game.step < 11
+                or self.game.step >= 12):
             if (pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_UP)):
                 return "up"
@@ -336,7 +337,7 @@ class Controls:
             if (pr.is_key_pressed(keys.KEY_ENTER)
                or pr.is_key_pressed(keys.KEY_KP_ENTER)
                or pr.is_key_pressed(keys.KEY_SPACE)):
-                if self.game.step == 12 and (shift or ctrl):
+                if self.game.step in (4, 12) and (shift or ctrl):
                     return "inv_enter"
                 else:
                     return "enter"
@@ -404,6 +405,10 @@ class Controls:
                 code = self.graphics.interface.maze_pointer_code(clamp=True)
                 if code is not None:
                     return ("leftdrag", code)
+            elif self.game.step in (4, 15):
+                code = self.graphics.interface.clicked_code(numbars_only=True)
+                if code is not None:
+                    return ("leftclick", code)
         elif pr.is_mouse_button_released(pr.MouseButton.MOUSE_BUTTON_LEFT):
             self.maze_drag = False
         elif pr.is_mouse_button_pressed(pr.MouseButton.MOUSE_BUTTON_RIGHT):
@@ -489,7 +494,7 @@ class Controls:
                 return ("pad", "volsound-")
             return ("pad", "vol-")
 
-        if self.game.step in (1, 3, 4):
+        if self.game.step in (1, 3):
             if pad_btn(LBL) or pad_btn(LBU):
                 return ("pad", "prev")
             elif pad_btn(LBR) or pad_btn(LBD):
@@ -533,11 +538,11 @@ class Controls:
                 if direction > 0.0:
                     return ("pad", "next")
 
-        if self.game.step in (3, 4):
+        if self.game.step in (3, 4, 15):
             if pad_btn(RBL) or pad_btn(MBL):
                 return ("pad", "back")
 
-        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 15):
             if pad_btn(MBR) or pad_btn(RBL):
                 return ("pad", "pause_menu")
 
@@ -549,7 +554,7 @@ class Controls:
             if pad_btn(LBR):
                 return ("pad", "inventory_02")
 
-        if self.game.step >= 8:
+        if self.game.step == 4 or self.game.step >= 8:
             default_release = self.core.defaults.gamepad_stick_release
             default_trigger = self.core.defaults.gamepad_stick_trigger
             x_direction, y_direction = 0.0, 0.0

@@ -59,6 +59,7 @@ class Game:
         12. Cheats
         13. Game Over
         14. Victory
+        15. Ingame Settings
         """
 
     def launch(self) -> None:
@@ -148,7 +149,7 @@ class Game:
                 elif cmd == "toggle_frame_and_banner":
                     self.graphics.toggle_frame_and_banner()
 
-            if self.step in (1, 3, 4):
+            if self.step in (1, 3):
                 if src in ("key", "pad") and cmd in ("next", "prev"):
                     if cmd == "next":
                         self.graphics.interface.focus_next()
@@ -198,17 +199,35 @@ class Game:
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd == "back":
+                        self.graphics.interface.switch_focus_to("back")
                         self._play_transition(3, 1, 1)
                         self.set_step(1)
                         self._play_transition(3, 1, 2)
 
             elif self.step == 4:
-                if ((src in ("key", "pad") and cmd == "enter")
-                   or (src in ("key", "pad", "leftclick", "rightclick")
-                       and cmd in ("back", "defaults", "save"))):
-                    if src in ("key", "pad") and cmd == "enter":
-                        cmd = self.graphics.interface.focus or ""
-                    if cmd == "back":
+                if ((src in ("key", "pad") and cmd in ("enter", "up", "down",
+                                                       "left", "right", "tab",
+                                                       "backtab", "back",
+                                                       "defaults", "save",
+                                                       "inv_enter"))
+                   or src in ("leftclick", "rightclick")):
+                    if src in ("key", "pad") and cmd in ("enter", "inv_enter"):
+                        if cmd == "enter":
+                            cmd = self.graphics.interface.focus or ""
+                        elif cmd == "inv_enter":
+                            cmd = self.graphics.interface.focus or ""
+                            if cmd.endswith(("nxt", "lbl")):
+                                cmd = cmd[:-3] + "prv"
+                            elif cmd.endswith("prv"):
+                                cmd = cmd[:-3] + "nxt"
+                    if src == "rightclick" and cmd.endswith(("nxt", "lbl")):
+                        cmd = cmd[:-3] + "prv"
+                    if cmd == "down":
+                        self.graphics.interface.focus_next()
+                    elif cmd == "up":
+                        self.graphics.interface.focus_previous()
+                    elif cmd == "back":
+                        self.graphics.interface.switch_focus_to("back")
                         self._play_transition(4, 1, 1)
                         self.set_step(1)
                         self._play_transition(4, 1, 2)
@@ -216,6 +235,8 @@ class Game:
                         self.graphics.main_menu.main_menu_settings.defaults()
                     elif cmd == "save":
                         self.graphics.main_menu.main_menu_settings.save()
+                    else:
+                        self.graphics.main_menu.main_menu_settings.command(cmd)
 
             elif self.step == 5:
                 if not inactive:
@@ -286,6 +307,8 @@ class Game:
                         self.set_step(10)
                     elif cmd == "cheat":
                         self.set_step(12)
+                    elif cmd == "settings":
+                        self.set_step(15)
 
             elif self.step in (9, 10):
                 if src in ("key", "pad") and cmd in (
@@ -414,11 +437,41 @@ class Game:
                             self.set_step(1)
                             self._play_transition(9, 1, 2)
 
+            elif self.step == 15:
+                gamemenu = self.graphics.gameboard.gamehuds.gamemenus
+                if ((src in ("key", "pad") and cmd in ("enter", "up", "down",
+                                                       "left", "right", "tab",
+                                                       "backtab", "back",
+                                                       "defaults", "save",
+                                                       "inv_enter"))
+                   or src in ("leftclick", "rightclick")):
+                    if src in ("key", "pad") and cmd in ("enter", "inv_enter"):
+                        if cmd == "enter":
+                            cmd = self.graphics.interface.focus or ""
+                        elif cmd == "inv_enter":
+                            cmd = self.graphics.interface.focus or ""
+                            if cmd.endswith(("nxt", "lbl")):
+                                cmd = cmd[:-3] + "prv"
+                            elif cmd.endswith("prv"):
+                                cmd = cmd[:-3] + "nxt"
+                    if src == "rightclick" and cmd.endswith(("nxt", "lbl")):
+                        cmd = cmd[:-3] + "prv"
+                    if cmd in ("down", "tab"):
+                        self.graphics.interface.focus_next(
+                            avoid=("pause_menu",))
+                    elif cmd in ("up", "backtab"):
+                        self.graphics.interface.focus_previous(
+                            avoid=("pause_menu",))
+                    elif cmd == "back":
+                        self.set_step(8)
+                    else:
+                        gamemenu.gamesettingsmenu.command(cmd)
+
             self.graphics.draw_window()
             self.dashboard.update_dashboard()
 
     def set_step(self, step: int) -> None:
-        if not 0 <= step <= 14:
+        if not 0 <= step <= 15:
             return
 
         self.old_step = self.step
@@ -529,6 +582,12 @@ class Game:
                          message=("Game finished with "
                                   + f"{self.core.gm_state.score:,} points at "
                                   + f"level {self.core.gm_state.level} "),
+                         duration=(time.perf_counter()
+                                   - self.core.gm_state.starttime)))
+        elif step == 15:
+            self.core._emit(
+                LogEvent(source="  game  ", type="finish",
+                         message=" Entering Ingame Settings ",
                          duration=(time.perf_counter()
                                    - self.core.gm_state.starttime)))
 

@@ -33,6 +33,8 @@
     "__SET__": "─━─━─━─━─━─━─━─━─━─━─ SETTINGS ─━─━─━─━─━─━─━─━─━─━─",
     "SET_Btn": "J'me tire d'ici",
     "SET_Btn?": "Arrête de trifouiller les réglages et retourne à l'accueil.",
+    "SET_Bck": "Retour à la pause",
+    "SET_Bck?": "Ferme les réglages et retourne au menu de pause, peinard.",
     "SET_Dft": "Comme au premier jour",
     "SET_Dft?": "Oublie toutes tes bidouilles et remet tout comme c'était au départ.",
     "SET_Vld": "C'est bon comme ça",
