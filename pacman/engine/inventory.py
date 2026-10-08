@@ -45,6 +45,17 @@ class CrateSpawnRule:
     weight: float = 0.0
 
 
+@dataclass
+class ItemDiscovery:
+    name: str = ""
+    seen: bool = False
+    seeing_reported: bool = False
+    taken: bool = False
+    taking_reported: bool = False
+    used: bool = False
+    usage_reported: bool = False
+
+
 class Inventory:
     def __init__(self, core: Core) -> None:
         self.core = core
@@ -85,6 +96,16 @@ class Inventory:
             ]
         self.crates_next_spawntime: float = -1.0
         self.crates_timeout_spawntime: float = -1.0
+        self.discoveries: list[ItemDiscovery] = [
+            ItemDiscovery("hourglass", False, False, False, False, False,
+                          False),
+            ItemDiscovery("sage", False, False, False, False, False, False),
+            ItemDiscovery("bomb", False, False, False, False, False, False),
+            ItemDiscovery("bowtie", False, False, False, False, False, False),
+            ItemDiscovery("stetson", False, False, False, False, False, False),
+            ItemDiscovery("slime", False, False, False, False, False, False),
+            ItemDiscovery("pacman", False, False, False, False, False, False),
+            ]
 
     def reset(self) -> None:
         default_rect = self.geometry.rectangle_geometry(0, 0, 1, 1)
@@ -107,7 +128,7 @@ class Inventory:
         self.boxes_built = False
         self.crates = []
         self.crates_spawn_rules = [
-            CrateSpawnRule("nothing", 1, False, 0.30),
+            CrateSpawnRule("nothing", 0, False, 0.30),
             CrateSpawnRule("hourglass", 2, False, 0.20),
             CrateSpawnRule("sage", 4, False, 0.20),
             CrateSpawnRule("bomb", 6, False, 0.20),
@@ -118,6 +139,16 @@ class Inventory:
             ]
         self.crates_next_spawntime = -1.0
         self.crates_timeout_spawntime = -1.0
+        self.discoveries = [
+            ItemDiscovery("hourglass", False, False, False, False, False,
+                          False),
+            ItemDiscovery("sage", False, False, False, False, False, False),
+            ItemDiscovery("bomb", False, False, False, False, False, False),
+            ItemDiscovery("bowtie", False, False, False, False, False, False),
+            ItemDiscovery("stetson", False, False, False, False, False, False),
+            ItemDiscovery("slime", False, False, False, False, False, False),
+            ItemDiscovery("pacman", False, False, False, False, False, False),
+            ]
 
     def resize(self) -> None:
         self.boxes_built = False
@@ -135,6 +166,7 @@ class Inventory:
             if (self.inv_items[0].quantity < 1
                     or self.inv_items[0].effect_progress != -1.0):
                 return
+            self.discoveries[0].used = True
             self.inv_items[0].quantity -= 1
             self.inv_items[0].effect_progress = 0.0
             self.inv_items[0].effect_start_time = time.perf_counter()
@@ -147,6 +179,7 @@ class Inventory:
             if (self.inv_items[1].quantity < 1
                     or self.inv_items[1].effect_progress != -1.0):
                 return
+            self.discoveries[1].used = True
             self.inv_items[1].quantity -= 1
             self.inv_items[1].effect_progress = 0.0
             self.inv_items[1].effect_start_time = time.perf_counter()
@@ -158,6 +191,7 @@ class Inventory:
             if (self.inv_items[2].quantity < 1
                     or self.inv_items[2].effect_progress != -1.0):
                 return
+            self.discoveries[2].used = True
             self.inv_items[2].quantity -= 1
             self.inv_items[2].effect_progress = 0.0
             self.inv_items[2].effect_start_time = time.perf_counter()
@@ -169,14 +203,17 @@ class Inventory:
         elif cmd == "inventory_03":
             if self.inv_items[3].quantity < 1:
                 return
+            self.discoveries[3].used = True
             self.change_skin(1)
         elif cmd == "inventory_04":
             if self.inv_items[4].quantity < 1:
                 return
+            self.discoveries[4].used = True
             self.change_skin(2)
         elif cmd == "inventory_05":
             if self.inv_items[5].quantity < 1:
                 return
+            self.discoveries[5].used = True
             self.change_skin(3)
 
     def update(self) -> None:
@@ -416,24 +453,31 @@ class Inventory:
                 return
 
         if kind == "hourglass":
+            self.discoveries[0].seen = True
             pts = self.core.pts_table.bonus1
             color = rcl.HOURGLASS_WOOD
         elif kind == "sage":
+            self.discoveries[1].seen = True
             pts = self.core.pts_table.bonus2
             color = rcl.DISGUSTED_GHOST_GREEN
         elif kind == "bomb":
+            self.discoveries[2].seen = True
             pts = self.core.pts_table.bonus3
             color = rcl.BOMB_VIOLET
         elif kind == "bowtie":
+            self.discoveries[3].seen = True
             pts = self.core.pts_table.bonus4
             color = rcl.BOWTIE_RED
         elif kind == "stetson":
+            self.discoveries[4].seen = True
             pts = self.core.pts_table.bonus5
             color = rcl.STETSON_IVORY
         elif kind == "slime":
+            self.discoveries[5].seen = True
             pts = self.core.pts_table.bonus6
             color = rcl.SLIME_GREEN
         elif kind == "pacman":
+            self.discoveries[6].seen = True
             pts = self.core.pts_table.ghost
             color = rcl.PACMAN_YELLOW
         else:
@@ -463,18 +507,25 @@ class Inventory:
             x, y, f"{taken_crate.item_pts:,}", taken_crate.item_color,
             gmstate.character_size * 0.8, 5.0, 2.0)
         if taken_crate.item_name == "hourglass":
+            self.discoveries[0].taken = True
             self.change_count(0, 1)
         elif taken_crate.item_name == "sage":
+            self.discoveries[1].taken = True
             self.change_count(1, 1)
         elif taken_crate.item_name == "bomb":
+            self.discoveries[2].taken = True
             self.change_count(2, 1)
         elif taken_crate.item_name == "bowtie":
+            self.discoveries[3].taken = True
             self.change_count(3, 1)
         elif taken_crate.item_name == "stetson":
+            self.discoveries[4].taken = True
             self.change_count(4, 1)
         elif taken_crate.item_name == "slime":
+            self.discoveries[5].taken = True
             self.change_count(5, 1)
         elif taken_crate.item_name == "pacman":
+            self.discoveries[6].taken = True
             self.game._add_life(1)
 
     def crates_spawn_init(self, create_timeout: bool = True) -> None:

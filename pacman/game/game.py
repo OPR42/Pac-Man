@@ -637,8 +637,9 @@ class Game:
         self.inventory.cancel_effects()
         self.pacgums.trigger_superpacgum_effect(disable=True)
         self._initialize_characters()
-        if gmstate.level == 1:
-            self.interludes.set_interlude(0)
+        interludes = [-1, 0, 10102, 10203]
+        if gmstate.level < len(interludes):
+            self.interludes.set_interlude(interludes[gmstate.level])
         gmstate.time_init = self.core.config.level_max_time
         gmstate.time_cur = gmstate.time_init
         self.time_ref = time.perf_counter()

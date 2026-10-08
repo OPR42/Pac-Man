@@ -28,7 +28,7 @@
     "pts_bonus5": 800,
     "pts_bonus6": 900,
     "new_life_threshold": 1000,
-    "level_max_time": 180,
+    "level_max_time": 90,
     "timeout_consequence": "speeding_ghosts",
     "minigames": true,
     "seed": 42,

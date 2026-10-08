@@ -32,9 +32,10 @@ class Interludes:
         self.anim_duration: float = 0.0
         self.input_armed: bool = False
         self.transition_action = ""
+        self.discoveries_diary_text: str = ""
 
     def set_interlude(self, index: int) -> None:
-        if index not in (0, 1):
+        if index not in (0, 1, 10102, 10203):
             self.index = -1
             self.game.controls.set_mouse_cursor("arrow")
             self.active = False
@@ -42,9 +43,13 @@ class Interludes:
             self.anim_finished = False
             self.anim_skip = False
             self.anim_duration = 0.0
+            self.discoveries_diary_text = ""
             return
         if index == 0 and not self.active:
             self.game.audio.sound_play("transition_0")
+        if index in (10102, 10203):
+            self.build_discoveries_diary()
+            self.game._start_transition(6, 7, 2)
         self.index = index
         self.game.controls.set_mouse_cursor("hand")
         self.active = True
@@ -52,6 +57,55 @@ class Interludes:
         self.anim_skip = False
         self.anim_duration = 0.0
         self.input_armed = False
+
+    def build_discoveries_diary(self) -> None:
+        lex = self.lex
+        reports = self.game.inventory.discoveries
+        list_seen: list[int] = []
+        list_taken: list[int] = []
+        list_used: list[int] = []
+        for i, report in enumerate(reports):
+            if report.seen and not report.seeing_reported:
+                list_seen.append(i)
+                report.seeing_reported = True
+            if report.taken and not report.taking_reported:
+                list_taken.append(i)
+                report.taking_reported = True
+            if report.used and not report.usage_reported:
+                list_used.append(i)
+                report.usage_reported = True
+        if not (list_seen or list_taken or list_used):
+            self.discoveries_diary_text = ""
+            return
+        diary = "\n"
+        len_list_seen = len(list_seen)
+        if len_list_seen > 0:
+            diary += lex("INT_070") if len_list_seen == 1 else lex("INT_071")
+            for i, index in enumerate(list_seen):
+                diary += lex(f"INT_07{index + 2}")
+                if i < len_list_seen - 1:
+                    diary += lex("coma")
+                else:
+                    diary += lex("period")
+            diary += "\n"
+        len_list_taken = len(list_taken)
+        if len_list_taken > 0:
+            taken_txt = ""
+            for i, index in enumerate(list_taken):
+                taken_txt += lex(f"INT_08{index + 2}")
+                if i < len_list_taken - 1:
+                    taken_txt += lex("coma")
+                else:
+                    taken_txt += lex("period")
+            diary += taken_txt[:1].upper() + taken_txt[1:]
+            diary += "\n"
+        len_list_used = len(list_used)
+        if len_list_used > 0:
+            for index in list_used:
+                diary += lex(f"INT_09{index + 2}")
+            diary += "\n "
+        lines = self.utils.split_words(text=diary, max_length=60)
+        self.discoveries_diary_text = "\n".join(lines)
 
     def play_interlude(self) -> None:
         lex = self.lex
@@ -72,6 +126,17 @@ class Interludes:
             txt = txt.replace("$YPLURAL$", yplural)
             txt = txt.replace("$MPLURAL$", mplural)
             txt = txt.replace("$DPLURAL$", dplural)
+            self.draw_interlude(rcl.PAPER, txt, True)
+        elif self.index == 10102:
+            txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
+            self.draw_interlude(rcl.PAPER, txt, True)
+
+        elif self.index == 10203:
+            years, months, days = self.elapsed_since_namco_release()
+            txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
+            txt = txt.replace("$YEARS$", f"{years:,}")
+            yplural = lex("INT_061") if years <= 1 else lex("INT_062")
+            txt = txt.replace("$YPLURAL$", yplural)
             self.draw_interlude(rcl.PAPER, txt, True)
 
         else:
@@ -95,10 +160,15 @@ class Interludes:
             self.set_interlude(1)
             self.game.audio.sound_play("transition_1")
             self.game._start_transition(6, 7, 2)
-
         elif action == "launch_game":
             self.set_interlude(-1)
             self.graphics.gameboard.launch()
+            self.game._start_transition(6, 7, 4)
+        elif action == "01to02":
+            self.set_interlude(-1)
+            self.game._start_transition(6, 7, 4)
+        elif action == "02to03":
+            self.set_interlude(-1)
             self.game._start_transition(6, 7, 4)
 
     def update_interlude(self) -> None:
@@ -117,9 +187,14 @@ class Interludes:
         if self.index == 0:
             self.transition_action = "diary_1"
             self.game._start_transition(6, 7, 1)
-
         elif self.index == 1:
             self.transition_action = "launch_game"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 10102:
+            self.transition_action = "01to02"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 10203:
+            self.transition_action = "02to03"
             self.game._start_transition(6, 7, 3)
 
     def draw_interlude(self, cl_background: RaylibObject, txt: str, anim: bool,

@@ -185,7 +185,8 @@ class GameBoard:
                 self.anim_start = -1.0
                 if self.core.gm_state.level < len(self.core.config.levels):
                     self.game.start_new_level(self.core.gm_state.level + 1)
-                    self.game._start_transition(7, 7, 2)
+                    if not self.game.interludes.active:
+                        self.game._start_transition(7, 7, 2)
                 else:
                     self.status = "game_complete"
                     self.game.all_levels_completed()
