@@ -110,7 +110,8 @@ class GameLauncher:
                 index = self.nb_loaded - (len(self.fonts_to_load)
                                           + len(self.textures_to_generate))
                 sound_name = self.sounds_to_load[index]
-                self.audio.sound_load(sound_name)
+                if self.audio.available:
+                    self.audio.sound_load(sound_name)
 
             self.nb_loaded += 1
             self.draw_loading_screen()
@@ -171,7 +172,12 @@ class GameLauncher:
             / len(self.sounds_to_load)))
         cl_sounds = rcl.mix_rgba(cl_alt, rcl.BASE_DARKER_GREY,
                                  weight_sounds)
+        txt_sounds = lex("LDR_Snd")
+        if not self.audio.available:
+            cl_sounds = rcl.mix_rgba(rcl.BASE_RED, rcl.BASE_DARKER_GREY,
+                                     weight_sounds)
+            txt_sounds = lex("LDR_SKO")
         draw.stick_text(vp.ct.x, round(vp.ct.y + base_height * 4.6),
-                        lex("LDR_Snd"), base_height // 2,
+                        txt_sounds, base_height // 2,
                         thick=max(1, rg(1)), cl=cl_sounds)
         pr.end_drawing()

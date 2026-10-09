@@ -23,7 +23,7 @@ class Defaults(BaseModel):
     duration_sage: float = 20.0
     duration_bomb_detonation: float = 3.0
 
-    game_title: str = "The Adventures of Pac-Man Across the 3rd Dimension"
+    game_title: str = "Pac-Man - Escape from Flativerses"
     game_title_includes_resolution: bool = False
 
     gamepad_stick_trigger: float = 0.50

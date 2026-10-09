@@ -97,6 +97,10 @@ class Graphics:
         pr.set_config_flags(flags)
         pr.init_window(self.screen_width, self.screen_height,
                        self.core.title)
+        icon = pr.load_image("pacman/assets/icon/icon.png")
+        pr.image_resize(icon, 128, 128)
+        pr.set_window_icon(icon)
+        pr.unload_image(icon)
         window_info = get_window_info(self.core.title)
         if window_info is not None:
             self.window_info = window_info
@@ -466,14 +470,15 @@ class Graphics:
 
     def check_window_resized(self) -> None:
         if pr.is_window_resized():
-            width = pr.get_screen_width()
-            height = pr.get_screen_height()
-            if height > width:
-                self.notmax_width = width
-                self.notmax_height = width
-                self.reposition_and_resize()
-            else:
-                self.resize()
+            # width = pr.get_screen_width()
+            # height = pr.get_screen_height()
+            # if height > width:
+            #     self.notmax_width = width
+            #     self.notmax_height = width
+            #     self.reposition_and_resize()
+            # else:
+            #     self.resize()
+            self.resize()
         elif self.last_resize_time > -1.0:
             if time.perf_counter() - self.last_resize_time >= 0.5:
                 self.core._emit(

@@ -162,9 +162,10 @@ class GameMenus:
                 x, y_cheat, item_cheat_width, item_cheat_height, "PAU_Cht",
                 "cheat", "zone", rel_to_center=False))
         x = pvp.x + sround(pvp.wdt * 1 / 6 - item_half_width / 2)
-        self.pause_ui_items.append(InterfaceItem(
-            x, y, item_half_width, item_height, "PAU_Juk",
-            "jukebox", "zone", rel_to_center=False))
+        if self.game.audio.available:
+            self.pause_ui_items.append(InterfaceItem(
+                x, y, item_half_width, item_height, "PAU_Juk",
+                "jukebox", "zone", rel_to_center=False))
         x = pvp.x + sround(pvp.wdt * 5 / 6 - item_half_width / 2)
         self.pause_ui_items.append(InterfaceItem(
             x, y, item_half_width, item_height, "PAU_Inf",

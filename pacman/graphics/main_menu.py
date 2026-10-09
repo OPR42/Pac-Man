@@ -432,6 +432,7 @@ class MainMenu:
             item.y + sround((item.height - bubble_hgt) / 2),
             item.width - bubble_wdt, bubble_hgt)
         bar_color = rcl.PACMAN_YELLOW if bar_active else rcl.SAND
+        bar_color = rcl.GREY if item.disabled else bar_color
         bar_font = (self.graphics.font_bold if bar_active
                     else self.graphics.font_regular)
         bar_thick = rg(4) if bar_active else rg(2)

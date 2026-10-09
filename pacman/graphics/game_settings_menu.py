@@ -344,6 +344,9 @@ class GameSettingsMenu:
         for item in self.ui_items:
             if item.code.startswith(("position_", "resolution_")):
                 item.disabled = self.settings_currents.window_maximized
+            if not self.game.audio.available:
+                if item.code.startswith(("volgen_", "volmus_", "volsnd_")):
+                    item.disabled = True
 
         self.graphics.interface.set_items(self.ui_items)
         self.graphics.interface.update_mouse()
