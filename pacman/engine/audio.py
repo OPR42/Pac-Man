@@ -4,6 +4,7 @@ import random
 import pyray as pr
 
 from pacman.base.models import LogEvent
+from pacman.base.utils import Utils
 from pacman.core import Core
 
 JUKEBOX_EXTENSIONS = (".ogg", ".mp3", ".flac", ".wav")
@@ -15,8 +16,7 @@ class Audio:
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
-        self.audio_path = (
-            Path(__file__).resolve().parent.parent / "assets" / "audio")
+        self.audio_path = (Utils().get_resource_path() / "assets" / "audio")
         self.jukebox_music: pr.Music | None = None
         self.jukebox_active: bool = False
         self.mute: bool = False

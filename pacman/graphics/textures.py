@@ -4,6 +4,7 @@ from typing import Any, TypeAlias
 
 import pyray as pr
 
+from pacman.base.utils import Utils
 from pacman.base.models import LogEvent
 from pacman.core import Core
 
@@ -25,7 +26,8 @@ class Textures:
             return
         if name == "grayscale":
             self.shaders[name] = pr.load_shader(
-                pr.ffi.NULL, "pacman/assets/shaders/grayscale.fs")
+                pr.ffi.NULL, str(Utils().get_resource_path()
+                                 / "assets" / "shaders" / "grayscale.fs"))
 
     def set_minimal_log_level(self, minimal: bool = False) -> None:
         if minimal:

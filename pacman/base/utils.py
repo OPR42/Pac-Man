@@ -1,5 +1,7 @@
 import math
 import re
+import sys
+from pathlib import Path
 
 
 class Utils:
@@ -91,6 +93,14 @@ class Utils:
             return math.floor(value + 0.5)
 
         return math.ceil(value - 0.5)
+
+    def get_resource_path(self) -> Path:
+        meipass = getattr(sys, '_MEIPASS', None)
+
+        if meipass is not None:
+            return Path(meipass)
+
+        return Path(__file__).resolve().parents[1]
 
 
 def raylib_key_test() -> None:

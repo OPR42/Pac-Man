@@ -4,6 +4,7 @@ from pathlib import Path
 
 from pacman.base.models import PointsTable, CheatsTable, CharacterState
 from pacman.base.models import GameState, LogEvent, Defaults
+from pacman.base.utils import Utils
 from pacman.engine.physics import Physics
 
 
@@ -44,8 +45,8 @@ class Core:
         self.cht_table = CheatsTable()
         self.config_loaded: bool = False
         self.lang: dict[str, str] = {}
-        self.languages_path = (
-            Path(__file__).resolve().parent / "assets" / "languages")
+        self.languages_path = (Utils().get_resource_path()
+                               / "assets" / "languages")
         self.languages: list[str] = []
         self.physics = Physics()
 

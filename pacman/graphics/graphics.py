@@ -4,7 +4,6 @@ import time
 
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Any, TypeAlias
 
 from pacman.base.geometry import Geometry
@@ -54,10 +53,9 @@ class Graphics:
         self.base_frame_thick: int = (
             self.core.defaults.graphics_base_frame_thick)
         self.font_size: int = self.base_font_size
-        self.font_dir = (Path(__file__).resolve().parents[1]
-                         / "assets" / "fonts")
-        self.texture_dir = (Path(__file__).resolve().parents[1]
-                            / "assets" / "textures")
+        assets_dir = self.utils.get_resource_path() / "assets"
+        self.font_dir = assets_dir / "fonts"
+        self.texture_dir = assets_dir / "textures"
         self.font_regular: RaylibObject
         self.font_bold: RaylibObject
         self.font_italic: RaylibObject
@@ -97,7 +95,8 @@ class Graphics:
         pr.set_config_flags(flags)
         pr.init_window(self.screen_width, self.screen_height,
                        self.core.title)
-        icon = pr.load_image("pacman/assets/icon/icon.png")
+        icon = pr.load_image(
+            str(Utils().get_resource_path() / "assets" / "icon" / "icon.png"))
         pr.image_resize(icon, 128, 128)
         pr.set_window_icon(icon)
         pr.unload_image(icon)

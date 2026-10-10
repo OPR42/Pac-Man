@@ -201,6 +201,9 @@ recall:			${BANNERSTAMP}
 
 re:				fclean install
 
+build:			install
+				uv run pyinstaller --onefile --add-data "data:data" --add-data "pacman/assets:assets" pac-man.py
+
 keytest:		
 				uv run python3 ${FOLDER}/base/utils.py
 

@@ -13,6 +13,7 @@ dependencies = [
     "numpy>=1.24.0",
     "raylib==5.5.0.4",
     "mazegenerator",
+    "pyinstaller>=6.22.3",
 ]
 
 [dependency-groups]
