@@ -263,3 +263,12 @@
 
 - Metallic textures do not display the same on different devices.  
 ↳ Issue: Lack of lisibility
+
+
+<span style='color: goldenrod'>
+
+### ⚠️ Settings
+</span>
+
+- In the settings menu, unchecking the "resizable" box and then restoring default settings messes up the whole "Window" section.  
+↳ Issue: Confusion for the player

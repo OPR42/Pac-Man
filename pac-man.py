@@ -12,13 +12,18 @@ def main() -> int:
     config_filename = sys.argv[1]
 
     if Path(config_filename).suffix.lower() != ".json":
-        print("Error: configuration file must be a JSON file.")
+        print("\033[1;31m[ERROR]: configuration file must be a JSON file."
+              "\033[0;0m")
         return 1
 
     core = Core(config_filename)
 
     try:
         core.launch()
+    except ModuleNotFoundError:
+        print("\n\033[1;31m[ERROR]: no maze generator found.\033[0;0m"
+              "\nPlease make sure :\n-> You have provided one\n"
+              "-> You have activated the virtual environment")
     finally:
         core.terminal_manager.restore()
 
