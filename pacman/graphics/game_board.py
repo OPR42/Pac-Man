@@ -42,6 +42,8 @@ class GameBoard:
         self.debug: bool = False
         self.status: str = "init"
         self.mvp: RectangleGeometry
+        self.lvp: RectangleGeometry
+        self.rvp: RectangleGeometry
         self.maze_cell_size: int = 0
         self.huds_ready: bool = False
         self.maze_skin: int = -1
@@ -93,6 +95,7 @@ class GameBoard:
         self.bomb_cell = (-1, -1)
         self.bomb_detonation = (-1, -1, -1.0)
         self.gamehuds.reset()
+        self.game.minigames.reset()
 
     def resize(self) -> None:
         self.build_done = False
@@ -430,8 +433,11 @@ class GameBoard:
                                      color))
 
     def set_maze_coords(self) -> None:
-        sround = self.utils.sym_round
         gmstate = self.core.gm_state
+        if gmstate.level < 0:
+            self.game.minigames.set_board_geometry(gmstate.level)
+            return
+        sround = self.utils.sym_round
         rg = self.graphics.rg
         vp_x, vp_y, vp_width, vp_height = self.graphics.viewport_rectangle
         self.maze_cell_size = min((vp_width - rg(650)) // gmstate.maze_width,

@@ -371,7 +371,7 @@ class Interface:
             if (hovered_item.item.kind in ("button", "table", "key",
                                            "r_checkbox", "clickable_label",
                                            "btn_prev", "list_next", "bar_next",
-                                           "rs_checkbox")
+                                           "rc_checkbox")
                or (hovered_item.item.kind == "zone"
                    and hovered_item.item.code[:7] == "letter_")
                or (hovered_item.item.kind == "maze" and self.game.step == 7)):

@@ -71,7 +71,7 @@ class Defaults(BaseModel):
     pacman_base_mouth_opening: float = 0.50
     pacman_min_mouth_opening: float = 0.25
     pacman_max_mouth_opening_to_pg: float = 1.00
-    pacman_max_mouth_opening_to_spg: float = 1.25
+    pacman_max_mouth_opening_to_spg: float = 1.10
     pacman_mouth_close_duration: float = 0.15
     pacman_max_speed: float = 4.0
     pacman_revival_invulnerability: float = 3.0
@@ -221,7 +221,7 @@ class CharacterState(BaseModel):
 
 
 class CheatsTable(BaseModel):
-    unlocked: bool = True
+    unlocked: bool = False
     invulnerable: bool = False
     sprinter: bool = False
     outatime: bool = False

@@ -149,8 +149,11 @@ class GameLauncher:
                     mouth_opening=mouth_opening)
         draw.stick_text(vp.ct.x, vp.ct.y - base_height * 2,
                         lex("LDR_Lbl"), base_height, thick=rg(2), cl=cl_alt)
+        # draw.stick_text(vp.ct.x, vp.ct.y + base_height * 2,
+        #                 f"{self.nb_loaded:02}/{self.nb_elements:02}",
+        #                 base_height, thick=rg(2), cl=cl_alt)
         draw.stick_text(vp.ct.x, vp.ct.y + base_height * 2,
-                        f"{self.nb_loaded:02}/{self.nb_elements:02}",
+                        f"{round(progress * 100)}%",
                         base_height, thick=rg(2), cl=cl_alt)
         weight_fonts = min(1.0, self.nb_loaded / len(self.fonts_to_load))
         cl_fonts = rcl.mix_rgba(cl_alt, rcl.BASE_DARKER_GREY,

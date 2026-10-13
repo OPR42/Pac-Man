@@ -165,7 +165,7 @@ class ConfigManager:
         repaired |= self._sanitize_int(data, "sound_volume",
                                        minimum=0, maximum=100)
         repaired |= self._sanitize_int(data, "main_menu_idle_time",
-                                       minimum=0)
+                                       minimum=15, maximum=90)
         repaired |= self._sanitize_int(data, "main_menu_idle_visitor_min_time",
                                        minimum=0)
         value = data.get("main_menu_idle_visitor_min_time")
@@ -178,9 +178,11 @@ class ConfigManager:
         repaired |= self._sanitize_bool(data, "hints")
         repaired |= self._sanitize_float(data, "hints_delay", minimum=0.0)
         repaired |= self._sanitize_bool(data, "disable_transitions")
-        repaired |= self._sanitize_int(data, "lives", minimum=1)
-        repaired |= self._sanitize_int(data, "new_life_threshold", minimum=1)
-        repaired |= self._sanitize_int(data, "level_max_time", minimum=1)
+        repaired |= self._sanitize_int(data, "lives", minimum=1, maximum=6)
+        repaired |= self._sanitize_int(data, "new_life_threshold",
+                                       minimum=1000, maximum=6000)
+        repaired |= self._sanitize_int(data, "level_max_time", minimum=30,
+                                       maximum=180)
         repaired |= self._sanitize_int(data, "seed")
         repaired |= self._sanitize_string(data, "data_dir")
         repaired |= self._sanitize_string(data, "highscore_filename")

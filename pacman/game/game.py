@@ -42,6 +42,7 @@ class Game:
         self.complete_lvl_dst_init: int = 0
         self.complete_lvl_transfer_duration: float = 0.0
         self.revival_starttime: float = -1.0
+        self.special_level_running: bool = False
 
         """ STEPS
         00. Init
@@ -91,6 +92,9 @@ class Game:
         self.graphics.main_menu.launch()
         from pacman.engine.inventory import Inventory
         self.inventory = Inventory(self.core)
+        from pacman.minigames.minigames import MiniGames
+        self.minigames = MiniGames(self.core)
+        self.minigames.launch()
         self.set_step(1)
         self._play_transition(0, 1)
 
@@ -189,7 +193,10 @@ class Game:
                     elif cmd == "play":
                         self._play_transition(1, 6, 1)
                         self.start_new_level(1)
-                        self.set_step(6)
+                        if self.core.gm_state.level < 0:
+                            self.set_step(7)
+                        else:
+                            self.set_step(6)
                         self._play_transition(1, 6, 2)
 
             elif self.step == 3:
@@ -247,7 +254,7 @@ class Game:
                     self._play_transition(5, 1, 2)
 
             elif self.step in (6, 7):
-                if self.step == 7:
+                if self.step == 7 and self.core.gm_state.level > 0:
                     self.inventory.update()
                     self.check_conditions()
                     if self.flip_hourglass:
@@ -259,9 +266,13 @@ class Game:
                                 and cmd[:5] == "maze_"):
                             self.player.pilot(cmd, direct=(src == "leftdrag"))
                         self.player.move()
+                elif self.step == 7 and self.core.gm_state.level < 0:
+                    self.minigames.update()
                 if (src in ("key", "pad", "leftclick", "rightclick")
                    and cmd in ("pause_menu", "cheat_menu")):
-                    if cmd == "pause_menu":
+                    if (cmd == "pause_menu"
+                            and not (self.core.gm_state.level < 0
+                                     and self.minigames.endgame)):
                         self.set_step(self.toggle_pause())
                     elif cmd == "cheat_menu" and self.core.cht_table.unlocked:
                         if self.toggle_pause() == 8:
@@ -276,6 +287,11 @@ class Game:
                         self.graphics.gameboard.debug = True
                 elif src == "key" and cmd == "change_track":
                     self.audio.ingame_play_next()
+                elif (self.core.gm_state.level < 0
+                      and src in ("key", "pad", "leftclick")
+                      and cmd in ("right", "down", "left", "up", "enter",
+                                  "tab", "backtab", "continue", "again")):
+                    self.minigames.command(cmd)
 
             elif self.step == 8:
                 if src in ("key", "pad") and cmd == "konami_unlocked":
@@ -309,6 +325,10 @@ class Game:
                         self.set_step(12)
                     elif cmd == "settings":
                         self.set_step(15)
+                    elif cmd == "back_to_std":
+                        self._play_transition(6, 7, 1)
+                        self.start_new_level(self.minigames.level_after)
+                        self.set_step(6)
 
             elif self.step in (9, 10):
                 if src in ("key", "pad") and cmd in (
@@ -499,6 +519,7 @@ class Game:
             self.pause_starttime = 0.0
             self.gamerun_starttime = 0.0
             self.gamerun_endtime = 0.0
+            self.special_level_running = False
 
             self.core._emit(
                 LogEvent(source="  game  ", type="finish",
@@ -593,11 +614,19 @@ class Game:
 
     def start_new_level(self, level: int) -> None:
         gmstate = self.core.gm_state
-        gmstate.level = level
 
         self.cheats.disable_persistent_cheats()
         self.player._stop_pilot()
 
+        if self.core.config.minigames:
+            # self.graphics.gameboard.launch()  # delete me
+            if gmstate.level == 3 and level == 4:
+                self.special_level_running = True
+                self.interludes.set_interlude(90001)
+                self.minigames.start_level(-1, level)
+                return
+
+        gmstate.level = level
         lvdims = self.core.config.levels[level - 1]
         gmstate.maze_width, gmstate.maze_height = lvdims.width, lvdims.height
         self.inventory.crates = []
@@ -637,9 +666,10 @@ class Game:
         self.inventory.cancel_effects()
         self.pacgums.trigger_superpacgum_effect(disable=True)
         self._initialize_characters()
-        interludes = [-1, 0, 10102, 10203]
+        interludes = [-1, 0, 10102, 10203, 10304]
         if gmstate.level < len(interludes):
             self.interludes.set_interlude(interludes[gmstate.level])
+        self.special_level_running = False
         gmstate.time_init = self.core.config.level_max_time
         gmstate.time_cur = gmstate.time_init
         self.time_ref = time.perf_counter()

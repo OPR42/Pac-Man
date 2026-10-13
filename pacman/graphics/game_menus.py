@@ -88,14 +88,10 @@ class GameMenus:
         self.draw_background()
 
         draw = self.graphics.shapes
-        rg = self.graphics.rg
-        mvp = self.mvp
-        lvp = self.lvp
-        rvp = self.rvp
         shadow = (rcl.BLACK_DARKGLASS if self.game.step == 11
                   else rcl.BLACK_GLASS)
-        draw.rectangle(lvp.rct.x + 1, mvp.y - rg(5), rvp.lct.x - lvp.rct.x - 2,
-                       mvp.hgt + rg(10), cl=shadow, filled=True)
+        x, y, w, h = self.background_geometry()
+        draw.rectangle(x, y, w, h, cl=shadow, filled=True)
         if not self.cheats_unlocked and self.core.cht_table.unlocked:
             for item in self.pause_ui_items:
                 if item.code == "cheat":
@@ -119,12 +115,13 @@ class GameMenus:
     def build_pause_geometry(self) -> None:
         sround = self.utils.sym_round
         mvp = self.mvp
+        gmstate = self.core.gm_state
         margin = min(mvp.wdt // 20, mvp.hgt // 20)
         pvp = self.geometry.rectangle_geometry(mvp.x + margin, mvp.y + margin,
                                                mvp.wdt - margin * 2,
                                                mvp.hgt - margin * 2)
         self.pvp = pvp
-        row_height = sround(pvp.hgt / 5)
+        row_height = sround(pvp.hgt / (5 if gmstate.level > 0 else 6))
         self.ref_row_height = row_height
         item_height, item_width = sround(row_height * 0.7), sround(pvp.wdt / 2)
         self.pause_ui_items = []
@@ -135,6 +132,11 @@ class GameMenus:
         self.pause_ui_items.append(InterfaceItem(
             x, y, item_width, item_height, "PAU_Res", "resume", "button",
             rel_to_center=False))
+        if gmstate.level < 0:
+            y += row_height
+            self.pause_ui_items.append(InterfaceItem(
+                x, y, item_width, item_height, "PAU_Nrm", "back_to_std",
+                "button", rel_to_center=False))
         y += row_height
         self.pause_ui_items.append(InterfaceItem(
             x, y, item_width, item_height, "PAU_Set", "settings", "button",
@@ -241,28 +243,36 @@ class GameMenus:
             x, y, item_width, item_height, "END_Ctn", "continue", "button",
             rel_to_center=False))
 
+    def background_geometry(self) -> tuple[int, int, int, int]:
+        rg = self.graphics.rg
+        mvp = self.gameboard.mvp
+        lvp = self.gameboard.lvp
+        x = lvp.rct.x + 1
+        y = mvp.y - rg(5)
+        if self.core.gm_state.level < 0:
+            right = mvp.rct.x + rg(2)
+        else:
+            right = self.gameboard.rvp.lct.x + rg(5)
+        width = right - x - 1
+        height = mvp.hgt + rg(10)
+        return x, y, width, height
+
     def build_background(self) -> None:
         if self.background_built:
             return
-        rg = self.graphics.rg
-        mvp = self.mvp
-        lvp = self.lvp
-        rvp = self.rvp
         if self.background_texture is not None:
             self.graphics.textures.snapshot_unload(self.background_texture)
-        self.background_texture = self.graphics.textures.snapshot_capture_area(
-            lvp.rct.x + 1, mvp.y - rg(5),
-            rvp.lct.x - lvp.rct.x - 2, mvp.hgt + rg(10))
+        x, y, w, h = self.background_geometry()
+        self.background_texture = (
+            self.graphics.textures.snapshot_capture_area(x, y, w, h))
         self.background_built = True
 
     def draw_background(self) -> None:
         if self.background_texture is None:
             return
-        rg = self.graphics.rg
-        mvp = self.mvp
-        lvp = self.lvp
+        x, y, _, _ = self.background_geometry()
         self.graphics.textures.snapshot_restore_area(
-            self.background_texture, lvp.rct.x + 1, mvp.y - rg(5), "grayscale")
+            self.background_texture, x, y, "grayscale")
 
     def clear_background(self) -> None:
         if not self.background_built:
@@ -361,12 +371,18 @@ class GameMenus:
             progress = (gmstate.score % threshold) / threshold
         elif item.code == "nb_pacgums":
             txt = f"{gmstate.pacgum_cur}/{gmstate.pacgum_init}"
-            progress = ((gmstate.pacgum_init - gmstate.pacgum_cur)
-                        / gmstate.pacgum_init)
+            if gmstate.pacgum_init > 0:
+                progress = ((gmstate.pacgum_init - gmstate.pacgum_cur)
+                            / gmstate.pacgum_init)
+            else:
+                progress = 0.0
         elif item.code == "nb_suppacgums":
             txt = f"{gmstate.suppacgum_cur}/{gmstate.suppacgum_init}"
-            progress = ((gmstate.suppacgum_init - gmstate.suppacgum_cur)
-                        / gmstate.suppacgum_init)
+            if gmstate.suppacgum_init > 0:
+                progress = ((gmstate.suppacgum_init - gmstate.suppacgum_cur)
+                            / gmstate.suppacgum_init)
+            else:
+                progress = 0.0
         draw.stick_text(text_box.ct.x, text_box.ct.y, txt,
                         sround(text_box.hgt * 0.75), thick=rg(2), cl=cl_alt)
         draw.rectangle(bar_box.x + rg(3), bar_box.y + rg(3),

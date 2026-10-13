@@ -317,7 +317,9 @@ class Controls:
                 return "pause_menu"
 
         if (self.game.step == 4 or 8 <= self.game.step < 11
-                or self.game.step >= 12):
+                or self.game.step >= 12
+                or (self.game.step == 7
+                    and self.core.gm_state.level < 0)):
             if (pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_UP)):
                 return "up"
@@ -554,7 +556,8 @@ class Controls:
             if pad_btn(LBR):
                 return ("pad", "inventory_02")
 
-        if self.game.step == 4 or self.game.step >= 8:
+        if (self.game.step == 4 or self.game.step >= 8
+                or (self.game.step == 7 and self.core.gm_state.level < 0)):
             default_release = self.core.defaults.gamepad_stick_release
             default_trigger = self.core.defaults.gamepad_stick_trigger
             x_direction, y_direction = 0.0, 0.0

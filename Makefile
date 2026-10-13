@@ -166,6 +166,9 @@ fclean:			clean
 				banner_count=0; \
 				config_count=0; \
 				highscores_count=0; \
+				build_count=0; \
+				dist_count=0; \
+				spec_count=0; \
 				if [ -f "${BANNERSTAMP}" ]; then \
 					banner_count=1; \
 				fi; \
@@ -177,13 +180,23 @@ fclean:			clean
 					highscores_count=1; \
 					cp -f "${HIGHSCORES}" "${HIGHSCORES}.bak"; \
 				fi; \
+				if [ -d "build" ]; then \
+					build_count=$$((1 + $$(find build -mindepth 1 | wc -l))); \
+				fi; \
+				if [ -d "dist" ]; then \
+					dist_count=$$((1 + $$(find dist -mindepth 1 | wc -l))); \
+				fi; \
+				if [ -f "pac-man.spec" ]; then \
+					spec_count=1; \
+				fi; \
 				logs_count=$$(find ${LOG_FOLDER} -maxdepth 1 -type f 2>/dev/null | wc -l); \
 				find . -type d -name ".venv" -exec rm -rf {} +; \
-				rm -f "${BANNERSTAMP}" "${CONFIG}" "${HIGHSCORES}"; \
+				rm -rf build dist; \
+				rm -f pac-man.spec "${BANNERSTAMP}" "${CONFIG}" "${HIGHSCORES}"; \
 				if [ -d "${LOG_FOLDER}" ]; then \
 				    rm -f ${LOG_FOLDER}/*; \
 				fi; \
-				count=$$((venv_count + config_count + highscores_count + banner_count + logs_count)); \
+				count=$$((venv_count + config_count + highscores_count + banner_count + logs_count + build_count + dist_count + spec_count)); \
 				printf "\n                ${MAGENTA}──╼━━═══${RESET} ✅ ${GREEN}Full cleanup complete${RESET} — items removed: ${CYAN}%d${RESET} ✅ ${MAGENTA}═══━━╾──${RESET}\n\n" "$$count"
 
 recall:			${BANNERSTAMP}
@@ -202,7 +215,9 @@ recall:			${BANNERSTAMP}
 re:				fclean install
 
 build:			install
+				@echo "      ${MAGENTA}──╼━━══${RESET} 📦 Packaging ${MAGENTA}${DISP_NAME}${RESET} project as ${YELLOW}distributable${RESET} using ${BRIGHT_BLUE}pyinstaller${RESET} 📦 ${MAGENTA}═══━━╾──${RESET}\n"; \
 				uv run pyinstaller --onefile --add-data "data:data" --add-data "pacman/assets:assets" pac-man.py
+				@echo "\n               ${MAGENTA}──╼━━══${RESET} ✅ ${MAGENTA}${DISP_NAME}${RESET} project ${YELLOW}distributable${RESET} package ${GREEN}built${RESET} ✅ ${MAGENTA}══━━╾──${RESET}\n\n"; \
 
 keytest:		
 				uv run python3 ${FOLDER}/base/utils.py

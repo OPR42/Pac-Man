@@ -159,6 +159,10 @@
     "INT_096": "J'ai coiffé le chapeau, cru changer de monde, et les pacgums avaient un goût de ferraille. ",
     "INT_097": "La glu maudite m'a englouti et jeté dans un autre monde, où les pacgums étaient salés et des créatures aux membres biscornus m'ont donné la chasse ! ",
     "INT_10102": "\nCe plativers n'avait rien des mers habituelles.\n\nDes coursives plus larges, un tracé de travers,\net cette maudite urgence de filer droit devant,\ncomme si mon temps était compté, mille sabords !\n\nJ'ignore quoi en penser. Après des décennies à\nerrer sur des plativers tous semblables, voilà\nun changement qui rallume l'espoir dans ma cale.\nSerait-ce enfin la fin de mon exil ?\n\nMon vieux camarade Phil disait souvent :\n\"Tout est mieux pourvu que ça change.\"\n ",
+    "INT_10203": "\nLes étrangetés du plativers d'avant, j'les retrouve\nencore dans celui que j'viens de traverser. Par ma barbe,\nj'espère qu'ça veut dire que la sortie approche !\nCe serait une sacrée malédiction d'avoir vogué de plativers\nen plativers pendant plus de $YEARS$ $YPLURAL$ pour tomber\nsur une autre mer tout aussi interminable.\n\nVoyons c'que celui-ci nous réserve, moussaillons.\n\n« Nous » ? Mille sabords, faut qu'j'me rappelle que\nj'suis seul à bord. Seul avec ces maudits revenants.\n\nCauser de soi comme d'un équipage entier, c'est pas\nbon signe pour la caboche, j'le crains...\n",
+    "INT_10304": "\nLes plativers deviennent plus vastes.\n\nJ'ose à peine croire que c'est encore un signe\nque l'port de sortie se rapproche.\n\nLe vieux loup d'mer qui m'a enrôlé pour c'te traversée\nm'avait parlé de plativers qui s'étendent dans une\nquatrième dimension, hors de portée de nos cartes.\nJ'ai rien compris à son boniment. Mon monde navigue\ntrès bien avec deux dimensions pour la mer et une\npour l'temps qui file sans jamais virer de bord.\nPourquoi diable en faudrait-il une d'plus ?\n\nMais si les plativers grandissent, p'têt qu'ils ont\nplus d'place dans c't'autre dimension, qu'ils s'écartent...\nEt qu'le port n'est plus bien loin.\n\nJ'veux y croire, mille sabords.\n",
+    "INT_90000": "\nRetour dans les eaux du réel.\n",
+    "INT_90001": "\nLes pacgums.\n\nVoilà tout c'que j'avale depuis l'début d'la traversée.\nLes revenants, eux, nourrissent pas leur homme.\n\nMalgré ma poisse, j'ai d'la veine : ces pacgums ont\ntout c'qu'il faut pour nourrir un marin, et mon corps\nles engloutit sans laisser l'moindre déchet.\nHeureusement, car y a point de latrines dans ces plativers,\net j'peux jamais jeter l'ancre assez longtemps pour\nvider la cale.\n\nParfois, quand les revenants me laissent en paix,\nj'me demande c'qui arriverait si mon corps devait\ngarder les restes du festin, même un court instant.\n\nQuelle taille ferait ma cale ? Risquerais-je d'éclater\ncomme un tonneau de poudre ?\n",
     "__HUD__": "─━─━─━─━─━─━─━─━─━─━─━─ HUD ━─━─━─━─━─━─━─━─━─━─━─━─",
     "HUD_Sco": "Butin",
     "HUD_Lvl": "Traversée",
@@ -176,6 +180,8 @@
     "__PAU__": "─━─━─━─━─━─━─━─━─━─━─━ PAUSE ─━─━─━─━─━─━─━─━─━─━─━─",
     "PAU_Res": "Lever l'ancre",
     "PAU_Res?": "Reprends la mer et continue la partie.",
+    "PAU_Nrm": "Abandonner le navire !",
+    "PAU_Nrm?": "Abandonne ce niveau maudit et vogue vers le jeu normal !",
     "PAU_Set": "Réglages du rafiot",
     "PAU_Set?": "Ouvre les réglages du navire.",
     "PAU_Bck": "Retour au port",
@@ -270,6 +276,12 @@
     "END_Mn_": " minute, ",
     "END_Mns": " minutes, ",
     "END_Sc_": " seconde",
-    "END_Scs": " secondes"
+    "END_Scs": " secondes",
+    "__END__": "─━─━─━─━─━─━─━─━─━─━ MINIGAMES ─━─━─━─━─━─━─━─━─━─━─",
+    "MGO_Tt1": "\nPac-Snake : fin d’la traversée !",
+    "MGO_Snk": "\n$PACGUMS$ pacgums embarqués\n$SUPPACGUMS$ super pacgums dans la cale\n$POINTS$ points de butin\n$COVERAGE$% du pont occupé\n",
+    "MGO_Agn": "On remet les voiles !",
+    "MGO_Agn?": "Repars à l’abordage de ce mini-jeu, contre une vie.",
+    "MGO_Cnt": "Cap sur la suite !",
+    "MGO_Cnt?": "Poursuis ta traversée vers le niveau suivant."
 }
-

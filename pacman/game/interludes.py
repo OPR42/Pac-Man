@@ -33,9 +33,10 @@ class Interludes:
         self.input_armed: bool = False
         self.transition_action = ""
         self.discoveries_diary_text: str = ""
+        self.special_level_was_running: bool = False
 
     def set_interlude(self, index: int) -> None:
-        if index not in (0, 1, 10102, 10203):
+        if index not in (0, 1, 10102, 10203, 10304, 90001):
             self.index = -1
             self.game.controls.set_mouse_cursor("arrow")
             self.active = False
@@ -45,10 +46,13 @@ class Interludes:
             self.anim_duration = 0.0
             self.discoveries_diary_text = ""
             return
+        self.special_level_was_running = self.game.special_level_running
         if index == 0 and not self.active:
             self.game.audio.sound_play("transition_0")
-        if index in (10102, 10203):
+        if index in (10102, 10203, 10304):
             self.build_discoveries_diary()
+            self.game._start_transition(6, 7, 2)
+        elif index in (90001,):
             self.game._start_transition(6, 7, 2)
         self.index = index
         self.game.controls.set_mouse_cursor("hand")
@@ -127,8 +131,10 @@ class Interludes:
             txt = txt.replace("$MPLURAL$", mplural)
             txt = txt.replace("$DPLURAL$", dplural)
             self.draw_interlude(rcl.PAPER, txt, True)
-        elif self.index == 10102:
+        elif self.index in (10102, 10304):
             txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
+            if self.special_level_was_running:
+                txt = lex("INT_90000") + txt
             self.draw_interlude(rcl.PAPER, txt, True)
 
         elif self.index == 10203:
@@ -137,6 +143,12 @@ class Interludes:
             txt = txt.replace("$YEARS$", f"{years:,}")
             yplural = lex("INT_061") if years <= 1 else lex("INT_062")
             txt = txt.replace("$YPLURAL$", yplural)
+            if self.special_level_was_running:
+                txt = lex("INT_90000") + txt
+            self.draw_interlude(rcl.PAPER, txt, True)
+
+        elif self.index == 90001:
+            txt = lex(f"INT_{self.index}")
             self.draw_interlude(rcl.PAPER, txt, True)
 
         else:
@@ -170,6 +182,12 @@ class Interludes:
         elif action == "02to03":
             self.set_interlude(-1)
             self.game._start_transition(6, 7, 4)
+        elif action == "03to04":
+            self.set_interlude(-1)
+            self.game._start_transition(6, 7, 4)
+        elif action == "pac-snake":
+            self.set_interlude(-1)
+            self.game._start_transition(6, 7, 2)
 
     def update_interlude(self) -> None:
         if not self.input_armed:
@@ -196,6 +214,12 @@ class Interludes:
         elif self.index == 10203:
             self.transition_action = "02to03"
             self.game._start_transition(6, 7, 3)
+        elif self.index == 10304:
+            self.transition_action = "03to04"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 90001:
+            self.transition_action = "pac-snake"
+            self.game._start_transition(6, 7, 3)
 
     def draw_interlude(self, cl_background: RaylibObject, txt: str, anim: bool,
                        reference: str = "", scribe: str = "") -> None:
@@ -203,6 +227,7 @@ class Interludes:
         draw = self.shapes
         rg = self.graphics.rg
         self.game.controls.set_mouse_cursor("hand")
+
         if cl_background == rcl.PAPER_OLD:
             vp, body_size, reference_size, scribe_size = (
                 self._old_paper_geometry(txt, reference, scribe))
@@ -216,6 +241,7 @@ class Interludes:
             self._draw_old_paper_text(vp, txt, reference, scribe, body_size,
                                       reference_size, scribe_size, anim)
             return
+
         base_vp_x, base_vp_y, base_vp_wdt, base_vp_hgt = (
             self.graphics.viewport_rectangle)
         base_vp_ct_x = sround(base_vp_wdt / 2 + base_vp_x)

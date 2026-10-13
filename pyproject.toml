@@ -13,14 +13,14 @@ dependencies = [
     "numpy>=1.24.0",
     "raylib==5.5.0.4",
     "mazegenerator",
-    "pyinstaller>=6.22.3",
 ]
 
 [dependency-groups]
 dev = [
     "flake8>=6.0.0",
     "mypy>=1.0.0",
-    "pytest>=7.0.0"
+    "pyinstaller>=6.22.3",
+    "pytest>=7.0.0",
 ]
 
 [build-system]

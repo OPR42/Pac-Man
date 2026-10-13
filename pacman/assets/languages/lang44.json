@@ -159,6 +159,10 @@
     "INT_096": "I put the hat on my head, felt as though I had entered another reality, and the pacgums tasted metallic. ",
     "INT_097": "The sticky goo covered me and carried me into another reality, where the pacgums tasted salty and creatures with strange appendages chased me. ",
     "INT_10102": "\nThis flativerse was different.\n\nWider corridors, a strange layout, and I felt an odd\nurgency to explore it, as though my time was running\nout.\n\nI don't know what to make of it, but after decades\nof wandering through identical flativerses, this\nchange gives me hope. Could these differences mean\nmy exile is finally coming to an end?\n\nMy friend Phil used to say:\n\"Anything different is good.\"\n ",
+    "INT_10203": "\nThe peculiarities of the previous Flativerse were also\npresent in the one I just crossed. I really hope this means\nthe exit is getting closer. It would be dreadful to have\ntravelled from Flativerse to Flativerse for over $YEARS$ $YPLURAL$\nonly to reach another region just as long.\n\nLet's see what this one has in store for us.\n\n“Us”? I must remember I'm alone here.\nAlone with those ghosts.\n\nReferring to oneself in the plural is hardly a sign of\nsound mental health, I'm afraid...\n",
+    "INT_10304": "\nThe Flativerses are getting bigger.\n\nI hardly dare believe this is another sign that the exit\nis drawing nearer.\n\nThe old fellow who recruited me for this adventure spoke of\nFlativerses stretching into a dimension we normally cannot\naccess: the fourth. I didn't understand a word of it.\nMy world gets along perfectly well with its two spatial\ndimensions and its one-way dimension of time, thank you.\nWho would want another dimension, and what for?\n\nBut if the Flativerses are growing, perhaps they have more\nroom in that other dimension, perhaps they're moving apart...\nAnd that might mean the exit is close.\n\nI want to believe it.\n",
+    "INT_90000": "\nBack to reality.\n",
+    "INT_90001": "\nPacgums.\n\nThat's all I've eaten since my journey began.\nGhosts, for their part, are hardly nutritious.\n\nDespite my misfortune, I'm lucky. Pacgums have perfect\nnutritional properties and are metabolized completely.\nFortunately so, because Flativerses have no restrooms,\nand I could never afford to stop long enough to relieve myself.\n\nSometimes, when I'm not in immediate danger, I wonder\nwhat my life would be like if my body had to store\nfood waste, even temporarily.\n\nHow much could I hold? Would I risk exploding?\n",
     "__HUD__": "─━─━─━─━─━─━─━─━─━─━─━─ HUD ━─━─━─━─━─━─━─━─━─━─━─━─",
     "HUD_Sco": "Score",
     "HUD_Lvl": "Level",
@@ -176,6 +180,8 @@
     "__PAU__": "─━─━─━─━─━─━─━─━─━─━─━ PAUSE ─━─━─━─━─━─━─━─━─━─━─━─",
     "PAU_Res": "Resume",
     "PAU_Res?": "Leaves Pause mode and returns to the game.",
+    "PAU_Nrm": "Abandon",
+    "PAU_Nrm?": "Abandon this special level and return to the normal game.",
     "PAU_Set": "Settings",
     "PAU_Set?": "Opens the game settings.",
     "PAU_Bck": "Main Menu",
@@ -270,5 +276,12 @@
     "END_Mn_": " minute, ",
     "END_Mns": " minutes, ",
     "END_Sc_": " second",
-    "END_Scs": " seconds"
+    "END_Scs": " seconds",
+    "__END__": "─━─━─━─━─━─━─━─━─━─━ MINIGAMES ─━─━─━─━─━─━─━─━─━─━─",
+    "MGO_Tt1": "\nPac-Snake level over",
+    "MGO_Snk": "\n$PACGUMS$ Pacgums collected\n$SUPPACGUMS$ Super Pacgums collected\n$POINTS$ points earned\nBoard coverage: $COVERAGE$%\n",
+    "MGO_Agn": "Play again",
+    "MGO_Agn?": "Play this mini-game again at the cost of one life.",
+    "MGO_Cnt": "Continue",
+    "MGO_Cnt?": "Resume your game at the next level."
 }

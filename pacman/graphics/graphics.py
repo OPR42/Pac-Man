@@ -358,7 +358,10 @@ class Graphics:
             self.main_menu.draw_main_menu()
 
         elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
-            self.gameboard.draw_gameboard()
+            if self.core.gm_state.level >= 0:
+                self.gameboard.draw_gameboard()
+            else:
+                self.game.minigames.draw_minigames_board()
 
         if (self.show_hints
             and (now - self.interface.hint_wait
@@ -565,7 +568,10 @@ class Graphics:
             pr.LOG_INFO)  # type: ignore[attr-defined]
 
     def draw_ui_frame(self) -> None:
-        if (self.banner_skin != self.core.gm_state.skin
+        if (((self.core.gm_state.level >= 0
+              and self.banner_skin != self.core.gm_state.skin)
+             or (self.core.gm_state.level < 0
+                 and self.banner_skin != self.core.gm_state.level))
                 and self.core.gm_state.frame_and_banner):
             self.create_ui_frame_texture("ui_frame_texture")
         pr.clear_background(rcl.BASE_BLACK)
@@ -603,7 +609,7 @@ class Graphics:
             last_ch = ""
             gy = y + (dy * char_height)
             gx = x
-            for ch in line:
+            for dx, ch in enumerate(line):
                 if ch == " ":
                     gx += char_width
                     last_ch = ch
@@ -628,9 +634,14 @@ class Graphics:
                 elif ch == "▁":
                     draw.line(gx, gy + char_height, gx + char_width,
                               gy + char_height, thick=thick, cl=color)
-                    if last_ch == "╱":
-                        draw.line(gx - char_width, gy + char_height, gx,
-                                  gy + char_height, thick=thick, cl=color)
+                    if (last_ch == "╱"):
+                        add_line = True
+                        if dy + 1 < len(lines) and dx > 2:
+                            if lines[dy + 1][dx - 2] == "╲":
+                                add_line = False
+                        if add_line:
+                            draw.line(gx - char_width, gy + char_height, gx,
+                                      gy + char_height, thick=thick, cl=color)
                 elif ch == "─":
                     draw.line(gx, gy + char_height // 2, gx + char_width,
                               gy + char_height // 2, thick=thick, cl=color)
@@ -680,19 +691,25 @@ class Graphics:
         width, height = pr.get_screen_width(), pr.get_screen_height()
         margin, thick = self.base_margin, rg(self.base_frame_thick)
 
-        if self.core.gm_state.skin == 1:
-            center_banner = Banners.CENTER_BANNER_VARIANT_A
-            edition_banner = Banners.EDITION_BANNER_VARIANT_A
-        elif self.core.gm_state.skin == 2:
-            center_banner = Banners.CENTER_BANNER_VARIANT_B
-            edition_banner = Banners.EDITION_BANNER_VARIANT_B
-        elif self.core.gm_state.skin == 3:
-            center_banner = Banners.CENTER_BANNER_VARIANT_C
-            edition_banner = Banners.EDITION_BANNER_VARIANT_C
+        if self.core.gm_state.level >= 0:
+            if self.core.gm_state.skin == 1:
+                center_banner = Banners.CENTER_BANNER_VARIANT_A
+                edition_banner = Banners.EDITION_BANNER_VARIANT_A
+            elif self.core.gm_state.skin == 2:
+                center_banner = Banners.CENTER_BANNER_VARIANT_B
+                edition_banner = Banners.EDITION_BANNER_VARIANT_B
+            elif self.core.gm_state.skin == 3:
+                center_banner = Banners.CENTER_BANNER_VARIANT_C
+                edition_banner = Banners.EDITION_BANNER_VARIANT_C
+            else:
+                center_banner = Banners.CENTER_BANNER
+                edition_banner = Banners.EDITION_BANNER
+            self.banner_skin = self.core.gm_state.skin
         else:
-            center_banner = Banners.CENTER_BANNER
-            edition_banner = Banners.EDITION_BANNER
-        self.banner_skin = self.core.gm_state.skin
+            if self.core.gm_state.level == -1:
+                center_banner = Banners.CENTER_BANNER_PACSNAKE
+                edition_banner = Banners.EDITION_BANNER_PACSNAKE
+            self.banner_skin = self.core.gm_state.level
 
         self.textures.begin(texture_name, width, height)
 

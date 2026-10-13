@@ -162,6 +162,8 @@ class Inventory:
     def command(self, cmd: str = "") -> None:
         if not cmd or (cmd != "hourglass" and cmd[:10] != "inventory_"):
             return
+        if self.core.gm_state.level < 0:
+            return
         if cmd == "hourglass" or cmd == "inventory_00":
             if (self.inv_items[0].quantity < 1
                     or self.inv_items[0].effect_progress != -1.0):

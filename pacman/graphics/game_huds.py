@@ -111,31 +111,40 @@ class GameHUDs:
         self.game.inventory.resize()
 
     def draw_huds(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         self.display_huds_textures()
         self.update_counters()
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
 
         if self.game.step in (6, 7):
-            self.graphics.interface.set_items(self.ui_items)
-            self.graphics.interface.update_mouse()
+            if not (self.core.gm_state.level < 0
+                    and self.game.minigames.endgame):
+                self.graphics.interface.set_items(self.ui_items)
+                self.graphics.interface.update_mouse()
             for i in range(len(self.ui_items)):
                 self.display_hud_buttons(i, rgb_factor)
 
         dt = min(self.game.pr.get_frame_time(), 0.05)
         self.livebox_update(dt)
         self.livebox_draw()
-        self.game.inventory.update_inventory_display()
-        if self.hourglass_flip_running:
-            self.hourglass_flip()
-        else:
-            self.hourglass_draw()
+        if not left_only:
+            self.game.inventory.update_inventory_display()
+            if self.hourglass_flip_running:
+                self.hourglass_flip()
+            else:
+                self.hourglass_draw()
         if self.game.step > 7:
             self.gamemenus.draw_menus()
         else:
             self.gamemenus.clear_background()
 
     def display_huds_textures(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         draw = self.graphics.shapes
         rg = self.graphics.rg
         tex = self.graphics.textures
@@ -148,21 +157,25 @@ class GameHUDs:
         draw.rectangle(lvp.x, lvp.y, lvp.wdt, lvp.hgt,
                        cl=cl_border, thick=rg(4), roundness=0.25)
 
-        with self.graphics.clip(rvp.x, rvp.y, rvp.wdt, rvp.hgt):
-            tex.draw("right_hud", rvp.x, rvp.y, rvp.wdt, rvp.hgt)
-            draw.rounded_rectangle_mask(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
-                                        0.25, rcl.BASE_BLACK)
-        draw.rectangle(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
-                       cl=cl_border, thick=rg(4), roundness=0.25)
+        if not left_only:
+            with self.graphics.clip(rvp.x, rvp.y, rvp.wdt, rvp.hgt):
+                tex.draw("right_hud", rvp.x, rvp.y, rvp.wdt, rvp.hgt)
+                draw.rounded_rectangle_mask(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
+                                            0.25, rcl.BASE_BLACK)
+            draw.rectangle(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
+                           cl=cl_border, thick=rg(4), roundness=0.25)
 
     def update_counters(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         draw = self.graphics.shapes
         rg = self.graphics.rg
         lex = self.core.lexicon
         gmstate = self.core.gm_state
 
         def write_in_box(box: RectangleGeometry, value: int,
-                         timer: bool = False,
+                         timer: bool = False, level: bool = False,
                          alert: int | None = None) -> bool:
             sround = self.utils.sym_round
             if timer:
@@ -171,6 +184,9 @@ class GameHUDs:
                 else:
                     txt = (f"{value // 6000:02}:{(value % 6000) // 100:02}:"
                            + f"{value % 100:02}")
+            elif level and gmstate.level < 0:
+                if gmstate.level == -1:
+                    txt = "Pac-Snake"
             else:
                 txt = f"{value:,}".replace(",", lex("kilo_sep"))
 
@@ -200,10 +216,12 @@ class GameHUDs:
 
         red_alert = False
         red_alert |= write_in_box(self.box_score, gmstate.score)
-        red_alert |= write_in_box(self.box_level, gmstate.level)
+        red_alert |= write_in_box(self.box_level, gmstate.level, level=True)
         red_alert |= write_in_box(self.box_lives, gmstate.lives_cur, alert=0)
-        red_alert |= write_in_box(self.box_time, int(gmstate.time_cur * 100),
-                                  timer=True, alert=1000)
+        if not left_only:
+            red_alert |= write_in_box(self.box_time,
+                                      int(gmstate.time_cur * 100),
+                                      timer=True, alert=1000)
         self.red_alert = red_alert
 
     def display_hud_buttons(self, index: int, rgb_factor: float) -> None:
@@ -214,7 +232,10 @@ class GameHUDs:
         lex = self.core.lexicon
 
         if self.game.step in (6, 7):
-            ui_items = self.ui_items
+            if self.core.gm_state.level < 0 and self.game.minigames.endgame:
+                ui_items = self.game.minigames.offer_ui_items
+            else:
+                ui_items = self.ui_items
         elif self.game.step == 8:
             ui_items = self.gamemenus.pause_ui_items
         elif self.game.step in (9, 10):
@@ -286,16 +307,18 @@ class GameHUDs:
                         0, 1.0, face_color=pacman_color, contour=False)
 
         elif item.code == "pause_menu":
+            cl_body = rcl.GREY if item.disabled else rcl.PACMAN_YELLOW
+            cl_text = rcl.GREY if item.disabled else rcl.SAND
             draw.circle(button.c2ct.x, button.c2ct.y,
                         button.rad + rad_bonus + thick // 2,
-                        cl=rcl.PACMAN_YELLOW, filled=True)
+                        cl=cl_body, filled=True)
             draw.circle(button.c3ct.x, button.c3ct.y,
                         button.rad + rad_bonus + thick // 2,
-                        cl=rcl.PACMAN_YELLOW, filled=True)
+                        cl=cl_body, filled=True)
             draw.rectangle(button.c2ct.x, button.c2tr.y,
                            button.c3ct.x - button.c2ct.x + 1,
                            button.c2br.y - button.c2tr.y + 1,
-                           cl=rcl.PACMAN_YELLOW, filled=True)
+                           cl=cl_body, filled=True)
             draw.circle(button.c2ct.x, button.c2ct.y,
                         button.rad + rad_bonus - thick + thick // 2,
                         cl=rcl.BASE_BLACK, filled=True)
@@ -309,21 +332,23 @@ class GameHUDs:
                 cl=rcl.BASE_BLACK, filled=True)
             draw.text(label_x, label_y_margin + button.c1tl.y, lex(item.label),
                       self.graphics.font_regular, label_size,
-                      cl=rcl.SAND)
+                      cl=cl_text)
         else:
+            cl_body = rcl.GREY if item.disabled else rcl.PACMAN_YELLOW
+            cl_text = rcl.GREY if item.disabled else rcl.SAND
             draw.line(button.c2tr.x, button.c2tr.y + thick // 2,
                       button.c3tl.x + 1, button.c3tl.y + thick // 2,
-                      thick=thick, cl=rcl.PACMAN_YELLOW, edge_sharp=True)
+                      thick=thick, cl=cl_body, edge_sharp=True)
             draw.line(button.c2br.x, button.c2br.y - thick // 2,
                       button.c3bl.x + 1, button.c3bl.y - thick // 2,
-                      thick=thick, cl=rcl.PACMAN_YELLOW, edge_sharp=True)
+                      thick=thick, cl=cl_body, edge_sharp=True)
             draw.text(label_x, label_y_margin + button.c1tl.y, lex(item.label),
                       self.graphics.font_regular, label_size,
-                      cl=rcl.SAND)
+                      cl=cl_text)
             draw.arc(button.c2ct.x, button.c2ct.y, button.rad - thick // 2,
-                     45, 315, thick=thick, cl=rcl.PACMAN_YELLOW)
+                     45, 315, thick=thick, cl=cl_body)
             draw.arc(button.c3ct.x, button.c3ct.y, button.rad - thick // 2,
-                     -135, 135, thick=thick, cl=rcl.PACMAN_YELLOW)
+                     -135, 135, thick=thick, cl=cl_body)
 
     def display_r_checkbox(self, index: int, rgb_factor: float,
                            check: bool = False,
@@ -353,9 +378,11 @@ class GameHUDs:
         else:
             checkbox = geo.rectangle_geometry(item.x, item.y,
                                               item.width, item.height)
-        pacman_color = rcl.PACMAN_YELLOW
+        pacman_color = rcl.GREY if item.disabled else rcl.PACMAN_YELLOW
         circle_color = rcl.scale_rgb(rcl.BASE_BR_PURPLE, rgb_factor)
+        circle_color = rcl.GREY if item.disabled else circle_color
         line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_color = rcl.GREY if item.disabled else line_color
         line_font = (self.graphics.font_bold if line_active
                      else self.graphics.font_regular)
         thick = rg(2)
@@ -378,7 +405,7 @@ class GameHUDs:
 
         if check:
             draw.pacman(checkbox.c3ct.x, checkbox.c3ct.y, checkbox.rad, 180,
-                        mouth_opening=0.5)
+                        mouth_opening=0.5, face_color=pacman_color)
             if line_active:
                 draw.circle_gradient(checkbox.c3ct.x, checkbox.c3ct.y,
                                      checkbox.rad,
@@ -592,6 +619,9 @@ class GameHUDs:
                   bar_font, txt_size, bar_color)
 
     def create_huds_textures(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         self.ui_items[:] = [item for item in self.ui_items
                             if item.code in ("pause_menu", "hourglass",
                                              "maze")]
@@ -784,54 +814,60 @@ class GameHUDs:
             sround(title_hgt * 2.5))
         self.graphics.textures.end()
 
-        wdt, hgt = rvp.wdt, rvp.hgt
-        if self.graphics.textures.exists("right_hud"):
-            self.graphics.textures.unload("right_hud")
-        self.graphics.textures.begin("right_hud", wdt, hgt)
-        with self.graphics.clip(0, 0, wdt, hgt):
-            self.graphics.textures.draw_image_texture(
-                "gunmetal", 0, 0, wdt, hgt, alpha=255, angle=0.0, cover=True)
-            draw.rounded_rectangle_mask(0, 0, wdt, hgt, 0.25, rcl.BASE_BLACK)
-        title_r1 = lex("HUD_Tim")
-        x, _ = geo.center_text_in_rect(title_r1, title_hgt, wdt, hgt)
-        y = sround(title_hgt / 2)
-        draw.text(x, y, title_r1, font, title_hgt, cl=cl_label)
-        self.box_time = add_box(sround(wdt * 0.1), sround(y + title_hgt * 1.3),
-                                sround(wdt * 0.8), title_hgt * 2, left=False)
-        self.ui_items.append(InterfaceItem(
-            self.box_time.x, self.box_time.y, self.box_time.wdt,
-            self.box_time.hgt, "HUD_Tim", "time", "zone", rel_to_center=False))
-        self.cont_time = add_box(
-            sround(wdt * 0.1), sround(y + title_hgt * 3.3), sround(wdt * 0.8),
-            sround(wdt * 0.8), left=False)
-        title_r2 = lex("HUD_Inv")
-        x, _ = geo.center_text_in_rect(title_r2, title_hgt, wdt, hgt)
-        y = y + title_hgt * 4 + sround(wdt * 0.8)
-        draw.text(x, y, title_r2, font, title_hgt, cl=cl_label)
-        remaining_y = hgt - title_hgt - y - title_hgt * 1.3
-        self.cont_inventory = add_box(sround(wdt * 0.1),
-                                      sround(y + title_hgt * 1.3),
-                                      sround(wdt * 0.8), sround(remaining_y),
-                                      left=False)
-        self.graphics.textures.end()
-
-        nb_w, nb_h = 3, 2
-        margin = self.cont_inventory.wdt // 30
-        cont = self.graphics.geometry.rectangle_geometry(
-            self.cont_inventory.x + margin, self.cont_inventory.y + margin,
-            self.cont_inventory.wdt - margin * 2,
-            self.cont_inventory.hgt - margin * 2)
-        cell_wdt, cell_hgt = sround(cont.wdt / nb_w), sround(cont.hgt / nb_h)
-        index = 0
-        for row in range(nb_h):
-            y_offset = sround(cont.y + row * cell_hgt)
-            for col in range(nb_w):
-                x_offset = sround(cont.x + col * cell_wdt)
-                self.ui_items.append(InterfaceItem(
-                    x_offset, y_offset, cell_wdt, cell_hgt, "HUD_Inv",
-                    f"inventory_{index:02}", "zone", rel_to_center=False))
-                index += 1
-        self.game.inventory.update_boxes_geometry()
+        if not left_only:
+            wdt, hgt = rvp.wdt, rvp.hgt
+            if self.graphics.textures.exists("right_hud"):
+                self.graphics.textures.unload("right_hud")
+            self.graphics.textures.begin("right_hud", wdt, hgt)
+            with self.graphics.clip(0, 0, wdt, hgt):
+                self.graphics.textures.draw_image_texture(
+                    "gunmetal", 0, 0, wdt, hgt,
+                    alpha=255, angle=0.0, cover=True)
+                draw.rounded_rectangle_mask(0, 0, wdt, hgt, 0.25,
+                                            rcl.BASE_BLACK)
+            title_r1 = lex("HUD_Tim")
+            x, _ = geo.center_text_in_rect(title_r1, title_hgt, wdt, hgt)
+            y = sround(title_hgt / 2)
+            draw.text(x, y, title_r1, font, title_hgt, cl=cl_label)
+            self.box_time = add_box(sround(wdt * 0.1),
+                                    sround(y + title_hgt * 1.3),
+                                    sround(wdt * 0.8), title_hgt * 2,
+                                    left=False)
+            self.ui_items.append(InterfaceItem(
+                self.box_time.x, self.box_time.y, self.box_time.wdt,
+                self.box_time.hgt, "HUD_Tim", "time", "zone",
+                rel_to_center=False))
+            self.cont_time = add_box(
+                sround(wdt * 0.1), sround(y + title_hgt * 3.3),
+                sround(wdt * 0.8), sround(wdt * 0.8), left=False)
+            title_r2 = lex("HUD_Inv")
+            x, _ = geo.center_text_in_rect(title_r2, title_hgt, wdt, hgt)
+            y = y + title_hgt * 4 + sround(wdt * 0.8)
+            draw.text(x, y, title_r2, font, title_hgt, cl=cl_label)
+            remaining_y = hgt - title_hgt - y - title_hgt * 1.3
+            self.cont_inventory = add_box(
+                sround(wdt * 0.1), sround(y + title_hgt * 1.3),
+                sround(wdt * 0.8), sround(remaining_y), left=False)
+            self.graphics.textures.end()
+            nb_w, nb_h = 3, 2
+            margin = self.cont_inventory.wdt // 30
+            cont = self.graphics.geometry.rectangle_geometry(
+                self.cont_inventory.x + margin,
+                self.cont_inventory.y + margin,
+                self.cont_inventory.wdt - margin * 2,
+                self.cont_inventory.hgt - margin * 2)
+            cell_wdt = sround(cont.wdt / nb_w)
+            cell_hgt = sround(cont.hgt / nb_h)
+            index = 0
+            for row in range(nb_h):
+                y_offset = sround(cont.y + row * cell_hgt)
+                for col in range(nb_w):
+                    x_offset = sround(cont.x + col * cell_wdt)
+                    self.ui_items.append(InterfaceItem(
+                        x_offset, y_offset, cell_wdt, cell_hgt, "HUD_Inv",
+                        f"inventory_{index:02}", "zone", rel_to_center=False))
+                    index += 1
+            self.game.inventory.update_boxes_geometry()
 
         for i in self.ui_items:
             if i.code == "pause_menu":
@@ -840,9 +876,11 @@ class GameHUDs:
             elif i.code == "hourglass":
                 ref = self.cont_time
                 i.x, i.y, i.width, i.height = ref.x, ref.y, ref.wdt, ref.hgt
+                i.disabled = left_only
             elif i.code == "maze":
                 ref = self.gameboard.mvp
                 i.x, i.y, i.width, i.height = ref.x, ref.y, ref.wdt, ref.hgt
+                i.disabled = left_only
 
     def livebox_set_geometry(self, capacity: int | None = None) -> None:
         sround = self.utils.sym_round
@@ -1198,6 +1236,8 @@ class GameHUDs:
             return
 
     def hourglass_create_texture(self) -> None:
+        if self.core.gm_state.level < 0:
+            return
         sround = self.utils.sym_round
         geo = self.geometry
         draw = self.graphics.shapes
