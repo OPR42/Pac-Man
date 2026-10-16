@@ -12,7 +12,7 @@
     "sound_volume": 100,
     "language": "français",
     "hints": true,
-    "hints_delay": 0.25,
+    "hints_delay": 0.5,
     "main_menu_idle_time": 15,
     "main_menu_idle_visitor_min_time": 30,
     "main_menu_idle_visitor_max_time": 60,

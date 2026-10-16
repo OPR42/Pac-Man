@@ -422,6 +422,9 @@ class MainMenuSettings:
         words = dflt.window_position.lower().split(" ")
         self.core.config.window_position = f"{words[0]}{words[1]}"
         self.core.config.window_resizable = dflt.window_resizable
+        self.graphics.restore_resizable = True
+        self.graphics.reposition_and_resize()
+        self.graphics.update_resizable_state()
         self.core.gm_state.frame_and_banner = dflt.frame_and_banner
         self.core.config.frame_and_banner = dflt.frame_and_banner
         self.game.audio.master_volume = float(dflt.master_volume / 100)

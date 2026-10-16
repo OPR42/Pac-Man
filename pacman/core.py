@@ -1,4 +1,5 @@
 import json
+import sys
 import time
 from pathlib import Path
 
@@ -11,6 +12,8 @@ from pacman.engine.physics import Physics
 class Core:
     def __init__(self, config_filename: str = "") -> None:
         self.defaults = Defaults()
+        if getattr(sys, "frozen", False):
+            self.defaults.allow_terminal_display = False
         self.base_wait = (self.defaults.terminal_base_wait
                           if self.defaults.allow_terminal_display else 0)
         self.title = self.defaults.game_title
@@ -169,9 +172,19 @@ class Core:
                              f"{fallback_language}"))
         self.lang = {}
 
-    def lexicon(self, placeholder: str) -> str:
+    def lexicon(self, placeholder: str, raw: bool = False) -> str:
         """Return translated text associated with a placeholder."""
-        return self.lang.get(placeholder, f"<{placeholder}>")
+        text = self.lang.get(placeholder, f"<{placeholder}>")
+        if not text:
+            return ""
+        if not raw:
+            text = text.replace("”", "\"")
+            text = text.replace("« ", "\"")
+            text = text.replace(" »", "\"")
+            text = text.replace("`", "'")
+            text = text.replace("’", "'")
+            text = text.replace("‘", "'")
+        return text
 
     def available_languages(self) -> list[str]:
         """Return all valid languages available in language files."""

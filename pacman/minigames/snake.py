@@ -86,6 +86,7 @@ class Snake:
         for _ in range(self.superpacgum_quantity):
             self.spawn_pacgum(super_pacgum=True)
 
+        self.game.set_step(7)
         self.gameboard.status = "play"
 
     def set_board_geometry(self) -> None:

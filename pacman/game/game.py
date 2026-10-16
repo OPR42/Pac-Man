@@ -321,7 +321,7 @@ class Game:
                         self.set_step(9)
                     elif cmd == "quit":
                         self.set_step(10)
-                    elif cmd == "cheat":
+                    elif cmd == "cheat" and self.core.cht_table.unlocked:
                         self.set_step(12)
                     elif cmd == "settings":
                         self.set_step(15)
@@ -752,6 +752,7 @@ class Game:
         self._add_points_to_score((self.core.gm_state.lives_cur
                                    * (self.core.pts_table.new_life // 5)),
                                   new_life=False)
+        self.core.gm_state.skin = 0
         self.set_step(14)
 
     def pacman_dies(self) -> None:

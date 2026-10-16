@@ -22,8 +22,18 @@ def main() -> int:
         core.launch()
     except ModuleNotFoundError:
         print("\n\033[1;31m[ERROR]: no maze generator found.\033[0;0m"
-              "\nPlease make sure :\n-> You have provided one\n"
-              "-> You have activated the virtual environment")
+              "\nYour installation seems incomplete.\nPlease follow these "
+              "steps:\n\n"
+              "\033[1;93m ⌨ \33[0;97m\33[0;48;2;16;32;96mmake install"
+              "\033[0m\033[1;93m ↩\033[0m\n"
+              "\033[1;93m ⌨ \33[0;97m\33[0;48;2;16;32;96msource .venv/bin/"
+              "activate\033[0m\033[1;93m ↩\033[0m\n"
+              "\033[1;93m ⌨ \33[0;97m\33[0;48;2;16;32;96mmake run"
+              "\033[0m\033[1;93m ↩\033[0m\n\n"
+              "\033[3mOR\033[0m, easier :\n\n"
+              "\033[1;93m ⌨ \33[0;97m\33[0;48;2;16;32;96m make run_uv"
+              "\033[0m\033[1;93m ↩\033[0m\n\n")
+
     finally:
         core.terminal_manager.restore()
 
