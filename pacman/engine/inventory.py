@@ -805,7 +805,8 @@ class Inventory:
         self.graphics.textures.end()
 
     def _create_bomb_texture(self, size: int = 0,
-                             world: bool = False) -> None:
+                             world: bool = False,
+                             breaker: bool = False) -> None:
         """Create the bomb texture."""
         if size <= 0:
             return
@@ -817,6 +818,7 @@ class Inventory:
         wdt, hgt = sround(size * 1.5), sround(size * 1.5)
 
         texture_name = "world_bomb" if world else "item_bomb"
+        texture_name = "breaker_bomb" if breaker else texture_name
 
         if self.graphics.textures.exists(texture_name):
             self.graphics.textures.unload(texture_name)

@@ -625,6 +625,11 @@ class Game:
                 self.interludes.set_interlude(90001)
                 self.minigames.start_level(-1, level)
                 return
+            elif gmstate.level == 5 and level == 6:
+                self.special_level_running = True
+                self.interludes.set_interlude(90002)
+                self.minigames.start_level(-2, level)
+                return
 
         gmstate.level = level
         lvdims = self.core.config.levels[level - 1]
@@ -666,7 +671,7 @@ class Game:
         self.inventory.cancel_effects()
         self.pacgums.trigger_superpacgum_effect(disable=True)
         self._initialize_characters()
-        interludes = [-1, 0, 10102, 10203, 10304]
+        interludes = [-1, 0, 10102, 10203, 10304, 10405, 10506]
         if gmstate.level < len(interludes):
             self.interludes.set_interlude(interludes[gmstate.level])
         self.special_level_running = False
@@ -776,6 +781,7 @@ class Game:
             return -1
         if self.pause_menu and not force_pause:
             pause_duration = time.perf_counter() - self.pause_starttime
+            self.minigames.resume_from_pause(pause_duration)
             self.time_ref += pause_duration
             self.inventory.resume_effects(pause_duration)
             if self.inventory.crates_next_spawntime != -1.0:

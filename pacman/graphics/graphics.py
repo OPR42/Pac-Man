@@ -648,6 +648,16 @@ class Graphics:
                 elif ch == "╱":
                     draw.line(gx, gy + char_height, gx + char_width, gy,
                               thick=thick, cl=color)
+                    add_line = False
+                    if 1 < dy + 1 < len(lines) and dx + 1 < len(line):
+                        if (lines[dy + 1][dx] == "╱" and last_ch == " "
+                            and (lines[dy][dx + 1] != "╱"
+                            or ((lines[dy][dx + 1] == "╱"
+                                 and lines[dy - 1][dx + 1] != "▁")))):
+                            add_line = True
+                    if add_line:
+                        draw.line(gx, gy + char_height, gx + char_width,
+                                  gy + char_height, thick=thick, cl=color)
                 elif ch == "╲":
                     draw.line(gx, gy, gx + char_width, gy + char_height,
                               thick=thick, cl=color)
@@ -657,8 +667,13 @@ class Graphics:
                 elif ch == "│":
                     draw.line(gx, gy, gx, gy + char_height,
                               thick=thick, cl=color)
-                    draw.line(gx, gy + char_height, gx + char_width,
-                              gy + char_height, thick=thick, cl=color)
+                    add_line = True
+                    if dy + 1 < len(lines):
+                        if lines[dy + 1][dx] == "│":
+                            add_line = False
+                    if add_line:
+                        draw.line(gx, gy + char_height, gx + char_width,
+                                  gy + char_height, thick=thick, cl=color)
                 elif 32 < ord(ch) <= 126:
                     draw.text(gx, gy, ch, font, font_size, cl=color)
                 gx += char_width
@@ -709,6 +724,9 @@ class Graphics:
             if self.core.gm_state.level == -1:
                 center_banner = Banners.CENTER_BANNER_PACSNAKE
                 edition_banner = Banners.EDITION_BANNER_PACSNAKE
+            elif self.core.gm_state.level == -2:
+                center_banner = Banners.CENTER_BANNER_PACBREAKER
+                edition_banner = Banners.EDITION_BANNER_PACBREAKER
             self.banner_skin = self.core.gm_state.level
 
         self.textures.begin(texture_name, width, height)

@@ -301,6 +301,10 @@ class Textures:
         y_target = max(0, y + y_offset)
         crop_width = min(width, screen.width - x_target)
         crop_height = min(height, screen.height - y_target)
+        if x_target + width > screen.width:
+            width = screen.width - x_target
+        if y_target + height > screen.height:
+            height = screen.height - y_target
         if (x_target < 0 or y_target < 0 or x_target + width > screen.width
                 or y_target + height > screen.height):
             pr.unload_image(screen)

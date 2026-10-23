@@ -48,6 +48,7 @@ class GameHUDs:
         self.livebox_pending_lives: int = 0
         self.livebox_capacity = self.core.defaults.hud_livebox_capacity
         self.livebox_pending_removals: int = 0
+        self.livebox_texture_valid: bool = False
         self.hourglass_bulb_top: RectangleGeometry
         self.hourglass_bulb_bot: RectangleGeometry
         self.hourglass_glass: RectangleGeometry
@@ -74,6 +75,8 @@ class GameHUDs:
         self.livebox_set_geometry()
         self.livebox_create_texture()
         self.hourglass_create_texture()
+        self.livebox_texture_valid = False
+        self.livebox_reset_stabilization(wake_all=True)
         from .game_menus import GameMenus
         self.gamemenus = GameMenus(self.core)
         self.gamemenus.launch()
@@ -90,6 +93,7 @@ class GameHUDs:
         self.livebox_pending_lives = 0
         self.livebox_capacity = self.core.defaults.hud_livebox_capacity
         self.livebox_pending_removals = 0
+        self.livebox_texture_valid = False
         self.hourglass_glass_thick = 0
         self.hourglass_flip_running = False
         self.hourglass_flip_starttime = time.perf_counter()
@@ -107,6 +111,8 @@ class GameHUDs:
         self.livebox_set_geometry()
         self.livebox_create_texture()
         self.hourglass_create_texture()
+        self.livebox_texture_valid = False
+        self.livebox_reset_stabilization(wake_all=True)
         self.gamemenus.resize()
         self.game.inventory.resize()
 
@@ -187,6 +193,8 @@ class GameHUDs:
             elif level and gmstate.level < 0:
                 if gmstate.level == -1:
                     txt = "Pac-Snake"
+                elif gmstate.level == -2:
+                    txt = "Pac-Breaker"
             else:
                 txt = f"{value:,}".replace(",", lex("kilo_sep"))
 
@@ -916,6 +924,7 @@ class GameHUDs:
         if self.livebox_size == old_size:
             return
 
+        self.livebox_texture_valid = False
         self.livebox_create_texture()
         self.livebox_repack()
 
@@ -975,7 +984,7 @@ class GameHUDs:
                 life.vel_y = 0.0
                 life.stable = False
 
-        self.livebox_reset_stabilization()
+        self.livebox_reset_stabilization(wake_all=True)
 
     def livebox_drop_position(self) -> tuple[float, float]:
         """Return the LiveBox materialization position."""
@@ -1018,27 +1027,30 @@ class GameHUDs:
                                 - ((old_box.ct.y - life.pos_y) * ratio_y))
         self.livebox_check_capacity(len(self.livebox_lives)
                                     + self.livebox_pending_lives)
-        self.livebox_reset_stabilization()
+        self.livebox_reset_stabilization(wake_all=True)
 
     def livebox_update_physics(self, dt: float) -> None:
-        """Simulate all materialized reserve Pac-Men together."""
+        """Simulate moving reserve Pac-Men against all nearby bodies."""
         if not self.livebox_physics_active:
             return
 
         now = time.perf_counter()
         timeout = self.core.defaults.hud_livebox_stabilization_timeout
+
         if now - self.livebox_last_change_time >= timeout:
             self.livebox_physics_active = False
             for life in self.livebox_lives:
                 life.vel_x = 0.0
                 life.vel_y = 0.0
                 life.stable = True
+            self.livebox_texture_valid = False
             return
 
         lives = [life for life in self.livebox_lives
                  if not life.spawning and not life.despawning]
+        mobiles = [life for life in lives if not life.stable]
 
-        if not lives:
+        if not mobiles:
             return
 
         margin = self.cont_lives.wdt // 30
@@ -1052,29 +1064,32 @@ class GameHUDs:
         velocity_deadzone = max(1.0, radius * 0.25)
 
         def keep_inside(life: HUDLifeState) -> None:
-            """Keep one body inside the LiveBox."""
             if life.pos_x < left:
                 life.pos_x = left
                 if life.vel_x < 0.0:
                     life.vel_x = 0.0
-
             elif life.pos_x > right:
                 life.pos_x = right
                 if life.vel_x > 0.0:
                     life.vel_x = 0.0
-
             if life.pos_y < ceiling:
                 life.pos_y = ceiling
                 if life.vel_y < 0.0:
                     life.vel_y = 0.0
-
             elif life.pos_y > floor:
                 life.pos_y = floor
                 if life.vel_y > 0.0:
                     life.vel_y = 0.0
 
-        def resolve_pair(first: HUDLifeState, second: HUDLifeState) -> None:
-            """Separate two overlapping LiveBox bodies."""
+        def resolve_pair(first: HUDLifeState,
+                         second: HUDLifeState) -> None:
+            if first.stable and second.stable:
+                return
+            dx = first.pos_x - second.pos_x
+            dy = first.pos_y - second.pos_y
+            diameter = radius * 2.0
+            if abs(dx) >= diameter or abs(dy) >= diameter:
+                return
             collision = self.physics.collision(
                 CircleHitbox(first.pos_x, first.pos_y, radius),
                 CircleHitbox(second.pos_x, second.pos_y, radius))
@@ -1082,37 +1097,74 @@ class GameHUDs:
                 return
             if collision.penetration <= collision_deadzone:
                 return
-            correction = (collision.penetration - collision_deadzone) * 0.50
+            correction = collision.penetration - collision_deadzone
             nx = collision.normal_x
             ny = collision.normal_y
-            first.pos_x += nx * correction
-            first.pos_y += ny * correction
-            second.pos_x -= nx * correction
-            second.pos_y -= ny * correction
+            if second.stable:
+                first.pos_x += nx * correction
+                first.pos_y += ny * correction
+            elif first.stable:
+                second.pos_x -= nx * correction
+                second.pos_y -= ny * correction
+            else:
+                first.pos_x += nx * correction * 0.5
+                first.pos_y += ny * correction * 0.5
+                second.pos_x -= nx * correction * 0.5
+                second.pos_y -= ny * correction * 0.5
             if abs(nx) < 0.15:
-                direction = -1.0 if first.pos_x < self.cont_lives.ct.x else 1.0
+                direction = (
+                    -1.0 if first.pos_x < self.cont_lives.ct.x else 1.0)
                 if abs(first.pos_x - second.pos_x) < radius * 0.05:
                     direction = float(self.livebox_drop_direction)
                 shove = radius * 0.08
-                first.pos_x -= direction * shove
-                second.pos_x += direction * shove
+                if not first.stable:
+                    first.pos_x -= direction * shove
+                if not second.stable:
+                    second.pos_x += direction * shove
 
-        old_x = {id(life): life.pos_x for life in lives}
-        for life in lives:
+        old_x = {id(life): life.pos_x for life in mobiles}
+
+        for life in mobiles:
             life.vel_y += gravity * dt
             life.pos_x += life.vel_x * dt
             life.pos_y += life.vel_y * dt
             life.vel_x *= 0.98 ** (dt * 60.0)
             keep_inside(life)
 
+        cell_size = max(1.0, radius * 2.0)
+
+        def cell_coords(life: HUDLifeState) -> tuple[int, int]:
+            return (math.floor(life.pos_x / cell_size),
+                    math.floor(life.pos_y / cell_size))
+
         for _ in range(8):
-            for index, first in enumerate(lives):
-                for second in lives[index + 1:]:
-                    resolve_pair(first, second)
+            grid: dict[tuple[int, int], list[HUDLifeState]] = {}
             for life in lives:
+                key = cell_coords(life)
+                grid.setdefault(key, []).append(life)
+            checked: set[tuple[int, int]] = set()
+            for first in mobiles:
+                cx, cy = cell_coords(first)
+                for ox in (-1, 0, 1):
+                    for oy in (-1, 0, 1):
+                        neighbors = grid.get((cx + ox, cy + oy), [])
+                        for second in neighbors:
+                            if first is second:
+                                continue
+                            first_id = id(first)
+                            second_id = id(second)
+                            if first_id < second_id:
+                                key = (first_id, second_id)
+                            else:
+                                key = (second_id, first_id)
+                            if key in checked:
+                                continue
+                            checked.add(key)
+                            resolve_pair(first, second)
+            for life in mobiles:
                 keep_inside(life)
 
-        for life in lives:
+        for life in mobiles:
             moved_x = life.pos_x - old_x[id(life)]
             if radius > 0.0:
                 life.angle += math.degrees(moved_x / radius)
@@ -1152,12 +1204,26 @@ class GameHUDs:
                               * 0.15)
                 self.livebox_drop_direction *= -1
                 spawning = False
+                life.stable = False
+                candidates = [
+                    other for other in self.livebox_lives if other is not life
+                    and not other.spawning and not other.despawning
+                    and abs(other.pos_x - life.pos_x) <= self.livebox_size * 2]
+
+                if candidates:
+                    landing_y = min(other.pos_y for other in candidates)
+                else:
+                    landing_y = (self.cont_lives.y + self.cont_lives.hgt
+                                 - self.cont_lives.wdt // 30
+                                 - self.livebox_radius)
+
+                self.livebox_wake_neighbors(life.pos_x, landing_y)
 
         for life in remove_lives:
             self.livebox_lives.remove(life)
 
-        if remove_lives:
-            self.livebox_reset_stabilization()
+        for life in remove_lives:
+            self.livebox_wake_neighbors(life.pos_x, life.pos_y)
 
         despawning = any(life.despawning for life in self.livebox_lives)
 
@@ -1169,34 +1235,59 @@ class GameHUDs:
         if not spawning and not despawning and self.livebox_pending_lives > 0:
             self.livebox_add_life()
             self.livebox_pending_lives -= 1
-            self.livebox_reset_stabilization()
 
         self.livebox_update_physics(dt)
 
-    def livebox_reset_stabilization(self) -> None:
+    def livebox_reset_stabilization(self, wake_all: bool = False) -> None:
         """Restart LiveBox physics stabilization timeout."""
         self.livebox_last_change_time = time.perf_counter()
         self.livebox_physics_active = True
+        self.livebox_texture_valid = False
 
-        for life in self.livebox_lives:
+        if wake_all:
+            for life in self.livebox_lives:
+                if not life.spawning and not life.despawning:
+                    life.stable = False
+
+    def livebox_wake_neighbors(self, x: float, y: float) -> None:
+        """Wake the nearest reserve Pac-Men."""
+        quantity = self.core.defaults.hud_livebox_wake_neighbors
+        lives = [life for life in self.livebox_lives
+                 if not life.spawning and not life.despawning]
+        neighbors = sorted(lives, key=lambda life: (
+            (life.pos_x - x) ** 2 + (life.pos_y - y) ** 2))
+
+        for life in neighbors[:quantity]:
             life.stable = False
 
+        self.livebox_reset_stabilization()
+
     def livebox_draw(self) -> None:
-        """Draw reserve Pac-Men and LiveBox effects."""
+        """Draw reserve Pac-Men using individual or cached textures."""
         sround = self.utils.sym_round
         now = time.perf_counter()
         tex = self.graphics.textures
+        box = self.cont_lives
+        animating = any(life.spawning or life.despawning
+                        for life in self.livebox_lives)
+        use_cache = not self.livebox_physics_active and not animating
 
-        with self.graphics.clip(self.cont_lives.x, self.cont_lives.y,
-                                self.cont_lives.wdt, self.cont_lives.hgt):
-            for life in self.livebox_lives:
-                if life.spawning:
-                    self.livebox_draw_halo(life, now)
-                    continue
-                tex.draw("hud_life", sround(life.pos_x), sround(life.pos_y),
-                         angle=life.angle, autocenter=True, scale=0.25)
-                if life.despawning:
-                    self.livebox_draw_halo(life, now)
+        if use_cache and not self.livebox_texture_valid:
+            self.livebox_build_texture()
+
+        with self.graphics.clip(box.x, box.y, box.wdt, box.hgt):
+            if use_cache:
+                tex.draw("hud_livebox", box.x, box.y, box.wdt, box.hgt)
+            else:
+                for life in self.livebox_lives:
+                    if life.spawning:
+                        self.livebox_draw_halo(life, now)
+                        continue
+                    tex.draw("hud_life", sround(life.pos_x),
+                             sround(life.pos_y), angle=life.angle,
+                             autocenter=True, scale=0.25)
+                    if life.despawning:
+                        self.livebox_draw_halo(life, now)
 
     def livebox_set_lives(self, quantity: int) -> None:
         """Synchronize the LiveBox with the reserve life count."""
@@ -1217,8 +1308,6 @@ class GameHUDs:
             remove_count -= cancelled
             self.livebox_pending_removals += remove_count
 
-        self.livebox_reset_stabilization()
-
     def livebox_add_life(self) -> None:
         """Add one reserve Pac-Man to the LiveBox."""
         x, y = self.livebox_drop_position()
@@ -1233,7 +1322,29 @@ class GameHUDs:
                 continue
             life.despawning = True
             life.halo_start_time = time.perf_counter()
+            self.livebox_texture_valid = False
             return
+
+    def livebox_build_texture(self) -> None:
+        """Cache the settled reserve Pac-Men in one texture."""
+        sround = self.utils.sym_round
+        tex = self.graphics.textures
+        box = self.cont_lives
+
+        if tex.exists("hud_livebox"):
+            tex.unload("hud_livebox")
+
+        tex.begin("hud_livebox", box.wdt, box.hgt)
+
+        for life in self.livebox_lives:
+            if life.spawning or life.despawning:
+                continue
+            tex.draw("hud_life", sround(life.pos_x - box.x),
+                     sround(life.pos_y - box.y), angle=life.angle,
+                     autocenter=True, scale=0.25)
+
+        tex.end()
+        self.livebox_texture_valid = True
 
     def hourglass_create_texture(self) -> None:
         if self.core.gm_state.level < 0:

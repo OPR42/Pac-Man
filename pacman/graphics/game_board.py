@@ -48,12 +48,13 @@ class GameBoard:
         self.huds_ready: bool = False
         self.maze_skin: int = -1
         self.inboard_texts: list[tuple[float, float, str, Color, float,
-                                       float, float, float]] = []
+                                       float, float, float, bool]] = []
         self.pacman_deathtime: float = -1.0
         self.pacman_spawntime: float = -1.0
         self.wall_debris: list[tuple[float, int, int, str]] = []
         self.bomb_cell: tuple[int, int] = (-1, -1)
         self.bomb_detonation: tuple[int, int, float] = (-1, -1, -1.0)
+        self.stick_char_cache: dict[tuple[int, int, str], str] = {}
 
     def launch(self) -> None:
         self.core._emit(
@@ -100,6 +101,7 @@ class GameBoard:
     def resize(self) -> None:
         self.build_done = False
         old_mvp = self.mvp
+        self.clear_stick_char_cache()
         self.set_maze_coords()
         if self.huds_ready:
             old_cont_lives = self.gamehuds.cont_lives
@@ -130,34 +132,88 @@ class GameBoard:
 
     def add_board_text(self, x: int, y: int, txt: str, cl: Color,
                        size: float, duration: float,
-                       slide_up: float = 0.0) -> None:
+                       slide_up: float = 0.0, outlined: bool = False) -> None:
         rg = self.graphics.rg
         rel_x = (x - self.mvp.ct.x) / rg(100)
         rel_y = (y - self.mvp.ct.y) / rg(100)
         rel_size = size / rg(100)
         self.inboard_texts.append((rel_x, rel_y, txt, cl, rel_size,
-                                   time.perf_counter(), duration, slide_up))
+                                   time.perf_counter(), duration, slide_up,
+                                   outlined))
 
     def write_board_texts(self) -> None:
         if len(self.inboard_texts) <= 0:
             return
         rg = self.graphics.rg
         sround = self.utils.sym_round
-        draw = self.shapes
         now = time.perf_counter()
         self.inboard_texts = [inboard_text
                               for inboard_text in self.inboard_texts
                               if inboard_text[5] + inboard_text[6] > now]
         for inboard_text in self.inboard_texts:
-            rel_x, rel_y, txt, cl, rel_size, starttime, duration, slide_up = (
-                inboard_text)
+            (rel_x, rel_y, txt, cl, rel_size, starttime, duration, slide_up,
+             outlined) = inboard_text
             progress = (now - starttime) / duration
             size = sround(rel_size * rg(100))
             slide = sround(slide_up * progress * size)
             x = sround(rel_x * rg(100)) + self.mvp.ct.x
             y = sround(rel_y * rg(100)) + self.mvp.ct.y - slide
+            cl = rcl.scale_rgb(cl, 1.5)
             cl_text = rcl.scale_alpha(cl, 1.0 - progress)
-            draw.stick_text(x, y, txt, size, thick=rg(2), cl=cl_text)
+            cl_outline = (rcl.scale_alpha(rcl.BASE_BLACK, 1.0 - progress)
+                          if outlined else None)
+            self.draw_cached_stick_text(x, y, txt, size, thick=rg(2),
+                                        cl=cl_text, cl_outline=cl_outline)
+
+    def get_stick_char_texture(self, char: str, size: int,
+                               thick: int) -> str:
+        sround = self.utils.sym_round
+        key = (size, thick, char)
+
+        if key in self.stick_char_cache:
+            return self.stick_char_cache[key]
+
+        textures = self.graphics.textures
+        char_width = math.ceil(size * 0.5125)
+        texture_name = f"board_stick_{size}_{thick}_{ord(char)}"
+        textures.begin(texture_name, char_width, size)
+        self.shapes.stick_text(sround(char_width / 2), sround(size / 2),
+                               char, size, thick=thick, cl=rcl.BASE_WHITE)
+        textures.end()
+        self.stick_char_cache[key] = texture_name
+        return texture_name
+
+    def draw_cached_stick_text(self, x: int, y: int, txt: str,
+                               size: int, thick: int, cl: Color,
+                               cl_outline: Color | None = None) -> None:
+        if not txt or size <= 0:
+            return
+
+        textures = self.graphics.textures
+        rg = self.graphics.rg
+        sround = self.utils.sym_round
+        char_width = math.ceil(size * 0.5125)
+        text_width = len(txt) * char_width
+        left = x - text_width / 2
+        outline_offset = rg(1)
+        for index, char in enumerate(txt):
+            if char == " ":
+                continue
+            texture_name = self.get_stick_char_texture(char, size, thick)
+            char_x = sround(left + index * char_width)
+            char_y = sround(y - size / 2)
+            if cl_outline is not None:
+                textures.draw(texture_name, char_x + outline_offset,
+                              char_y + outline_offset, tint=cl_outline)
+                textures.draw(texture_name, char_x - outline_offset,
+                              char_y + outline_offset, tint=cl_outline)
+            textures.draw(texture_name, char_x, char_y, tint=cl)
+
+    def clear_stick_char_cache(self) -> None:
+        textures = self.graphics.textures
+        for texture_name in self.stick_char_cache.values():
+            textures.unload(texture_name)
+        self.stick_char_cache.clear()
 
     def draw_gameboard(self) -> None:
         self.game.audio.ingame_update()

@@ -44,6 +44,7 @@ class Controls:
                                        "right", "left", "right", "pause_menu"]
         self.last_commands: list[str] = []
         self.maze_drag = False
+        self.previous_mouse_pos: tuple[float, float] = -1.0, -1.0
 
     def idle(self) -> bool:
         if pr.get_key_pressed() != 0:
@@ -128,6 +129,28 @@ class Controls:
 
         return average_x, average_y
 
+    def player_mouse_move(self, left: int, top: int, right: int,
+                          bottom: int) -> tuple[float, float, bool, bool]:
+        mouse_pos = pr.get_mouse_position()
+        pressed = (pr.is_mouse_button_pressed(
+                       pr.MouseButton.MOUSE_BUTTON_LEFT)
+                   or pr.is_mouse_button_pressed(
+                       pr.MouseButton.MOUSE_BUTTON_RIGHT))
+
+        released = (pr.is_mouse_button_released(
+                        pr.MouseButton.MOUSE_BUTTON_LEFT)
+                    or pr.is_mouse_button_released(
+                        pr.MouseButton.MOUSE_BUTTON_RIGHT))
+        if not (left <= mouse_pos.x <= right and top <= mouse_pos.y <= bottom):
+            return (-1.0, -1.0, False, False)
+        previous_x, previous_y = self.previous_mouse_pos
+        if previous_x == mouse_pos.x and previous_y == mouse_pos.y:
+            x, y = -1.0, -1.0
+        else:
+            self.previous_mouse_pos = (mouse_pos.x, mouse_pos.y)
+            x, y = mouse_pos.x, mouse_pos.y
+        return (x, y, pressed, released)
+
     def get_enter(self) -> bool:
         keys = pr.KeyboardKey
         if (pr.is_key_pressed(keys.KEY_ENTER)
@@ -148,6 +171,24 @@ class Controls:
         pad_btn = self._is_gamepad_button_pressed
         if pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR):
             return True
+
+        return False
+
+    def enter_is_down(self) -> bool:
+        keys = pr.KeyboardKey
+        mouse = pr.MouseButton
+
+        if (pr.is_key_down(keys.KEY_ENTER)
+                or pr.is_key_down(keys.KEY_KP_ENTER)
+                or pr.is_key_down(keys.KEY_SPACE)
+                or pr.is_mouse_button_down(mouse.MOUSE_BUTTON_LEFT)
+                or pr.is_mouse_button_down(mouse.MOUSE_BUTTON_RIGHT)):
+            return True
+
+        if self.gamepad >= 0 and pr.is_gamepad_available(self.gamepad):
+            pad_dwn = self._is_gamepad_button_down
+            if pad_dwn(RBD) or pad_dwn(TBL) or pad_dwn(TBR):
+                return True
 
         return False
 

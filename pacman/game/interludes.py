@@ -36,7 +36,8 @@ class Interludes:
         self.special_level_was_running: bool = False
 
     def set_interlude(self, index: int) -> None:
-        if index not in (0, 1, 10102, 10203, 10304, 90001):
+        if index not in (0, 1, 10102, 10203, 10304, 10405, 10506,
+                         90001, 90002):
             self.index = -1
             self.game.controls.set_mouse_cursor("arrow")
             self.active = False
@@ -49,10 +50,10 @@ class Interludes:
         self.special_level_was_running = self.game.special_level_running
         if index == 0 and not self.active:
             self.game.audio.sound_play("transition_0")
-        if index in (10102, 10203, 10304):
+        if index in (10102, 10203, 10304, 10405, 10506):
             self.build_discoveries_diary()
             self.game._start_transition(6, 7, 2)
-        elif index in (90001,):
+        elif index in (90001, 90002):
             self.game._start_transition(6, 7, 2)
         self.index = index
         self.game.controls.set_mouse_cursor("hand")
@@ -131,7 +132,7 @@ class Interludes:
             txt = txt.replace("$MPLURAL$", mplural)
             txt = txt.replace("$DPLURAL$", dplural)
             self.draw_interlude(rcl.PAPER, txt, True)
-        elif self.index in (10102, 10304):
+        elif self.index in (10102, 10304, 10405, 10506):
             txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
             if self.special_level_was_running:
                 txt = lex("INT_90000") + txt
@@ -147,7 +148,7 @@ class Interludes:
                 txt = lex("INT_90000") + txt
             self.draw_interlude(rcl.PAPER, txt, True)
 
-        elif self.index == 90001:
+        elif self.index in (90001, 90002):
             txt = lex(f"INT_{self.index}")
             self.draw_interlude(rcl.PAPER, txt, True)
 
@@ -176,16 +177,10 @@ class Interludes:
             self.set_interlude(-1)
             self.graphics.gameboard.launch()
             self.game._start_transition(6, 7, 4)
-        elif action == "01to02":
+        elif action in ("01to02", "02to03", "03to04", "04to05", "05to06"):
             self.set_interlude(-1)
             self.game._start_transition(6, 7, 4)
-        elif action == "02to03":
-            self.set_interlude(-1)
-            self.game._start_transition(6, 7, 4)
-        elif action == "03to04":
-            self.set_interlude(-1)
-            self.game._start_transition(6, 7, 4)
-        elif action == "pac-snake":
+        elif action in ("pac-snake", "pac-breaker"):
             self.set_interlude(-1)
             self.game._start_transition(6, 7, 2)
 
@@ -217,8 +212,17 @@ class Interludes:
         elif self.index == 10304:
             self.transition_action = "03to04"
             self.game._start_transition(6, 7, 3)
+        elif self.index == 10405:
+            self.transition_action = "04to05"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 10506:
+            self.transition_action = "05to06"
+            self.game._start_transition(6, 7, 3)
         elif self.index == 90001:
             self.transition_action = "pac-snake"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 90002:
+            self.transition_action = "pac-breaker"
             self.game._start_transition(6, 7, 3)
 
     def draw_interlude(self, cl_background: RaylibObject, txt: str, anim: bool,

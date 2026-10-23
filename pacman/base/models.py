@@ -48,6 +48,7 @@ class Defaults(BaseModel):
     hud_livebox_resize_factor: float = 1.0
     hud_livebox_halo_duration: float = 0.20
     hud_livebox_stabilization_timeout: float = 5.0
+    hud_livebox_wake_neighbors: int = 10
 
     interludes_char_delay: float = 0.008
     interludes_char_fade: float = 0.960

@@ -1,4 +1,5 @@
 import math
+import pyray as pr
 import time
 
 from pacman.core import Core
@@ -8,6 +9,7 @@ from pacman.engine.interface import InterfaceItem
 from pacman.graphics.colors import RenderColors as rcl
 
 from .snake import Snake
+from .breaker import Breaker
 
 
 class MiniGames:
@@ -27,10 +29,13 @@ class MiniGames:
         self.score_before: int = 0
         self.endgame: bool = False
         self.offer_ui_items: list[InterfaceItem] = []
+        self.input_armed: bool = False
         self.snake = Snake(core)
+        self.breaker = Breaker(core)
 
     def launch(self) -> None:
         self.snake.launch()
+        self.breaker.launch()
 
     def reset(self) -> None:
         self.level = 0
@@ -38,7 +43,9 @@ class MiniGames:
         self.offer_panel_built = False
         self.endgame = False
         self.score_before = 0
+        self.input_armed = False
         self.snake.reset()
+        self.breaker.reset()
 
     def start_level(self, level: int = 0, level_after: int = 0) -> None:
         if not (-4 <= level <= -1
@@ -47,6 +54,7 @@ class MiniGames:
         gmstate = self.core.gm_state
         self.level, self.level_after = level, level_after
         gmstate.level = self.level
+        self.input_armed = False
         self.inventory.crates = []
         gmstate.item_init, gmstate.item_eaten, gmstate.item_cur = 0, 0, 0
         gmstate.pacgum_eaten, gmstate.suppacgum_eaten = 0, 0
@@ -64,10 +72,20 @@ class MiniGames:
         self.controls.last_commands.clear()
         self.game.pause_menu = False
         self.endgame = False
+        self.offer_panel_built = False
         self.score_before = gmstate.score
+        for item in self.offer_ui_items:
+            if item.kind == "button" and item.code == "pause_menu":
+                item.disabled = False
         self.gameboard.resize()
         if self.level == -1:
             self.snake.initialize()
+        elif self.level == -2:
+            self.breaker.initialize()
+
+    def resume_from_pause(self, pause_duration: float) -> None:
+        if self.level == -2:
+            self.breaker.resume_from_pause(pause_duration)
 
     def resize(self) -> None:
         if self.level < 0:
@@ -76,6 +94,8 @@ class MiniGames:
 
     def command(self, cmd: str) -> None:
         if not cmd:
+            return
+        if not self.input_armed:
             return
         if self.endgame:
             if cmd == "enter":
@@ -93,16 +113,28 @@ class MiniGames:
                 self.graphics.interface.focus_previous(avoid=("pause_menu",))
         elif self.level == -1:
             self.snake.command(cmd)
+        elif self.level == -2:
+            self.breaker.command(cmd)
 
     def update(self) -> None:
+        if not self.input_armed:
+            if (not self.game.interludes.active
+                    and not self.graphics.transitions.active
+                    and not self.controls.enter_is_down()):
+                self.input_armed = True
+            return
         if self.level == -1:
             self.snake.update()
+        elif self.level == -2:
+            self.breaker.update()
 
     def set_board_geometry(self, level: int) -> None:
         if not -4 <= level <= -1:
             return
         if level == -1:
             self.snake.set_board_geometry()
+        elif level == -2:
+            self.breaker.set_board_geometry()
 
     def draw_minigames_board(self) -> None:
         gameboard = self.gameboard
@@ -118,9 +150,24 @@ class MiniGames:
         elif gameboard.status == "pause" and not self.game.pause_menu:
             gameboard.status = "play"
 
+        if self.level == -2 and self.game.step == 7 and not self.endgame:
+            mouse = pr.get_mouse_position()
+            mvp = self.gameboard.mvp
+            if (mvp.x <= mouse.x <= mvp.rct.x
+                    and mvp.y <= mouse.y <= mvp.bct.y):
+                pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_CROSSHAIR)
+            else:
+                pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_DEFAULT)
+        else:
+            pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_DEFAULT)
+
         if self.level == -1:
             self.snake.draw_board()
             if self.snake.collision:
+                self.endgame = True
+        elif self.level == -2:
+            self.breaker.draw_board()
+            if self.breaker.over:
                 self.endgame = True
         if self.endgame:
             self.play_again_offer()
@@ -161,14 +208,14 @@ class MiniGames:
         for i, item in enumerate(self.offer_ui_items):
             if item.kind == "zone":
                 if item.code == "mgo_title":
-                    titles = ["MGO_Tt1"]
+                    titles = ["MGO_Tt1", "MGO_Tt2"]
                     draw.text_block_max(
                         item.x, item.y, item.width, item.height,
                         lex(titles[index]), self.graphics.font_bold,
                         cl, justify="center")
                 elif item.code == "mgo_text":
                     cl = rcl.scale_rgb(rcl.SAND, 1.0)
-                    texts = ["MGO_Snk"]
+                    texts = ["MGO_Snk", "MGO_Brk"]
                     txt = lex(texts[index])
                     score_gain = gmstate.score - self.score_before
                     score_txt = f"{score_gain:,}"
@@ -184,6 +231,19 @@ class MiniGames:
                                           f"{gmstate.suppacgum_eaten}")
                         txt = txt.replace("$POINTS$", score_txt)
                         txt = txt.replace("$COVERAGE$", f"{coverage}")
+                    elif self.level == -2:
+                        percent = max(0, sround(
+                            (self.breaker.destructs_count
+                             / self.breaker.initial_bricks) * 100))
+                        impacts_txt = f"{self.breaker.impacts_count:,}"
+                        impacts_txt = impacts_txt.replace(",", lex("kilo_sep"))
+                        destructs_txt = f"{self.breaker.destructs_count:,}"
+                        destructs_txt = destructs_txt.replace(",",
+                                                              lex("kilo_sep"))
+                        txt = txt.replace("$IMPACTS$", impacts_txt)
+                        txt = txt.replace("$DESTRUCTS$", destructs_txt)
+                        txt = txt.replace("$POINTS$", score_txt)
+                        txt = txt.replace("$PERCENT$", f"{percent}")
                     draw.text_block_max(
                         item.x, item.y, item.width, item.height,
                         txt, self.graphics.font_regular,
@@ -200,8 +260,8 @@ class MiniGames:
         mvp = self.gameboard.mvp
         gamemenus = self.gameboard.gamehuds.gamemenus
         ovp = self.geometry.rectangle_geometry(
-            mvp.x + sround(mvp.wdt * 0.1), mvp.y + sround(mvp.hgt * 0.1),
-            sround(mvp.wdt * 0.8), sround(mvp.hgt * 0.8))
+            mvp.x + sround(mvp.wdt * 0.05), mvp.y + sround(mvp.hgt * 0.1),
+            sround(mvp.wdt * 0.9), sround(mvp.hgt * 0.8))
         self.ovp = ovp
         row_height = sround(ovp.hgt / 4)
         item_height = sround(row_height * 0.7)
@@ -212,10 +272,11 @@ class MiniGames:
             self.offer_ui_items.append(item)
 
         self.offer_ui_items.append(InterfaceItem(
-            ovp.x, ovp.y, ovp.wdt, row_height, "MGO_Ttl",
-            "mgo_title", "zone", rel_to_center=False))
+            ovp.x + sround(ovp.wdt * 0.05), ovp.y, sround(ovp.wdt * 0.9),
+            row_height, "MGO_Ttl", "mgo_title", "zone", rel_to_center=False))
         self.offer_ui_items.append(InterfaceItem(
-            ovp.x, ovp.y + row_height, ovp.wdt, row_height * 2, "MGO_Txt",
+            ovp.x + sround(ovp.wdt * 0.05), ovp.y + row_height,
+            sround(ovp.wdt * 0.9), row_height * 2, "MGO_Txt",
             "mgo_text", "zone", rel_to_center=False))
         y = ovp.y + row_height * 3
         lx = ovp.x + sround(((ovp.wdt / 2) - item_width) / 2)

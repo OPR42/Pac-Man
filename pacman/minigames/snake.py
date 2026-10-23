@@ -233,7 +233,7 @@ class Snake:
                     gum_y = mvp.y + sround((cell[1] + 0.5) * cell_size)
                     self.graphics.gameboard.add_board_text(
                         gum_x, gum_y, f"{earned:,}", rcl.BLAST_OUT,
-                        head_size * 0.6, 5.0, 2.0)
+                        head_size * 0.6, 5.0, 2.0, outlined=True)
                     self.spawn_pacgum()
                 elif cell in self.superpacgums:
                     self.superpacgums.remove(cell)
@@ -247,7 +247,7 @@ class Snake:
                     gum_y = mvp.y + sround((cell[1] + 0.5) * cell_size)
                     self.graphics.gameboard.add_board_text(
                         gum_x, gum_y, f"{earned:,}", rcl.BLAST_OUT,
-                        head_size * 0.6, 5.0, 2.0)
+                        head_size * 0.6, 5.0, 2.0, outlined=True)
                     self.spawn_pacgum(super_pacgum=True)
                 next_x = round(x) + dx
                 next_y = round(y) + dy
@@ -434,7 +434,7 @@ class Snake:
                     else rcl.PACMAN_YELLOW)
         cl_floor_light = rcl.scale_rgb(cl_wall, 0.10)
         cl_floor_dark = rcl.scale_rgb(cl_wall, 0.20)
-        thick_wall = rg(5)
+        thick_wall = rg(4)
 
         for x_cell in range(gmstate.maze_width):
             for y_cell in range(gmstate.maze_height):

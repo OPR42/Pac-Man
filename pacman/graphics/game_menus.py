@@ -251,6 +251,8 @@ class GameMenus:
         y = mvp.y - rg(5)
         if self.core.gm_state.level < 0:
             right = mvp.rct.x + rg(2)
+            if self.core.gm_state.level == -2:
+                right = mvp.rct.x + rg(5)
         else:
             right = self.gameboard.rvp.lct.x + rg(5)
         width = right - x - 1

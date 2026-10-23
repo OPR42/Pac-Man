@@ -2,6 +2,21 @@
     "scores": [
         {
             "name": "OPR 42 OPR",
+            "score": 2892396,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
+            "score": 1453270,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
+            "score": 1402258,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
             "score": 236609,
             "corrupted": false
         },
@@ -33,31 +48,6 @@
         {
             "name": "Chuck NRS",
             "score": 76900,
-            "corrupted": false
-        },
-        {
-            "name": "OPR 42",
-            "score": 68106,
-            "corrupted": false
-        },
-        {
-            "name": "xxxxxxxxx",
-            "score": 65540,
-            "corrupted": false
-        },
-        {
-            "name": "OPR 42",
-            "score": 65358,
-            "corrupted": false
-        },
-        {
-            "name": "HOMER SMPS",
-            "score": 9500,
-            "corrupted": false
-        },
-        {
-            "name": "NotSoBad",
-            "score": 7200,
             "corrupted": false
         },
         {
@@ -99,7 +89,17 @@
             "name": "AFK",
             "score": 0,
             "corrupted": false
+        },
+        {
+            "name": "ZeroCool",
+            "score": 0,
+            "corrupted": false
+        },
+        {
+            "name": "Guignol",
+            "score": 0,
+            "corrupted": false
         }
     ],
-    "signature": "816436b97b807d15707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157e1361e8d8321f103c42a3165cfa4eab4fd66544bc625f25fa3c791d281b0340abfdb19a2c602c8eed751e3ca72bb6f0ee78eb08ca015bf514f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f299"
+    "signature": "7ffccc8babf8362b93da67ac8cde1953df71dcd0b22717d5816436b97b807d15707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157e1361e8d8321f103e78eb08ca015bf514f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f2991fd4d9943fb70496170c7901271e6db3"
 }

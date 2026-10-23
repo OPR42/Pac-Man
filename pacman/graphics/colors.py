@@ -63,6 +63,7 @@ class RenderColors:
     GRAD1_SKIN_3 = (247, 166, 208, 255)
     GRAD2_SKIN_3 = (211, 76, 134, 255)
     BOWTIE_RED = (155, 25, 45, 255)
+    SAGE_GREEN = (25, 131, 71, 255)
     JAIL_YELLOW = (251, 242, 89, 255)
     BLAST_OUT = (225, 77, 32, 255)
     BLAST_MED = (255, 223, 45, 255)
