@@ -23,7 +23,7 @@ class Defaults(BaseModel):
     duration_sage: float = 20.0
     duration_bomb_detonation: float = 3.0
 
-    game_title: str = "The Adventures of Pac-Man Across the 3rd Dimension"
+    game_title: str = "Pac-Man - Escape from Flativerses"
     game_title_includes_resolution: bool = False
 
     gamepad_stick_trigger: float = 0.50
@@ -34,6 +34,8 @@ class Defaults(BaseModel):
     graphics_base_font_size: int = 20
     graphics_base_margin: int = 4
     graphics_base_frame_thick: int = 2
+
+    ghosts_max_speed: float = 3.0
 
     gumcharmer_speed: float = 3.0
     gumcharmer_threshold_ratio: float = 0.50
@@ -46,6 +48,7 @@ class Defaults(BaseModel):
     hud_livebox_resize_factor: float = 1.0
     hud_livebox_halo_duration: float = 0.20
     hud_livebox_stabilization_timeout: float = 5.0
+    hud_livebox_wake_neighbors: int = 10
 
     interludes_char_delay: float = 0.008
     interludes_char_fade: float = 0.960
@@ -54,18 +57,27 @@ class Defaults(BaseModel):
 
     inventory_sage_radius: int = 4
     inventory_bomb_radius: int = 6
+    inventory_bomb_blast_duration: float = 2.0
+    inventory_crates_hourflipper_min_remaining_time: float = 10.0
+    inventory_crates_hourflipper_max_remaining_time: float = 15.0
+    inventory_crates_min_time_interval: float = 10.0
+    inventory_crates_max_time_interval: float = 15.0
 
     logbook_min_height: int = 34
 
     maze_min_width: int = 14
     maze_min_height: int = 10
+    maze_wall_debris_duration: float = 2.0
 
     pacman_base_mouth_opening: float = 0.50
     pacman_min_mouth_opening: float = 0.25
     pacman_max_mouth_opening_to_pg: float = 1.00
-    pacman_max_mouth_opening_to_spg: float = 1.25
+    pacman_max_mouth_opening_to_spg: float = 1.10
     pacman_mouth_close_duration: float = 0.15
     pacman_max_speed: float = 4.0
+    pacman_revival_invulnerability: float = 3.0
+    pacman_revival_blink_count: int = 5
+    pacman_revival_blink_acceleration: float = 0.65
 
     playername_keyboard_alphanumeric_hints: bool = False
 
@@ -94,9 +106,9 @@ class Config(BaseModel):
     highscore_filename: str = "hall_of_fame.json"
     window_width: int = 1600
     window_height: int = 900
-    window_resizeable: bool = True
+    window_resizable: bool = True
     window_maximized: bool = False
-    window_position: str = "right"
+    window_position: str = "topright"
     frame_and_banner: bool = True
     master_volume: int = 100
     music_volume: int = 100
@@ -121,6 +133,7 @@ class Config(BaseModel):
     new_life_threshold: int = 5000
     level_max_time: int = 90
     timeout_consequence: str = "speeding_ghosts"
+    minigames: bool = True
     seed: int = 42
     levels: list[LevelConfig] = Field(default_factory=lambda: [
             LevelConfig(width=15, height=10),
@@ -135,9 +148,6 @@ class Config(BaseModel):
             LevelConfig(width=20, height=14),
             LevelConfig(width=20, height=15),
             LevelConfig(width=21, height=15),
-            LevelConfig(width=21, height=16),
-            LevelConfig(width=22, height=16),
-            LevelConfig(width=22, height=17),
         ]
     )
 
@@ -231,8 +241,8 @@ class Score(BaseModel):
 class PacgumState(BaseModel):
     """Store a Pacgum state."""
     superpacgum: bool = False
-    pos_x: float = 0.0
-    pos_y: float = 0.0
+    pos_x: float = -1.0
+    pos_y: float = -1.0
     path: list[tuple[float, float]] = Field(default_factory=list)
     path_index: int = 0
 

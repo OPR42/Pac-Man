@@ -67,6 +67,7 @@ class GameScoreMenu:
         self.outro_anim_ready: bool = False
         self.outro_anim_ph1_done: bool = False
         self.outro_anim_done: bool = False
+        self.outro_sound_launched: bool = False
         self.anim_pacman_x: int = 0
         self.anim_starttime: float = -1.0
         self.anim_progress: float = 0.0
@@ -95,6 +96,7 @@ class GameScoreMenu:
         self.outro_anim_ready = False
         self.outro_anim_ph1_done = False
         self.outro_anim_done = False
+        self.outro_sound_launched = False
         self.anim_pacman_x = 0
         self.anim_starttime = -1.0
         self.anim_progress = 0.0
@@ -266,6 +268,8 @@ class GameScoreMenu:
         if self.outro_anim_done:
             self._press_enter_to_quit()
         if self.outro_anim_done and self.game.controls.get_enter():
+            self.game.audio.sound_stop("applause")
+            self.game.audio.sound_stop("mocking")
             self.score_is_done = True
 
     def _anim_intro(self) -> None:
@@ -416,6 +420,12 @@ class GameScoreMenu:
             draw.text_block_max(txt_x, txt_y, txt_wdt, txt_hgt, txt,
                                 self.graphics.font_bold, cl, justify="center")
         elif self.anim_progress != 0.0:
+            if not self.outro_sound_launched:
+                if self.player_ranking > 0:
+                    self.game.audio.sound_play("applause")
+                else:
+                    self.game.audio.sound_play("mocking")
+                self.outro_sound_launched = True
             cl = rcl.scale_alpha(cl, self.anim_progress)
             txt = lex("HSC_Fam") if self.player_ranking > 0 else lex("HSC_Shm")
             txt = txt.replace(

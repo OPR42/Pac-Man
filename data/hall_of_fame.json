@@ -1,8 +1,38 @@
 {
     "scores": [
         {
+            "name": "OPR 42 OPR",
+            "score": 2892396,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
+            "score": 1453270,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
+            "score": 1402258,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
+            "score": 236609,
+            "corrupted": false
+        },
+        {
             "name": "V",
             "score": 125000,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42",
+            "score": 108238,
+            "corrupted": false
+        },
+        {
+            "name": "RedRackham",
+            "score": 101939,
             "corrupted": false
         },
         {
@@ -21,43 +51,8 @@
             "corrupted": false
         },
         {
-            "name": "xxxxxxxxx",
-            "score": 65540,
-            "corrupted": false
-        },
-        {
-            "name": "x CJOST x",
-            "score": 54200,
-            "corrupted": false
-        },
-        {
-            "name": "x  was  x",
-            "score": 43800,
-            "corrupted": false
-        },
-        {
-            "name": "x  here x",
-            "score": 32100,
-            "corrupted": false
-        },
-        {
-            "name": "xxxxxxxxx",
-            "score": 24750,
-            "corrupted": false
-        },
-        {
-            "name": "AmstradCPC",
-            "score": 18000,
-            "corrupted": false
-        },
-        {
-            "name": "42",
-            "score": 6861,
-            "corrupted": false
-        },
-        {
             "name": "OPR42",
-            "score": 5988,
+            "score": 7128,
             "corrupted": false
         },
         {
@@ -71,13 +66,8 @@
             "corrupted": false
         },
         {
-            "name": "hahaha",
-            "score": 2133,
-            "corrupted": false
-        },
-        {
-            "name": "Saphira",
-            "score": 1890,
+            "name": "Complete01",
+            "score": 1880,
             "corrupted": false
         },
         {
@@ -99,7 +89,17 @@
             "name": "AFK",
             "score": 0,
             "corrupted": false
+        },
+        {
+            "name": "ZeroCool",
+            "score": 0,
+            "corrupted": false
+        },
+        {
+            "name": "Guignol",
+            "score": 0,
+            "corrupted": false
         }
     ],
-    "signature": "707ece77556c601179f6a84bb92860dfd9cc85287f231157e1361e8d8321f103fd66544bc625f25f24fe28476b0e42c8224e33bb41781e1a1c557d7301823f76c6dc9ec6926313afc312f93e711539167db9c1d8daf023d511bcba972b543ff04f0553db6e99a0f06d005cab8d5065284ee78acb7866c757254c527d1b70414b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f299"
+    "signature": "7ffccc8babf8362b93da67ac8cde1953df71dcd0b22717d5816436b97b807d15707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157e1361e8d8321f103e78eb08ca015bf514f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f2991fd4d9943fb70496170c7901271e6db3"
 }

@@ -15,6 +15,7 @@ from .colors import RenderColors as rcl
 from .shapes import Shapes
 
 RaylibObject: TypeAlias = Any
+Color: TypeAlias = tuple[int, int, int, int]
 
 
 class GameBoard:
@@ -41,9 +42,19 @@ class GameBoard:
         self.debug: bool = False
         self.status: str = "init"
         self.mvp: RectangleGeometry
+        self.lvp: RectangleGeometry
+        self.rvp: RectangleGeometry
         self.maze_cell_size: int = 0
         self.huds_ready: bool = False
         self.maze_skin: int = -1
+        self.inboard_texts: list[tuple[float, float, str, Color, float,
+                                       float, float, float, bool]] = []
+        self.pacman_deathtime: float = -1.0
+        self.pacman_spawntime: float = -1.0
+        self.wall_debris: list[tuple[float, int, int, str]] = []
+        self.bomb_cell: tuple[int, int] = (-1, -1)
+        self.bomb_detonation: tuple[int, int, float] = (-1, -1, -1.0)
+        self.stick_char_cache: dict[tuple[int, int, str], str] = {}
 
     def launch(self) -> None:
         self.core._emit(
@@ -77,11 +88,20 @@ class GameBoard:
         self.debug = False
         self.status = "init"
         self.maze_cell_size = 0
+        self.inboard_texts = []
+        self.pacman_deathtime = -1.0
+        self.pacman_spawntime = -1.0
+        self.core.gm_state.skin = 0
+        self.wall_debris = []
+        self.bomb_cell = (-1, -1)
+        self.bomb_detonation = (-1, -1, -1.0)
         self.gamehuds.reset()
+        self.game.minigames.reset()
 
     def resize(self) -> None:
         self.build_done = False
         old_mvp = self.mvp
+        self.clear_stick_char_cache()
         self.set_maze_coords()
         if self.huds_ready:
             old_cont_lives = self.gamehuds.cont_lives
@@ -110,6 +130,91 @@ class GameBoard:
                 new_mvp.ct.y - ((old_mvp.ct.y - gum.pos_y) * ratio_y))
         self.game.pacgums.invalidate_paths()
 
+    def add_board_text(self, x: int, y: int, txt: str, cl: Color,
+                       size: float, duration: float,
+                       slide_up: float = 0.0, outlined: bool = False) -> None:
+        rg = self.graphics.rg
+        rel_x = (x - self.mvp.ct.x) / rg(100)
+        rel_y = (y - self.mvp.ct.y) / rg(100)
+        rel_size = size / rg(100)
+        self.inboard_texts.append((rel_x, rel_y, txt, cl, rel_size,
+                                   time.perf_counter(), duration, slide_up,
+                                   outlined))
+
+    def write_board_texts(self) -> None:
+        if len(self.inboard_texts) <= 0:
+            return
+        rg = self.graphics.rg
+        sround = self.utils.sym_round
+        now = time.perf_counter()
+        self.inboard_texts = [inboard_text
+                              for inboard_text in self.inboard_texts
+                              if inboard_text[5] + inboard_text[6] > now]
+        for inboard_text in self.inboard_texts:
+            (rel_x, rel_y, txt, cl, rel_size, starttime, duration, slide_up,
+             outlined) = inboard_text
+            progress = (now - starttime) / duration
+            size = sround(rel_size * rg(100))
+            slide = sround(slide_up * progress * size)
+            x = sround(rel_x * rg(100)) + self.mvp.ct.x
+            y = sround(rel_y * rg(100)) + self.mvp.ct.y - slide
+            cl = rcl.scale_rgb(cl, 1.5)
+            cl_text = rcl.scale_alpha(cl, 1.0 - progress)
+            cl_outline = (rcl.scale_alpha(rcl.BASE_BLACK, 1.0 - progress)
+                          if outlined else None)
+            self.draw_cached_stick_text(x, y, txt, size, thick=rg(2),
+                                        cl=cl_text, cl_outline=cl_outline)
+
+    def get_stick_char_texture(self, char: str, size: int,
+                               thick: int) -> str:
+        sround = self.utils.sym_round
+        key = (size, thick, char)
+
+        if key in self.stick_char_cache:
+            return self.stick_char_cache[key]
+
+        textures = self.graphics.textures
+        char_width = math.ceil(size * 0.5125)
+        texture_name = f"board_stick_{size}_{thick}_{ord(char)}"
+        textures.begin(texture_name, char_width, size)
+        self.shapes.stick_text(sround(char_width / 2), sround(size / 2),
+                               char, size, thick=thick, cl=rcl.BASE_WHITE)
+        textures.end()
+        self.stick_char_cache[key] = texture_name
+        return texture_name
+
+    def draw_cached_stick_text(self, x: int, y: int, txt: str,
+                               size: int, thick: int, cl: Color,
+                               cl_outline: Color | None = None) -> None:
+        if not txt or size <= 0:
+            return
+
+        textures = self.graphics.textures
+        rg = self.graphics.rg
+        sround = self.utils.sym_round
+        char_width = math.ceil(size * 0.5125)
+        text_width = len(txt) * char_width
+        left = x - text_width / 2
+        outline_offset = rg(1)
+        for index, char in enumerate(txt):
+            if char == " ":
+                continue
+            texture_name = self.get_stick_char_texture(char, size, thick)
+            char_x = sround(left + index * char_width)
+            char_y = sround(y - size / 2)
+            if cl_outline is not None:
+                textures.draw(texture_name, char_x + outline_offset,
+                              char_y + outline_offset, tint=cl_outline)
+                textures.draw(texture_name, char_x - outline_offset,
+                              char_y + outline_offset, tint=cl_outline)
+            textures.draw(texture_name, char_x, char_y, tint=cl)
+
+    def clear_stick_char_cache(self) -> None:
+        textures = self.graphics.textures
+        for texture_name in self.stick_char_cache.values():
+            textures.unload(texture_name)
+        self.stick_char_cache.clear()
+
     def draw_gameboard(self) -> None:
         self.game.audio.ingame_update()
         if self.game.interludes.active:
@@ -125,7 +230,11 @@ class GameBoard:
             if self.warp_anim():
                 self.anim_start = -1.0
                 self.status = "play"
-                self.game.time_ref = time.perf_counter()
+                now = time.perf_counter()
+                self.game.time_ref = now
+                if self.core.gm_state.level == 1:
+                    self.game.gamerun_starttime = now
+                self.game.inventory.crates_spawn_init()
                 self.game.set_step(7)
         elif self.status == "warp_out":
             if self.warp_signal:
@@ -135,7 +244,8 @@ class GameBoard:
                 self.anim_start = -1.0
                 if self.core.gm_state.level < len(self.core.config.levels):
                     self.game.start_new_level(self.core.gm_state.level + 1)
-                    self.game._start_transition(7, 7, 2)
+                    if not self.game.interludes.active:
+                        self.game._start_transition(7, 7, 2)
                 else:
                     self.status = "game_complete"
                     self.game.all_levels_completed()
@@ -150,9 +260,93 @@ class GameBoard:
             self.draw_detection_rectangle()
             self.game.player.draw_pilot_path()
             self.game.ghosts.draw_ghosts_path()
+        if self.bomb_cell != (-1, -1):
+            self.display_bomb()
+        if self.bomb_detonation != (-1, -1, -1.0):
+            self.blast_bomb()
+        self.draw_crates()
         self.draw_characters()
+        self.write_board_texts()
+        if self.game.player.state.status == 0:
+            if self.game.player.state.activity != 5:
+                if self.death_anim():
+                    self.pacman_deathtime = -1.0
+                    if self.core.gm_state.lives_cur > 0:
+                        self.game._add_life(-1)
+                        self.game.player.state.activity = 5
+                        self.game.revival_starttime = time.perf_counter()
+                        self.pacman_spawntime = time.perf_counter()
+                    elif self.game.step not in (11, 13, 14):
+                        self.game.game_over()
+            else:
+                if self.spawn_anim():
+                    start_x, start_y = self.core.gm_state.start_pos
+                    self.game.player.spawn(start_x, start_y)
+                    self.status = "play"
 
         self.gamehuds.draw_huds()
+
+    def death_anim(self) -> bool:
+        if self.pacman_deathtime == -1.0:
+            return True
+
+        sround = self.utils.sym_round
+        draw = self.shapes
+        actor = self.game.player.state
+        now = time.perf_counter()
+        elapsed = now - self.pacman_deathtime
+        duration = 1.75
+        progress = elapsed / duration
+
+        if progress >= 1.0:
+            return True
+
+        size = self.core.gm_state.character_size * (1.0 - progress / 5)
+        radius = sround(size / 2)
+        angle = sround(actor.direction)
+        opening = (self.core.defaults.pacman_min_mouth_opening
+                   + self.core.defaults.pacman_max_mouth_opening_to_pg
+                   * progress)
+        variant = ""
+        if self.core.gm_state.skin == 1:
+            variant = "ms.pacman"
+        elif self.core.gm_state.skin == 2:
+            variant = "packy_pake"
+        elif self.core.gm_state.skin == 3:
+            variant = "slimer"
+        color = rcl.mix_rgba(rcl.BOWTIE_RED, rcl.PACMAN_YELLOW, progress)
+        if variant == "slimer":
+            color = rcl.mix_rgba(rcl.BOWTIE_RED, (88, 218, 52, 255), progress)
+
+        color = rcl.scale_alpha(color, (1.0 - progress / 2))
+        draw.pacman(actor.pos_x, actor.pos_y, radius, angle,
+                    mouth_opening=opening, eye_opening=0.25,
+                    face_color=color, variant=variant)
+        return False
+
+    def spawn_anim(self) -> bool:
+        if self.pacman_spawntime == -1.0:
+            return True
+
+        sround = self.utils.sym_round
+        now = time.perf_counter()
+        duration = self.core.defaults.hud_livebox_halo_duration
+        elapsed = now - self.pacman_spawntime
+        progress = min(1.0, elapsed / duration)
+
+        if progress >= 1.0:
+            return True
+
+        progress = 1.0 - (1.0 - progress) ** 2
+        radius = sround(self.core.gm_state.character_size / 2
+                        * (1.0 - (1.0 - progress) ** 2))
+        if radius > 0:
+            start_x, start_y = self.core.gm_state.start_pos
+            x, y = self.cell_center_coords(start_x, start_y)
+            self.graphics.shapes.circle_gradient(x, y, radius,
+                                                 rcl.BASE_BR_WHITE,
+                                                 rcl.BASE_CYAN)
+        return False
 
     def warp_anim(self, out: bool = False) -> bool:
         def pulse(elapsed: float, start: float, duration: float) -> float:
@@ -295,8 +489,11 @@ class GameBoard:
                                      color))
 
     def set_maze_coords(self) -> None:
-        sround = self.utils.sym_round
         gmstate = self.core.gm_state
+        if gmstate.level < 0:
+            self.game.minigames.set_board_geometry(gmstate.level)
+            return
+        sround = self.utils.sym_round
         rg = self.graphics.rg
         vp_x, vp_y, vp_width, vp_height = self.graphics.viewport_rectangle
         self.maze_cell_size = min((vp_width - rg(650)) // gmstate.maze_width,
@@ -335,7 +532,7 @@ class GameBoard:
             gmstate.cell_size = maze_cell_size
             gmstate.character_size = int((maze_cell_size
                                           - wall_physics_thick) * 0.6)
-            pacgum_size = sround(gmstate.character_size * 0.4)
+            pacgum_size = sround(gmstate.character_size * 0.2) * 2
             if pacgum_size % 2:
                 pacgum_size += 1
             if self.graphics.textures.exists("pacgum"):
@@ -346,7 +543,7 @@ class GameBoard:
                                pacgum_size, superpg=False,
                                variant=self.core.gm_state.skin)
             self.graphics.textures.end()
-            superpacgum_size = sround(pacgum_size * 1.5)
+            superpacgum_size = sround(pacgum_size * 0.75) * 2
             if self.graphics.textures.exists("superpacgum"):
                 self.graphics.textures.unload("superpacgum")
             self.graphics.textures.begin("superpacgum", superpacgum_size,
@@ -366,15 +563,81 @@ class GameBoard:
             self.build_done = True
 
         self.display_maze_texture(mvp.x, mvp.y, mvp.wdt, mvp.hgt)
+        pacgum_size = sround(gmstate.character_size * 0.2) * 2
+        superpacgum_size = sround(pacgum_size * 0.75) * 2
         for gum in self.game.pacgums.states.values():
             if gum.superpacgum:
                 self.graphics.textures.draw(
-                    "superpacgum", sround(gum.pos_x), sround(gum.pos_y),
-                    autocenter=True)
+                    "superpacgum", sround(gum.pos_x - superpacgum_size / 2),
+                    sround(gum.pos_y - superpacgum_size / 2),
+                    superpacgum_size, superpacgum_size)
             else:
                 self.graphics.textures.draw(
-                    "pacgum", sround(gum.pos_x), sround(gum.pos_y),
-                    autocenter=True)
+                    "pacgum", sround(gum.pos_x - pacgum_size / 2),
+                    sround(gum.pos_y - pacgum_size / 2),
+                    pacgum_size, pacgum_size)
+        self.draw_wall_debris()
+
+    def draw_wall_debris(self) -> None:
+        if not self.wall_debris:
+            return
+
+        sround = self.utils.sym_round
+        draw = self.shapes
+        now = time.perf_counter()
+        duration = self.core.defaults.maze_wall_debris_duration
+        cell_size = self.maze_cell_size
+        wall_thick = max(2, sround(cell_size / 8))
+        active_debris = []
+
+        for starttime, cell_x, cell_y, wall in self.wall_debris:
+            progress = (now - starttime) / duration
+            if progress >= 1.0:
+                continue
+            active_debris.append((starttime, cell_x, cell_y, wall))
+            progress = max(0.0, progress)
+            spread = 1.0 - (1.0 - progress) ** 2
+            center_x, center_y = self.cell_center_coords(cell_x, cell_y)
+            if wall == "up":
+                center_y -= sround(cell_size / 2)
+            elif wall == "down":
+                center_y += sround(cell_size / 2)
+            elif wall == "left":
+                center_x -= sround(cell_size / 2)
+            elif wall == "right":
+                center_x += sround(cell_size / 2)
+            else:
+                continue
+            corridor_size = cell_size - 2 * wall_thick
+            color = rcl.scale_alpha(self.maze_edge_color(),
+                                    0.5 * (1.0 - progress))
+            if wall in ("up", "down"):
+                radius_x = sround(corridor_size / 2)
+                radius_y = sround(wall_thick + wall_thick * spread)
+                draw.rectangle(center_x - sround(corridor_size / 2),
+                               center_y - wall_thick, corridor_size,
+                               wall_thick * 2, cl=color, filled=True)
+                draw.ellipse_sector(center_x, center_y - wall_thick,
+                                    radius_x, radius_y, 180.0, 360.0,
+                                    cl=color, filled=True)
+                draw.ellipse_sector(center_x, center_y + wall_thick,
+                                    radius_x, radius_y, 0.0, 180.0,
+                                    cl=color, filled=True)
+            else:
+                radius_x = sround(wall_thick + wall_thick * spread)
+                radius_y = sround(corridor_size / 2)
+                draw.rectangle(center_x - wall_thick,
+                               center_y - sround(corridor_size / 2),
+                               wall_thick * 2, corridor_size,
+                               cl=color, filled=True)
+                draw.ellipse_sector(center_x - wall_thick, center_y,
+                                    radius_x, radius_y, 90.0, 270.0,
+                                    cl=color, filled=True)
+                draw.ellipse_sector(center_x + wall_thick, center_y,
+                                    radius_x, radius_y, 270.0, 450.0,
+                                    cl=color, filled=True)
+
+        self.wall_debris = active_debris
 
     def cell_center_coords(self, cell_x: int, cell_y: int) -> tuple[int, int]:
         sround = self.utils.sym_round
@@ -386,6 +649,14 @@ class GameBoard:
         cell_x = (pos_x - self.mvp.x) // self.maze_cell_size
         cell_y = (pos_y - self.mvp.y) // self.maze_cell_size
         return (cell_x, cell_y)
+
+    def draw_crates(self) -> None:
+        inventory = self.game.inventory
+        if len(inventory.crates) <= 0:
+            return
+        for crate in inventory.crates:
+            inventory.display_crate(crate.cell_x, crate.cell_y,
+                                    crate.item_name)
 
     def draw_characters(self) -> None:
         sround = self.utils.sym_round
@@ -403,7 +674,7 @@ class GameBoard:
                             / self.core.defaults.actors_blink_duration)
                 eye_opening = 1.0 - math.sin(min(1.0, progress) * math.pi)
 
-            if actor.name == "pacman":
+            if actor.name == "pacman" and actor.status == 1:
                 variant = ""
                 if self.core.gm_state.skin == 1:
                     variant = "ms.pacman"
@@ -411,12 +682,31 @@ class GameBoard:
                     variant = "packy_pake"
                 elif self.core.gm_state.skin == 3:
                     variant = "slimer"
+                opacity = 1.0
+                if (self.game.revival_starttime != -1.0
+                        and not self.game.pause_menu):
+                    revival_duration = (
+                        self.core.defaults.pacman_revival_invulnerability)
+                    opacity_min, opacity_max = 0.5, 1.0
+                    blink_count = self.core.defaults.pacman_revival_blink_count
+                    accel = (
+                        self.core.defaults.pacman_revival_blink_acceleration)
+                    elapsed = now - self.game.revival_starttime
+                    progress = min(elapsed / revival_duration, 1.0)
+                    phase = blink_count * ((1.0 - accel) * progress
+                                           + accel * progress ** 2)
+                    blink = 0.5 + 0.5 * math.cos(phase * 2.0 * math.pi)
+                    opacity = opacity_min + (opacity_max - opacity_min) * blink
+                    if progress >= 1.0:
+                        opacity = 1.0
+                        self.game.revival_starttime = -1.0
                 draw.pacman(actor.pos_x, actor.pos_y,
                             sround(self.core.gm_state.character_size / 2),
                             actor.direction, mouth_opening=actor.cycle,
                             eye_opening=eye_opening, contour=False,
-                            last_hor_dir=actor.last_hor_dir, variant=variant)
-            else:
+                            last_hor_dir=actor.last_hor_dir, variant=variant,
+                            opacity=opacity)
+            elif actor.name != "pacman":
                 name = actor.name
                 if actor.status == 3:
                     name = "dead"
@@ -476,31 +766,41 @@ class GameBoard:
                              width: int, height: int) -> None:
         self.graphics.textures.draw("gameboard_maze", x, y, width, height)
 
+    def maze_edge_color(self) -> Color:
+        skin = self.core.gm_state.skin
+        if skin == 1:
+            return rcl.EDGE_SKIN_1
+        if skin == 2:
+            return rcl.EDGE_SKIN_2
+        if skin == 3:
+            return rcl.GREY
+        return rcl.WALL_STD
+
     def build_maze_texture(self, width: int, height: int, cell_size: int,
                            wall_thick: int, edge_thick: int) -> None:
         texture_width = width * cell_size
         texture_height = height * cell_size
         if self.core.gm_state.skin == 1:
             wall_color = rcl.WALL_SKIN_1
-            edge_color = rcl.EDGE_SKIN_1
+            edge_color = self.maze_edge_color()
             grad_c_color = rcl.EDGE_SKIN_1
             grad_b_color = rcl.WALL_SKIN_1
             ground_color = rcl.BASE_BLACK
         elif self.core.gm_state.skin == 2:
             wall_color = rcl.WALL_SKIN_2
-            edge_color = rcl.EDGE_SKIN_2
+            edge_color = self.maze_edge_color()
             grad_c_color = rcl.GRAD1_SKIN_2
             grad_b_color = rcl.GRAD2_SKIN_2
             ground_color = rcl.GROUND_SKIN_2
         elif self.core.gm_state.skin == 3:
             wall_color = rcl.BASE_DARK_GREY
-            edge_color = rcl.GREY
+            edge_color = self.maze_edge_color()
             grad_c_color = rcl.GRAD1_SKIN_3
             grad_b_color = rcl.GRAD2_SKIN_3
             ground_color = rcl.BASE_DARKERER_GREY
         else:
             wall_color = rcl.BASE_BLACK
-            edge_color = rcl.WALL_STD
+            edge_color = self.maze_edge_color()
             grad_c_color = rcl.BASE_WHITE
             grad_b_color = rcl.WALL_STD
             ground_color = rcl.BASE_BLACK
@@ -983,3 +1283,188 @@ class GameBoard:
         self.physics.add_obstacle(self.obstacles, identifier + "_bottom",
                                   "triangle", x1=x - half, y1=y,
                                   x2=x + half, y2=y, x3=x, y3=y + half)
+
+    def add_wall_debris(self, cell_x: int, cell_y: int, wall: str) -> None:
+        self.game.audio.sound_play("break")
+        self.wall_debris.append((time.perf_counter(), cell_x, cell_y, wall))
+
+    def drop_bomb(self) -> None:
+        pacman = self.game.player.state
+        self.bomb_cell = (pacman.cell_x, pacman.cell_y)
+
+    def display_bomb(self) -> None:
+        cell_x, cell_y = self.bomb_cell
+        if cell_x == -1 or cell_y == -1:
+            return
+        sround = self.utils.sym_round
+        size = sround(self.maze_cell_size * 0.8)
+        icon_half = sround(size / 2)
+        x, y = self.cell_center_coords(cell_x, cell_y)
+        self.graphics.textures.draw("world_bomb", x - icon_half, y - icon_half,
+                                    size, size)
+
+    def detonate_bomb(self) -> None:
+        self.game.audio.sound_play("explode")
+        now = time.perf_counter()
+        cell_x, cell_y = self.bomb_cell
+        self.bomb_detonation = (cell_x, cell_y, now)
+        self.bomb_cell = (-1, -1)
+
+    def blast_bomb(self) -> None:
+        blast_x, blast_y, starttime = self.bomb_detonation
+        if blast_x == -1 or blast_y == -1 or starttime == -1.0:
+            return
+        now = time.perf_counter()
+        duration = self.core.defaults.inventory_bomb_blast_duration
+        progress = (now - starttime) / duration
+        if progress >= 1.0:
+            self.bomb_detonation = (-1, -1, -1.0)
+        pacman = self.game.player.state
+        ghosts = self.game.ghosts.states
+        blast_t = blast_y
+        while self.game.maze.is_direction_available((blast_x, blast_t),
+                                                    "up"):
+            blast_t -= 1
+        blast_b = blast_y
+        while self.game.maze.is_direction_available((blast_x, blast_b),
+                                                    "down"):
+            blast_b += 1
+        blast_r = blast_x
+        while self.game.maze.is_direction_available((blast_r, blast_y),
+                                                    "right"):
+            blast_r += 1
+        blast_l = blast_x
+        while self.game.maze.is_direction_available((blast_l, blast_y),
+                                                    "left"):
+            blast_l -= 1
+        y = blast_y
+
+        def check_victims(x: int, y: int) -> None:
+            if (pacman.cell_x == x and pacman.cell_y == y
+                    and pacman.status == 1
+                    and not self.core.cht_table.invulnerable
+                    and self.game.revival_starttime == -1.0):
+                self.game.pacman_dies()
+            for i, ghost in enumerate(ghosts):
+                if (ghost.cell_x == x and ghost.cell_y == y
+                        and ghost.status != 3):
+                    ghost.status = 3
+                    ghost.activity = 5
+                    ghost.reverse_pending = True
+                    earned = self.core.pts_table.ghost
+                    self.game._add_points_to_score(earned)
+                    colors = [rcl.BLINKY_RED, rcl.PINKY_PINK,
+                              rcl.INKY_CYAN, rcl.CLYDE_ORANGE]
+                    cl_text = colors[i]
+                    self.graphics.gameboard.add_board_text(
+                        ghost.pos_x, ghost.pos_y, f"{earned:,}", cl_text,
+                        self.core.gm_state.character_size * 0.8, 5.0, 2.0)
+
+        for x in range(blast_l, blast_r + 1):
+            check_victims(x, y)
+        x = blast_x
+        for y in range(blast_t, blast_b + 1):
+            check_victims(x, y)
+        self.display_bomb_blast(blast_x, blast_y, blast_t, blast_r,
+                                blast_b, blast_l, progress)
+
+    def display_bomb_blast(self, bx: int, by: int, bt: int, br: int,
+                           bb: int, bl: int, progress: float) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        cl1 = rcl.scale_alpha(rcl.BLAST_OUT, 1.0 - progress)
+        cl2 = rcl.scale_alpha(rcl.BLAST_MED, 1.0 - progress)
+        cl3 = rcl.scale_alpha(rcl.BLAST_CNT, 1.0 - progress)
+        cell_size = self.maze_cell_size
+        wall_thick = sround(cell_size / 8.5)
+        cell_inner = cell_size - wall_thick * 2
+        bands_thick = cell_inner / 5
+        half_cell = sround(cell_size / 2)
+        half_cell_inner = sround(cell_inner / 2)
+        bt05 = sround(bands_thick * 0.5)
+        bt15, bt30 = sround(bands_thick * 1.5), sround(bands_thick * 3)
+
+        for cx in range(bl, br + 1):
+            if cx == bx:
+                continue
+            rx, ry = self.cell_center_coords(cx, by)
+            xa, xb, xc = rx - half_cell, rx - half_cell_inner, rx - bt15
+            xd, xe, xf = rx - bt05, rx + bt05, rx + bt15
+            xg, xh = rx + half_cell_inner, rx + half_cell
+            ya, yb, yc = ry - half_cell, ry - half_cell_inner, ry - bt15
+            yd, ye, yf = ry - bt05, ry + bt05, ry + bt15
+            yg, yh = ry + half_cell_inner, ry + half_cell
+            x_left = xb if cx == bl else xa
+            x_right = xg if cx == br else xh
+            draw.rectangle(x_left, yb, x_right - x_left, yg - yb,
+                           cl=cl1, filled=True)
+            draw.rectangle(x_left, yc, x_right - x_left, yf - yc,
+                           cl=cl2, filled=True)
+            draw.rectangle(x_left, yd, x_right - x_left, ye - yd,
+                           cl=cl3, filled=True)
+
+        for cy in range(bt, bb + 1):
+            if cy == by:
+                continue
+            rx, ry = self.cell_center_coords(bx, cy)
+            xa, xb, xc = rx - half_cell, rx - half_cell_inner, rx - bt15
+            xd, xe, xf = rx - bt05, rx + bt05, rx + bt15
+            xg, xh = rx + half_cell_inner, rx + half_cell
+            ya, yb, yc = ry - half_cell, ry - half_cell_inner, ry - bt15
+            yd, ye, yf = ry - bt05, ry + bt05, ry + bt15
+            yg, yh = ry + half_cell_inner, ry + half_cell
+            y_top = yb if cy == bt else ya
+            y_bot = yg if cy == bb else yh
+            draw.rectangle(xb, y_top, xg - xb, y_bot - y_top,
+                           cl=cl1, filled=True)
+            draw.rectangle(xc, y_top, xf - xc, y_bot - y_top,
+                           cl=cl2, filled=True)
+            draw.rectangle(xd, y_top, xe - xd, y_bot - y_top,
+                           cl=cl3, filled=True)
+
+        rx, ry = self.cell_center_coords(bx, by)
+        xa, xb, xc = rx - half_cell, rx - half_cell_inner, rx - bt15
+        xd, xe, xf = rx - bt05, rx + bt05, rx + bt15
+        xg, xh = rx + half_cell_inner, rx + half_cell
+        ya, yb, yc = ry - half_cell, ry - half_cell_inner, ry - bt15
+        yd, ye, yf = ry - bt05, ry + bt05, ry + bt15
+        yg, yh = ry + half_cell_inner, ry + half_cell
+        draw.rectangle(xb, yb, xg - xb, yg - yb, cl=cl1, filled=True)
+        draw.rectangle(xb, yc, xg - xb, bt30, cl=cl2, filled=True)
+        draw.rectangle(xc, yb, bt30, yc - yb, cl=cl2, filled=True)
+        draw.rectangle(xc, yf, bt30, yg - yf, cl=cl2, filled=True)
+        draw.triangle(xc, yb, xb, yc, xc, yc, cl=cl2, filled=True)
+        draw.triangle(xf, yb, xf, yc, xg, yc, cl=cl2, filled=True)
+        draw.triangle(xc, yg, xb, yf, xc, yf, cl=cl2, filled=True)
+        draw.triangle(xf, yf, xf, yg, xg, yf, cl=cl2, filled=True)
+        draw.rectangle(xb, yd, xg - xb, ye - yd, cl=cl3, filled=True)
+        draw.rectangle(xd, yb, xe - xd, yd - yb, cl=cl3, filled=True)
+        draw.rectangle(xd, ye, xe - xd, yg - ye, cl=cl3, filled=True)
+        draw.triangle(xd, yc, xc, yd, xd, yd, cl=cl3, filled=True)
+        draw.triangle(xe, yc, xe, yd, xf, yd, cl=cl3, filled=True)
+        draw.triangle(xc, ye, xd, ye, xd, yf, cl=cl3, filled=True)
+        draw.triangle(xe, ye, xf, ye, xe, yf, cl=cl3, filled=True)
+        if by != bt:
+            draw.rectangle(xb, ya, xg - xb, yb - ya, cl=cl1, filled=True)
+            draw.rectangle(xc, ya, xf - xc, yb - ya, cl=cl2, filled=True)
+            draw.rectangle(xd, ya, xe - xd, yb - ya, cl=cl3, filled=True)
+        if by != bb:
+            draw.rectangle(xb, yg, xg - xb, yh - yg, cl=cl1, filled=True)
+            draw.rectangle(xc, yg, xf - xc, yh - yg, cl=cl2, filled=True)
+            draw.rectangle(xd, yg, xe - xd, yh - yg, cl=cl3, filled=True)
+        if bx != bl:
+            draw.rectangle(xa, yb, xb - xa, yg - yb, cl=cl1, filled=True)
+            draw.rectangle(xa, yc, xb - xa, yf - yc, cl=cl2, filled=True)
+            draw.rectangle(xa, yd, xb - xa, ye - yd, cl=cl3, filled=True)
+        if bx != br:
+            draw.rectangle(xg, yb, xh - xg, yg - yb, cl=cl1, filled=True)
+            draw.rectangle(xg, yc, xh - xg, yf - yc, cl=cl2, filled=True)
+            draw.rectangle(xg, yd, xh - xg, ye - yd, cl=cl3, filled=True)
+        if by != bt and bx != br:
+            draw.triangle(xg, ya, xg, yb, xh, yb, cl=cl1, filled=True)
+        if by != bb and bx != br:
+            draw.triangle(xg, yh, xg, yg, xh, yg, cl=cl1, filled=True)
+        if by != bt and bx != bl:
+            draw.triangle(xb, ya, xb, yb, xa, yb, cl=cl1, filled=True)
+        if by != bb and bx != bl:
+            draw.triangle(xb, yh, xb, yg, xa, yg, cl=cl1, filled=True)

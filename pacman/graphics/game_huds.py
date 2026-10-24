@@ -48,6 +48,7 @@ class GameHUDs:
         self.livebox_pending_lives: int = 0
         self.livebox_capacity = self.core.defaults.hud_livebox_capacity
         self.livebox_pending_removals: int = 0
+        self.livebox_texture_valid: bool = False
         self.hourglass_bulb_top: RectangleGeometry
         self.hourglass_bulb_bot: RectangleGeometry
         self.hourglass_glass: RectangleGeometry
@@ -74,6 +75,8 @@ class GameHUDs:
         self.livebox_set_geometry()
         self.livebox_create_texture()
         self.hourglass_create_texture()
+        self.livebox_texture_valid = False
+        self.livebox_reset_stabilization(wake_all=True)
         from .game_menus import GameMenus
         self.gamemenus = GameMenus(self.core)
         self.gamemenus.launch()
@@ -90,6 +93,7 @@ class GameHUDs:
         self.livebox_pending_lives = 0
         self.livebox_capacity = self.core.defaults.hud_livebox_capacity
         self.livebox_pending_removals = 0
+        self.livebox_texture_valid = False
         self.hourglass_glass_thick = 0
         self.hourglass_flip_running = False
         self.hourglass_flip_starttime = time.perf_counter()
@@ -107,35 +111,46 @@ class GameHUDs:
         self.livebox_set_geometry()
         self.livebox_create_texture()
         self.hourglass_create_texture()
+        self.livebox_texture_valid = False
+        self.livebox_reset_stabilization(wake_all=True)
         self.gamemenus.resize()
         self.game.inventory.resize()
 
     def draw_huds(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         self.display_huds_textures()
         self.update_counters()
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
 
         if self.game.step in (6, 7):
-            self.graphics.interface.set_items(self.ui_items)
-            self.graphics.interface.update_mouse()
+            if not (self.core.gm_state.level < 0
+                    and self.game.minigames.endgame):
+                self.graphics.interface.set_items(self.ui_items)
+                self.graphics.interface.update_mouse()
             for i in range(len(self.ui_items)):
                 self.display_hud_buttons(i, rgb_factor)
 
         dt = min(self.game.pr.get_frame_time(), 0.05)
         self.livebox_update(dt)
         self.livebox_draw()
-        self.game.inventory.update_inventory_display()
-        if self.hourglass_flip_running:
-            self.hourglass_flip()
-        else:
-            self.hourglass_draw()
+        if not left_only:
+            self.game.inventory.update_inventory_display()
+            if self.hourglass_flip_running:
+                self.hourglass_flip()
+            else:
+                self.hourglass_draw()
         if self.game.step > 7:
             self.gamemenus.draw_menus()
         else:
             self.gamemenus.clear_background()
 
     def display_huds_textures(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         draw = self.graphics.shapes
         rg = self.graphics.rg
         tex = self.graphics.textures
@@ -148,21 +163,25 @@ class GameHUDs:
         draw.rectangle(lvp.x, lvp.y, lvp.wdt, lvp.hgt,
                        cl=cl_border, thick=rg(4), roundness=0.25)
 
-        with self.graphics.clip(rvp.x, rvp.y, rvp.wdt, rvp.hgt):
-            tex.draw("right_hud", rvp.x, rvp.y, rvp.wdt, rvp.hgt)
-            draw.rounded_rectangle_mask(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
-                                        0.25, rcl.BASE_BLACK)
-        draw.rectangle(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
-                       cl=cl_border, thick=rg(4), roundness=0.25)
+        if not left_only:
+            with self.graphics.clip(rvp.x, rvp.y, rvp.wdt, rvp.hgt):
+                tex.draw("right_hud", rvp.x, rvp.y, rvp.wdt, rvp.hgt)
+                draw.rounded_rectangle_mask(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
+                                            0.25, rcl.BASE_BLACK)
+            draw.rectangle(rvp.x, rvp.y, rvp.wdt, rvp.hgt,
+                           cl=cl_border, thick=rg(4), roundness=0.25)
 
     def update_counters(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         draw = self.graphics.shapes
         rg = self.graphics.rg
         lex = self.core.lexicon
         gmstate = self.core.gm_state
 
         def write_in_box(box: RectangleGeometry, value: int,
-                         timer: bool = False,
+                         timer: bool = False, level: bool = False,
                          alert: int | None = None) -> bool:
             sround = self.utils.sym_round
             if timer:
@@ -171,6 +190,11 @@ class GameHUDs:
                 else:
                     txt = (f"{value // 6000:02}:{(value % 6000) // 100:02}:"
                            + f"{value % 100:02}")
+            elif level and gmstate.level < 0:
+                if gmstate.level == -1:
+                    txt = "Pac-Snake"
+                elif gmstate.level == -2:
+                    txt = "Pac-Breaker"
             else:
                 txt = f"{value:,}".replace(",", lex("kilo_sep"))
 
@@ -200,10 +224,12 @@ class GameHUDs:
 
         red_alert = False
         red_alert |= write_in_box(self.box_score, gmstate.score)
-        red_alert |= write_in_box(self.box_level, gmstate.level)
+        red_alert |= write_in_box(self.box_level, gmstate.level, level=True)
         red_alert |= write_in_box(self.box_lives, gmstate.lives_cur, alert=0)
-        red_alert |= write_in_box(self.box_time, int(gmstate.time_cur * 100),
-                                  timer=True, alert=1000)
+        if not left_only:
+            red_alert |= write_in_box(self.box_time,
+                                      int(gmstate.time_cur * 100),
+                                      timer=True, alert=1000)
         self.red_alert = red_alert
 
     def display_hud_buttons(self, index: int, rgb_factor: float) -> None:
@@ -214,7 +240,10 @@ class GameHUDs:
         lex = self.core.lexicon
 
         if self.game.step in (6, 7):
-            ui_items = self.ui_items
+            if self.core.gm_state.level < 0 and self.game.minigames.endgame:
+                ui_items = self.game.minigames.offer_ui_items
+            else:
+                ui_items = self.ui_items
         elif self.game.step == 8:
             ui_items = self.gamemenus.pause_ui_items
         elif self.game.step in (9, 10):
@@ -223,6 +252,10 @@ class GameHUDs:
             ui_items = self.gamemenus.gamescoremenu.score_ui_items
         elif self.game.step == 12:
             ui_items = self.gamemenus.gamecheatsmenu.cheats_ui_items
+        elif self.game.step in (13, 14):
+            ui_items = self.gamemenus.endgame_ui_items
+        elif self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
 
         item = ui_items[index]
 
@@ -282,16 +315,18 @@ class GameHUDs:
                         0, 1.0, face_color=pacman_color, contour=False)
 
         elif item.code == "pause_menu":
+            cl_body = rcl.GREY if item.disabled else rcl.PACMAN_YELLOW
+            cl_text = rcl.GREY if item.disabled else rcl.SAND
             draw.circle(button.c2ct.x, button.c2ct.y,
                         button.rad + rad_bonus + thick // 2,
-                        cl=rcl.PACMAN_YELLOW, filled=True)
+                        cl=cl_body, filled=True)
             draw.circle(button.c3ct.x, button.c3ct.y,
                         button.rad + rad_bonus + thick // 2,
-                        cl=rcl.PACMAN_YELLOW, filled=True)
+                        cl=cl_body, filled=True)
             draw.rectangle(button.c2ct.x, button.c2tr.y,
                            button.c3ct.x - button.c2ct.x + 1,
                            button.c2br.y - button.c2tr.y + 1,
-                           cl=rcl.PACMAN_YELLOW, filled=True)
+                           cl=cl_body, filled=True)
             draw.circle(button.c2ct.x, button.c2ct.y,
                         button.rad + rad_bonus - thick + thick // 2,
                         cl=rcl.BASE_BLACK, filled=True)
@@ -305,21 +340,23 @@ class GameHUDs:
                 cl=rcl.BASE_BLACK, filled=True)
             draw.text(label_x, label_y_margin + button.c1tl.y, lex(item.label),
                       self.graphics.font_regular, label_size,
-                      cl=rcl.SAND)
+                      cl=cl_text)
         else:
+            cl_body = rcl.GREY if item.disabled else rcl.PACMAN_YELLOW
+            cl_text = rcl.GREY if item.disabled else rcl.SAND
             draw.line(button.c2tr.x, button.c2tr.y + thick // 2,
                       button.c3tl.x + 1, button.c3tl.y + thick // 2,
-                      thick=thick, cl=rcl.PACMAN_YELLOW, edge_sharp=True)
+                      thick=thick, cl=cl_body, edge_sharp=True)
             draw.line(button.c2br.x, button.c2br.y - thick // 2,
                       button.c3bl.x + 1, button.c3bl.y - thick // 2,
-                      thick=thick, cl=rcl.PACMAN_YELLOW, edge_sharp=True)
+                      thick=thick, cl=cl_body, edge_sharp=True)
             draw.text(label_x, label_y_margin + button.c1tl.y, lex(item.label),
                       self.graphics.font_regular, label_size,
-                      cl=rcl.SAND)
+                      cl=cl_text)
             draw.arc(button.c2ct.x, button.c2ct.y, button.rad - thick // 2,
-                     45, 315, thick=thick, cl=rcl.PACMAN_YELLOW)
+                     45, 315, thick=thick, cl=cl_body)
             draw.arc(button.c3ct.x, button.c3ct.y, button.rad - thick // 2,
-                     -135, 135, thick=thick, cl=rcl.PACMAN_YELLOW)
+                     -135, 135, thick=thick, cl=cl_body)
 
     def display_r_checkbox(self, index: int, rgb_factor: float,
                            check: bool = False,
@@ -349,9 +386,11 @@ class GameHUDs:
         else:
             checkbox = geo.rectangle_geometry(item.x, item.y,
                                               item.width, item.height)
-        pacman_color = rcl.PACMAN_YELLOW
+        pacman_color = rcl.GREY if item.disabled else rcl.PACMAN_YELLOW
         circle_color = rcl.scale_rgb(rcl.BASE_BR_PURPLE, rgb_factor)
+        circle_color = rcl.GREY if item.disabled else circle_color
         line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_color = rcl.GREY if item.disabled else line_color
         line_font = (self.graphics.font_bold if line_active
                      else self.graphics.font_regular)
         thick = rg(2)
@@ -374,7 +413,7 @@ class GameHUDs:
 
         if check:
             draw.pacman(checkbox.c3ct.x, checkbox.c3ct.y, checkbox.rad, 180,
-                        mouth_opening=0.5)
+                        mouth_opening=0.5, face_color=pacman_color)
             if line_active:
                 draw.circle_gradient(checkbox.c3ct.x, checkbox.c3ct.y,
                                      checkbox.rad,
@@ -388,7 +427,209 @@ class GameHUDs:
                 draw.circle(checkbox.c3ct.x, checkbox.c3ct.y, checkbox.rad,
                             thick=thick, cl=pacman_color, filled=False)
 
+    def display_rc_checkbox(self, index: int, rgb_factor: float,
+                            lbl_size: int, check: bool = False) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        rg = self.graphics.rg
+        geo = self.geometry
+        lex = self.core.lexicon
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "rc_checkbox":
+            return
+
+        line_active = self.graphics.interface.focused(item.code)
+
+        checkbox = geo.rectangle_geometry(item.x, item.y,
+                                          item.width, item.height)
+        line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_font = (self.graphics.font_bold if line_active
+                     else self.graphics.font_regular)
+        thick = rg(4) if line_active else rg(2)
+        label_size = lbl_size
+
+        label_width, label_height = geo.measure_text(lex(item.label),
+                                                     label_size)
+        label_x = checkbox.x
+        label_y = checkbox.y + sround((checkbox.hgt - label_height) / 2)
+
+        draw.text(label_x, label_y, lex(item.label), line_font, label_size,
+                  line_color)
+        button_rad = sround(lbl_size / 2)
+        button_x = checkbox.ct.x + sround(checkbox.wdt / 4)
+        if check:
+            draw.pacman(button_x, checkbox.ct.y, button_rad, 180,
+                        mouth_opening=0.5, face_color=line_color)
+        else:
+            draw.circle(button_x, checkbox.ct.y, button_rad,
+                        thick=thick, cl=line_color, filled=False)
+
+    def display_clickable_label(self, index: int, lbl_size: int) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        geo = self.geometry
+        lex = self.core.lexicon
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "clickable_label":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        line_active = current_focus[:-3] == item.code[:-3]
+
+        labelbox = geo.rectangle_geometry(item.x, item.y,
+                                          item.width, item.height)
+        line_color = rcl.PACMAN_YELLOW if line_active else rcl.SAND
+        line_color = rcl.GREY if item.disabled else line_color
+        line_font = (self.graphics.font_bold if line_active
+                     else self.graphics.font_regular)
+        label_size = lbl_size
+        label_width, label_height = geo.measure_text(lex(item.label),
+                                                     label_size)
+        label_x = labelbox.x
+        label_y = labelbox.y + sround((labelbox.hgt - label_height) / 2)
+
+        draw.text(label_x, label_y, lex(item.label), line_font, label_size,
+                  line_color)
+
+    def display_btn_prev(self, index: int, btn_size: int,
+                         max_size: int) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "btn_prev":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        btn_active = current_focus[:-3] == item.code[:-3]
+        btn_size = min(btn_size, max_size)
+        btn_margin = sround((item.height - btn_size) / 2)
+        btnbox = geo.rectangle_geometry(item.x + btn_margin,
+                                        item.y + btn_margin,
+                                        item.width - btn_margin * 2,
+                                        item.height - btn_margin * 2)
+        btn_color = rcl.PACMAN_YELLOW if btn_active else rcl.SAND
+        btn_color = rcl.GREY if item.disabled else btn_color
+
+        draw.rectangle(btnbox.x, btnbox.y, btnbox.wdt, btnbox.hgt,
+                       cl=btn_color, filled=True)
+        margin = sround(btnbox.wdt * 0.10)
+        draw.triangle(btnbox.x + margin, btnbox.ct.y,
+                      btnbox.rct.x - margin * 2, btnbox.y + margin,
+                      btnbox.rct.x - margin * 2, btnbox.bct.y - margin,
+                      cl=rcl.BASE_BLACK, filled=True)
+
+    def display_list_next(self, index: int, txt_size: int,
+                          btn_size: int, listitem: str) -> None:
+        sround = self.utils.sym_round
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "list_next":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        list_active = current_focus[:-3] == item.code[:-3]
+        btn_size = min(btn_size, txt_size)
+        btn_margin = sround((item.height - btn_size) / 2)
+        btnbox = geo.rectangle_geometry(item.x + item.width - btn_size,
+                                        item.y + btn_margin, btn_size,
+                                        item.height - btn_margin * 2)
+        btn_color = rcl.PACMAN_YELLOW if list_active else rcl.SAND
+        btn_color = rcl.GREY if item.disabled else btn_color
+        list_font = (self.graphics.font_bold if list_active
+                     else self.graphics.font_regular)
+        draw.rectangle(btnbox.x, btnbox.y, btnbox.wdt, btnbox.hgt,
+                       cl=btn_color, filled=True)
+        margin = sround(btnbox.wdt * 0.10)
+        draw.triangle(btnbox.rct.x - margin, btnbox.ct.y,
+                      btnbox.x + margin * 2, btnbox.y + margin,
+                      btnbox.x + margin * 2, btnbox.bct.y - margin,
+                      cl=rcl.BASE_BLACK, filled=True)
+        txtbox = geo.rectangle_geometry(
+            item.x, item.y + btn_margin,
+            item.width - btn_size - btn_margin,
+            item.height - btn_margin * 2)
+        draw.text_block_max(
+            txtbox.x, txtbox.y + sround((txtbox.hgt - txt_size) / 2),
+            txtbox.wdt, txt_size, listitem, list_font, btn_color,
+            "center", "center")
+
+    def display_numbar(self, index: int, low: int, high: int, step: int,
+                       value: int, unit: str, max_size: int) -> None:
+        sround = self.utils.sym_round
+        rg = self.graphics.rg
+        draw = self.graphics.shapes
+        geo = self.geometry
+
+        if self.game.step == 15:
+            ui_items = self.gamemenus.gamesettingsmenu.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "bar_next":
+            return
+
+        current_focus = self.graphics.interface.current_focused_code()
+        bar_active = current_focus[:-3] == item.code[:-3]
+        bubble_hgt = min(sround(item.height * 0.9), max_size)
+        bubble_wdt = bubble_hgt * 2
+        txt_size = sround(bubble_hgt * 0.85)
+        txt = f"{value}{unit}"
+        txt_wdt, txt_hgt = geo.measure_text(txt, txt_size)
+        txt_wdt, txt_hgt = int(txt_wdt), int(txt_hgt)
+        barbox = geo.rectangle_geometry(
+            item.x + bubble_wdt // 2,
+            item.y + sround((item.height - bubble_hgt) / 2),
+            item.width - bubble_wdt, bubble_hgt)
+        bar_color = rcl.PACMAN_YELLOW if bar_active else rcl.SAND
+        bar_color = rcl.GREY if item.disabled else bar_color
+        bar_font = (self.graphics.font_bold if bar_active
+                    else self.graphics.font_regular)
+        bar_thick = rg(4) if bar_active else rg(2)
+        draw.line(barbox.x, barbox.ct.y, barbox.rct.x, barbox.ct.y,
+                  bar_thick, bar_color)
+        nb_grad = (high - low) // step
+        grad_top = barbox.y + barbox.hgt // 4
+        grad_bot = barbox.bct.y - barbox.hgt // 4
+        for i in range(nb_grad + 1):
+            grad_x = barbox.x + sround(i * (barbox.wdt / nb_grad))
+            draw.line(grad_x, grad_top, grad_x, grad_bot, bar_thick, bar_color)
+        bubble_x = barbox.x - bubble_wdt // 2 + sround(
+            ((value - low) / (high - low)) * barbox.wdt)
+        draw.rectangle(bubble_x, barbox.y, bubble_wdt, barbox.hgt,
+                       roundness=0.75, cl=rcl.BASE_BLACK, filled=True)
+        draw.rectangle(bubble_x, barbox.y, bubble_wdt, barbox.hgt,
+                       roundness=0.75, thick=bar_thick,
+                       cl=bar_color, filled=False)
+        draw.text(bubble_x + bubble_wdt // 2 - txt_wdt // 2,
+                  barbox.ct.y - txt_hgt // 2, txt,
+                  bar_font, txt_size, bar_color)
+
     def create_huds_textures(self) -> None:
+        left_only = False
+        if self.core.gm_state.level < 0:
+            left_only = True
         self.ui_items[:] = [item for item in self.ui_items
                             if item.code in ("pause_menu", "hourglass",
                                              "maze")]
@@ -581,54 +822,60 @@ class GameHUDs:
             sround(title_hgt * 2.5))
         self.graphics.textures.end()
 
-        wdt, hgt = rvp.wdt, rvp.hgt
-        if self.graphics.textures.exists("right_hud"):
-            self.graphics.textures.unload("right_hud")
-        self.graphics.textures.begin("right_hud", wdt, hgt)
-        with self.graphics.clip(0, 0, wdt, hgt):
-            self.graphics.textures.draw_image_texture(
-                "gunmetal", 0, 0, wdt, hgt, alpha=255, angle=0.0, cover=True)
-            draw.rounded_rectangle_mask(0, 0, wdt, hgt, 0.25, rcl.BASE_BLACK)
-        title_r1 = lex("HUD_Tim")
-        x, _ = geo.center_text_in_rect(title_r1, title_hgt, wdt, hgt)
-        y = sround(title_hgt / 2)
-        draw.text(x, y, title_r1, font, title_hgt, cl=cl_label)
-        self.box_time = add_box(sround(wdt * 0.1), sround(y + title_hgt * 1.3),
-                                sround(wdt * 0.8), title_hgt * 2, left=False)
-        self.ui_items.append(InterfaceItem(
-            self.box_time.x, self.box_time.y, self.box_time.wdt,
-            self.box_time.hgt, "HUD_Tim", "time", "zone", rel_to_center=False))
-        self.cont_time = add_box(
-            sround(wdt * 0.1), sround(y + title_hgt * 3.3), sround(wdt * 0.8),
-            sround(wdt * 0.8), left=False)
-        title_r2 = lex("HUD_Inv")
-        x, _ = geo.center_text_in_rect(title_r2, title_hgt, wdt, hgt)
-        y = y + title_hgt * 4 + sround(wdt * 0.8)
-        draw.text(x, y, title_r2, font, title_hgt, cl=cl_label)
-        remaining_y = hgt - title_hgt - y - title_hgt * 1.3
-        self.cont_inventory = add_box(sround(wdt * 0.1),
-                                      sround(y + title_hgt * 1.3),
-                                      sround(wdt * 0.8), sround(remaining_y),
-                                      left=False)
-        self.graphics.textures.end()
-
-        nb_w, nb_h = 3, 2
-        margin = self.cont_inventory.wdt // 30
-        cont = self.graphics.geometry.rectangle_geometry(
-            self.cont_inventory.x + margin, self.cont_inventory.y + margin,
-            self.cont_inventory.wdt - margin * 2,
-            self.cont_inventory.hgt - margin * 2)
-        cell_wdt, cell_hgt = sround(cont.wdt / nb_w), sround(cont.hgt / nb_h)
-        index = 0
-        for row in range(nb_h):
-            y_offset = sround(cont.y + row * cell_hgt)
-            for col in range(nb_w):
-                x_offset = sround(cont.x + col * cell_wdt)
-                self.ui_items.append(InterfaceItem(
-                    x_offset, y_offset, cell_wdt, cell_hgt, "HUD_Inv",
-                    f"inventory_{index:02}", "zone", rel_to_center=False))
-                index += 1
-        self.game.inventory.update_boxes_geometry()
+        if not left_only:
+            wdt, hgt = rvp.wdt, rvp.hgt
+            if self.graphics.textures.exists("right_hud"):
+                self.graphics.textures.unload("right_hud")
+            self.graphics.textures.begin("right_hud", wdt, hgt)
+            with self.graphics.clip(0, 0, wdt, hgt):
+                self.graphics.textures.draw_image_texture(
+                    "gunmetal", 0, 0, wdt, hgt,
+                    alpha=255, angle=0.0, cover=True)
+                draw.rounded_rectangle_mask(0, 0, wdt, hgt, 0.25,
+                                            rcl.BASE_BLACK)
+            title_r1 = lex("HUD_Tim")
+            x, _ = geo.center_text_in_rect(title_r1, title_hgt, wdt, hgt)
+            y = sround(title_hgt / 2)
+            draw.text(x, y, title_r1, font, title_hgt, cl=cl_label)
+            self.box_time = add_box(sround(wdt * 0.1),
+                                    sround(y + title_hgt * 1.3),
+                                    sround(wdt * 0.8), title_hgt * 2,
+                                    left=False)
+            self.ui_items.append(InterfaceItem(
+                self.box_time.x, self.box_time.y, self.box_time.wdt,
+                self.box_time.hgt, "HUD_Tim", "time", "zone",
+                rel_to_center=False))
+            self.cont_time = add_box(
+                sround(wdt * 0.1), sround(y + title_hgt * 3.3),
+                sround(wdt * 0.8), sround(wdt * 0.8), left=False)
+            title_r2 = lex("HUD_Inv")
+            x, _ = geo.center_text_in_rect(title_r2, title_hgt, wdt, hgt)
+            y = y + title_hgt * 4 + sround(wdt * 0.8)
+            draw.text(x, y, title_r2, font, title_hgt, cl=cl_label)
+            remaining_y = hgt - title_hgt - y - title_hgt * 1.3
+            self.cont_inventory = add_box(
+                sround(wdt * 0.1), sround(y + title_hgt * 1.3),
+                sround(wdt * 0.8), sround(remaining_y), left=False)
+            self.graphics.textures.end()
+            nb_w, nb_h = 3, 2
+            margin = self.cont_inventory.wdt // 30
+            cont = self.graphics.geometry.rectangle_geometry(
+                self.cont_inventory.x + margin,
+                self.cont_inventory.y + margin,
+                self.cont_inventory.wdt - margin * 2,
+                self.cont_inventory.hgt - margin * 2)
+            cell_wdt = sround(cont.wdt / nb_w)
+            cell_hgt = sround(cont.hgt / nb_h)
+            index = 0
+            for row in range(nb_h):
+                y_offset = sround(cont.y + row * cell_hgt)
+                for col in range(nb_w):
+                    x_offset = sround(cont.x + col * cell_wdt)
+                    self.ui_items.append(InterfaceItem(
+                        x_offset, y_offset, cell_wdt, cell_hgt, "HUD_Inv",
+                        f"inventory_{index:02}", "zone", rel_to_center=False))
+                    index += 1
+            self.game.inventory.update_boxes_geometry()
 
         for i in self.ui_items:
             if i.code == "pause_menu":
@@ -637,9 +884,11 @@ class GameHUDs:
             elif i.code == "hourglass":
                 ref = self.cont_time
                 i.x, i.y, i.width, i.height = ref.x, ref.y, ref.wdt, ref.hgt
+                i.disabled = left_only
             elif i.code == "maze":
                 ref = self.gameboard.mvp
                 i.x, i.y, i.width, i.height = ref.x, ref.y, ref.wdt, ref.hgt
+                i.disabled = left_only
 
     def livebox_set_geometry(self, capacity: int | None = None) -> None:
         sround = self.utils.sym_round
@@ -675,6 +924,7 @@ class GameHUDs:
         if self.livebox_size == old_size:
             return
 
+        self.livebox_texture_valid = False
         self.livebox_create_texture()
         self.livebox_repack()
 
@@ -734,7 +984,7 @@ class GameHUDs:
                 life.vel_y = 0.0
                 life.stable = False
 
-        self.livebox_reset_stabilization()
+        self.livebox_reset_stabilization(wake_all=True)
 
     def livebox_drop_position(self) -> tuple[float, float]:
         """Return the LiveBox materialization position."""
@@ -777,27 +1027,30 @@ class GameHUDs:
                                 - ((old_box.ct.y - life.pos_y) * ratio_y))
         self.livebox_check_capacity(len(self.livebox_lives)
                                     + self.livebox_pending_lives)
-        self.livebox_reset_stabilization()
+        self.livebox_reset_stabilization(wake_all=True)
 
     def livebox_update_physics(self, dt: float) -> None:
-        """Simulate all materialized reserve Pac-Men together."""
+        """Simulate moving reserve Pac-Men against all nearby bodies."""
         if not self.livebox_physics_active:
             return
 
         now = time.perf_counter()
         timeout = self.core.defaults.hud_livebox_stabilization_timeout
+
         if now - self.livebox_last_change_time >= timeout:
             self.livebox_physics_active = False
             for life in self.livebox_lives:
                 life.vel_x = 0.0
                 life.vel_y = 0.0
                 life.stable = True
+            self.livebox_texture_valid = False
             return
 
         lives = [life for life in self.livebox_lives
                  if not life.spawning and not life.despawning]
+        mobiles = [life for life in lives if not life.stable]
 
-        if not lives:
+        if not mobiles:
             return
 
         margin = self.cont_lives.wdt // 30
@@ -811,29 +1064,32 @@ class GameHUDs:
         velocity_deadzone = max(1.0, radius * 0.25)
 
         def keep_inside(life: HUDLifeState) -> None:
-            """Keep one body inside the LiveBox."""
             if life.pos_x < left:
                 life.pos_x = left
                 if life.vel_x < 0.0:
                     life.vel_x = 0.0
-
             elif life.pos_x > right:
                 life.pos_x = right
                 if life.vel_x > 0.0:
                     life.vel_x = 0.0
-
             if life.pos_y < ceiling:
                 life.pos_y = ceiling
                 if life.vel_y < 0.0:
                     life.vel_y = 0.0
-
             elif life.pos_y > floor:
                 life.pos_y = floor
                 if life.vel_y > 0.0:
                     life.vel_y = 0.0
 
-        def resolve_pair(first: HUDLifeState, second: HUDLifeState) -> None:
-            """Separate two overlapping LiveBox bodies."""
+        def resolve_pair(first: HUDLifeState,
+                         second: HUDLifeState) -> None:
+            if first.stable and second.stable:
+                return
+            dx = first.pos_x - second.pos_x
+            dy = first.pos_y - second.pos_y
+            diameter = radius * 2.0
+            if abs(dx) >= diameter or abs(dy) >= diameter:
+                return
             collision = self.physics.collision(
                 CircleHitbox(first.pos_x, first.pos_y, radius),
                 CircleHitbox(second.pos_x, second.pos_y, radius))
@@ -841,37 +1097,74 @@ class GameHUDs:
                 return
             if collision.penetration <= collision_deadzone:
                 return
-            correction = (collision.penetration - collision_deadzone) * 0.50
+            correction = collision.penetration - collision_deadzone
             nx = collision.normal_x
             ny = collision.normal_y
-            first.pos_x += nx * correction
-            first.pos_y += ny * correction
-            second.pos_x -= nx * correction
-            second.pos_y -= ny * correction
+            if second.stable:
+                first.pos_x += nx * correction
+                first.pos_y += ny * correction
+            elif first.stable:
+                second.pos_x -= nx * correction
+                second.pos_y -= ny * correction
+            else:
+                first.pos_x += nx * correction * 0.5
+                first.pos_y += ny * correction * 0.5
+                second.pos_x -= nx * correction * 0.5
+                second.pos_y -= ny * correction * 0.5
             if abs(nx) < 0.15:
-                direction = -1.0 if first.pos_x < self.cont_lives.ct.x else 1.0
+                direction = (
+                    -1.0 if first.pos_x < self.cont_lives.ct.x else 1.0)
                 if abs(first.pos_x - second.pos_x) < radius * 0.05:
                     direction = float(self.livebox_drop_direction)
                 shove = radius * 0.08
-                first.pos_x -= direction * shove
-                second.pos_x += direction * shove
+                if not first.stable:
+                    first.pos_x -= direction * shove
+                if not second.stable:
+                    second.pos_x += direction * shove
 
-        old_x = {id(life): life.pos_x for life in lives}
-        for life in lives:
+        old_x = {id(life): life.pos_x for life in mobiles}
+
+        for life in mobiles:
             life.vel_y += gravity * dt
             life.pos_x += life.vel_x * dt
             life.pos_y += life.vel_y * dt
             life.vel_x *= 0.98 ** (dt * 60.0)
             keep_inside(life)
 
+        cell_size = max(1.0, radius * 2.0)
+
+        def cell_coords(life: HUDLifeState) -> tuple[int, int]:
+            return (math.floor(life.pos_x / cell_size),
+                    math.floor(life.pos_y / cell_size))
+
         for _ in range(8):
-            for index, first in enumerate(lives):
-                for second in lives[index + 1:]:
-                    resolve_pair(first, second)
+            grid: dict[tuple[int, int], list[HUDLifeState]] = {}
             for life in lives:
+                key = cell_coords(life)
+                grid.setdefault(key, []).append(life)
+            checked: set[tuple[int, int]] = set()
+            for first in mobiles:
+                cx, cy = cell_coords(first)
+                for ox in (-1, 0, 1):
+                    for oy in (-1, 0, 1):
+                        neighbors = grid.get((cx + ox, cy + oy), [])
+                        for second in neighbors:
+                            if first is second:
+                                continue
+                            first_id = id(first)
+                            second_id = id(second)
+                            if first_id < second_id:
+                                key = (first_id, second_id)
+                            else:
+                                key = (second_id, first_id)
+                            if key in checked:
+                                continue
+                            checked.add(key)
+                            resolve_pair(first, second)
+            for life in mobiles:
                 keep_inside(life)
 
-        for life in lives:
+        for life in mobiles:
             moved_x = life.pos_x - old_x[id(life)]
             if radius > 0.0:
                 life.angle += math.degrees(moved_x / radius)
@@ -911,12 +1204,26 @@ class GameHUDs:
                               * 0.15)
                 self.livebox_drop_direction *= -1
                 spawning = False
+                life.stable = False
+                candidates = [
+                    other for other in self.livebox_lives if other is not life
+                    and not other.spawning and not other.despawning
+                    and abs(other.pos_x - life.pos_x) <= self.livebox_size * 2]
+
+                if candidates:
+                    landing_y = min(other.pos_y for other in candidates)
+                else:
+                    landing_y = (self.cont_lives.y + self.cont_lives.hgt
+                                 - self.cont_lives.wdt // 30
+                                 - self.livebox_radius)
+
+                self.livebox_wake_neighbors(life.pos_x, landing_y)
 
         for life in remove_lives:
             self.livebox_lives.remove(life)
 
-        if remove_lives:
-            self.livebox_reset_stabilization()
+        for life in remove_lives:
+            self.livebox_wake_neighbors(life.pos_x, life.pos_y)
 
         despawning = any(life.despawning for life in self.livebox_lives)
 
@@ -928,34 +1235,59 @@ class GameHUDs:
         if not spawning and not despawning and self.livebox_pending_lives > 0:
             self.livebox_add_life()
             self.livebox_pending_lives -= 1
-            self.livebox_reset_stabilization()
 
         self.livebox_update_physics(dt)
 
-    def livebox_reset_stabilization(self) -> None:
+    def livebox_reset_stabilization(self, wake_all: bool = False) -> None:
         """Restart LiveBox physics stabilization timeout."""
         self.livebox_last_change_time = time.perf_counter()
         self.livebox_physics_active = True
+        self.livebox_texture_valid = False
 
-        for life in self.livebox_lives:
+        if wake_all:
+            for life in self.livebox_lives:
+                if not life.spawning and not life.despawning:
+                    life.stable = False
+
+    def livebox_wake_neighbors(self, x: float, y: float) -> None:
+        """Wake the nearest reserve Pac-Men."""
+        quantity = self.core.defaults.hud_livebox_wake_neighbors
+        lives = [life for life in self.livebox_lives
+                 if not life.spawning and not life.despawning]
+        neighbors = sorted(lives, key=lambda life: (
+            (life.pos_x - x) ** 2 + (life.pos_y - y) ** 2))
+
+        for life in neighbors[:quantity]:
             life.stable = False
 
+        self.livebox_reset_stabilization()
+
     def livebox_draw(self) -> None:
-        """Draw reserve Pac-Men and LiveBox effects."""
+        """Draw reserve Pac-Men using individual or cached textures."""
         sround = self.utils.sym_round
         now = time.perf_counter()
         tex = self.graphics.textures
+        box = self.cont_lives
+        animating = any(life.spawning or life.despawning
+                        for life in self.livebox_lives)
+        use_cache = not self.livebox_physics_active and not animating
 
-        with self.graphics.clip(self.cont_lives.x, self.cont_lives.y,
-                                self.cont_lives.wdt, self.cont_lives.hgt):
-            for life in self.livebox_lives:
-                if life.spawning:
-                    self.livebox_draw_halo(life, now)
-                    continue
-                tex.draw("hud_life", sround(life.pos_x), sround(life.pos_y),
-                         angle=life.angle, autocenter=True, scale=0.25)
-                if life.despawning:
-                    self.livebox_draw_halo(life, now)
+        if use_cache and not self.livebox_texture_valid:
+            self.livebox_build_texture()
+
+        with self.graphics.clip(box.x, box.y, box.wdt, box.hgt):
+            if use_cache:
+                tex.draw("hud_livebox", box.x, box.y, box.wdt, box.hgt)
+            else:
+                for life in self.livebox_lives:
+                    if life.spawning:
+                        self.livebox_draw_halo(life, now)
+                        continue
+                    tex.draw("hud_life", sround(life.pos_x),
+                             sround(life.pos_y), angle=life.angle,
+                             autocenter=True, scale=0.25)
+                    if life.despawning:
+                        self.livebox_draw_halo(life, now)
 
     def livebox_set_lives(self, quantity: int) -> None:
         """Synchronize the LiveBox with the reserve life count."""
@@ -976,8 +1308,6 @@ class GameHUDs:
             remove_count -= cancelled
             self.livebox_pending_removals += remove_count
 
-        self.livebox_reset_stabilization()
-
     def livebox_add_life(self) -> None:
         """Add one reserve Pac-Man to the LiveBox."""
         x, y = self.livebox_drop_position()
@@ -992,9 +1322,33 @@ class GameHUDs:
                 continue
             life.despawning = True
             life.halo_start_time = time.perf_counter()
+            self.livebox_texture_valid = False
             return
 
+    def livebox_build_texture(self) -> None:
+        """Cache the settled reserve Pac-Men in one texture."""
+        sround = self.utils.sym_round
+        tex = self.graphics.textures
+        box = self.cont_lives
+
+        if tex.exists("hud_livebox"):
+            tex.unload("hud_livebox")
+
+        tex.begin("hud_livebox", box.wdt, box.hgt)
+
+        for life in self.livebox_lives:
+            if life.spawning or life.despawning:
+                continue
+            tex.draw("hud_life", sround(life.pos_x - box.x),
+                     sround(life.pos_y - box.y), angle=life.angle,
+                     autocenter=True, scale=0.25)
+
+        tex.end()
+        self.livebox_texture_valid = True
+
     def hourglass_create_texture(self) -> None:
+        if self.core.gm_state.level < 0:
+            return
         sround = self.utils.sym_round
         geo = self.geometry
         draw = self.graphics.shapes

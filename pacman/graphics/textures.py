@@ -4,6 +4,7 @@ from typing import Any, TypeAlias
 
 import pyray as pr
 
+from pacman.base.utils import Utils
 from pacman.base.models import LogEvent
 from pacman.core import Core
 
@@ -25,7 +26,8 @@ class Textures:
             return
         if name == "grayscale":
             self.shaders[name] = pr.load_shader(
-                pr.ffi.NULL, "pacman/assets/shaders/grayscale.fs")
+                pr.ffi.NULL, str(Utils().get_resource_path()
+                                 / "assets" / "shaders" / "grayscale.fs"))
 
     def set_minimal_log_level(self, minimal: bool = False) -> None:
         if minimal:
@@ -299,6 +301,10 @@ class Textures:
         y_target = max(0, y + y_offset)
         crop_width = min(width, screen.width - x_target)
         crop_height = min(height, screen.height - y_target)
+        if x_target + width > screen.width:
+            width = screen.width - x_target
+        if y_target + height > screen.height:
+            height = screen.height - y_target
         if (x_target < 0 or y_target < 0 or x_target + width > screen.width
                 or y_target + height > screen.height):
             pr.unload_image(screen)

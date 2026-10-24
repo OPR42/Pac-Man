@@ -11,7 +11,9 @@ from pacman.graphics.colors import RenderColors as rcl
 
 
 InterfaceKind: TypeAlias = Literal["button", "table", "zone", "key",
-                                   "r_checkbox", "maze"]
+                                   "r_checkbox", "maze", "clickable_label",
+                                   "btn_prev", "list_next", "bar_next",
+                                   "rc_checkbox"]
 
 
 @dataclass
@@ -25,6 +27,7 @@ class InterfaceItem:
     kind: InterfaceKind
     inv_code: str = ""
     rel_to_center: bool = False
+    disabled: bool = False
 
 
 @dataclass
@@ -112,7 +115,10 @@ class Interface:
 
     def _focusable_codes(self, avoid: tuple[str, ...] = ("",)) -> list[str]:
         return [item.code for item in self.ui_items if (
-            item.kind in ("button", "r_checkbox") and item.code not in avoid)]
+            item.kind in ("button", "r_checkbox",
+                          "clickable_label", "btn_prev",
+                          "list_next", "bar_next", "rc_checkbox")
+            and item.code not in avoid and not item.disabled)]
 
     def focus_key(self, direction: str) -> None:
         if self.locked:
@@ -226,6 +232,15 @@ class Interface:
         if self.locked:
             return None
 
+        if self.game.step in (4, 15) and self.focus:
+            base = self.focus[:-3]
+            if self.focus == base + "lbl":
+                avoid = (base + "prv", base + "nxt")
+            elif self.focus == base + "prv":
+                avoid = (base + "lbl", base + "nxt")
+            elif self.focus == base + "nxt":
+                avoid = (base + "lbl", base + "prv")
+
         codes = self._focusable_codes(avoid=avoid)
         self.mouse_focus = None
         self.hint = None
@@ -246,6 +261,15 @@ class Interface:
         if self.locked:
             return None
 
+        if self.game.step in (4, 15) and self.focus:
+            base = self.focus[:-3]
+            if self.focus == base + "lbl":
+                avoid = (base + "prv", base + "nxt")
+            elif self.focus == base + "prv":
+                avoid = (base + "lbl", base + "nxt")
+            elif self.focus == base + "nxt":
+                avoid = (base + "lbl", base + "prv")
+
         codes = self._focusable_codes(avoid=avoid)
         self.mouse_focus = None
         self.hint = None
@@ -264,6 +288,21 @@ class Interface:
 
     def focused(self, code: str) -> bool:
         return self.focus == code
+
+    def current_focused_code(self) -> str:
+        if self.focus:
+            return self.focus
+        else:
+            return ""
+
+    def switch_focus_to(self, code: str) -> None:
+        if not code or code == "":
+            return
+        if self.locked:
+            return
+        if code not in self._focusable_codes():
+            return
+        self.focus = code
 
     def _point_in_item(self, x: float, y: float,
                        geometry: InterfaceGeometry) -> bool:
@@ -321,7 +360,8 @@ class Interface:
             self.hovered = None
             self.hint = None
             self.hint_wait = 0.0
-            self.core.game.controls.set_mouse_cursor("arrow")
+            if not (self.game.step == 7 and self.core.gm_state.level == -2):
+                self.core.game.controls.set_mouse_cursor("arrow")
             if mouse_moved and self.mouse_focus is not None:
                 if self.focus == self.mouse_focus:
                     self.focus = None
@@ -330,7 +370,9 @@ class Interface:
         else:
             self.hovered = hovered_item.item.code
             if (hovered_item.item.kind in ("button", "table", "key",
-                                           "r_checkbox")
+                                           "r_checkbox", "clickable_label",
+                                           "btn_prev", "list_next", "bar_next",
+                                           "rc_checkbox")
                or (hovered_item.item.kind == "zone"
                    and hovered_item.item.code[:7] == "letter_")
                or (hovered_item.item.kind == "maze" and self.game.step == 7)):
@@ -346,7 +388,10 @@ class Interface:
                         self.hint_wait = now
                     self.hint = InterfaceHint(item=hovered_item.item,
                                               x=mouse.x, y=mouse.y)
-                if hovered_item.item.kind in ("button", "key", "r_checkbox"):
+                if hovered_item.item.kind in ("button", "key", "r_checkbox",
+                                              "clickable_label", "btn_prev",
+                                              "list_next", "bar_next",
+                                              "rc_checkbox"):
                     self.focus = hovered_item.item.code
                     self.mouse_focus = hovered_item.item.code
                 elif self.mouse_focus is not None:
@@ -359,6 +404,8 @@ class Interface:
     def item_at(self, x: float, y: float) -> InterfaceGeometry | None:
         for geometry in self.geometries:
             if geometry.item.kind == "maze" and self.game.step != 7:
+                continue
+            if geometry.item.disabled:
                 continue
             if self._point_in_item(x, y, geometry):
                 return geometry
@@ -406,7 +453,8 @@ class Interface:
 
         return f"maze_move_to_X{rel_x}_Y{rel_y}"
 
-    def clicked_code(self, right_click: bool = False) -> str | None:
+    def clicked_code(self, right_click: bool = False,
+                     numbars_only: bool = False) -> str | None:
         if self.locked:
             return None
 
@@ -414,6 +462,9 @@ class Interface:
         clicked_item = self.item_at(mouse.x, mouse.y)
 
         if clicked_item is None:
+            return None
+
+        if numbars_only and clicked_item.item.kind != "bar_next":
             return None
 
         if clicked_item.item.kind == "maze" and self.game.step == 7:
@@ -425,6 +476,11 @@ class Interface:
             self.focus = clicked_item.item.code
             self.mouse_focus = clicked_item.item.code
             self.core.game.controls.set_mouse_cursor("arrow")
+        elif clicked_item.item.kind in ("r_checkbox", "clickable_label",
+                                        "btn_prev", "list_next", "bar_next",
+                                        "rc_checkbox"):
+            self.focus = clicked_item.item.code
+            self.mouse_focus = clicked_item.item.code
         else:
             self.focus = None
             self.mouse_focus = None
@@ -432,6 +488,13 @@ class Interface:
         code = clicked_item.item.code
         if right_click and clicked_item.item.inv_code:
             code = clicked_item.item.inv_code
+        if clicked_item.item.kind == "bar_next":
+            item = clicked_item.item
+            left_x = item.x + item.width * 0.05
+            rel_mouse_x = mouse.x - left_x
+            rel_pos = rel_mouse_x / (item.width * 0.90)
+            value = min(100, max(0, int(rel_pos * 100)))
+            code = code[:-3] + f"{value:03}"
 
         return code
 

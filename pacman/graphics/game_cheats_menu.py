@@ -51,6 +51,7 @@ class GameCheatsMenu:
         cvp = geo_rect(mvp.x + margin, mvp.y + margin,
                        mvp.wdt - margin * 2, mvp.hgt - margin * 2)
         self.cvp = cvp
+        minigame_running = (self.core.gm_state.level < 0)
         self.cheats_ui_items = []
         for item in self.gamehuds.ui_items:
             self.cheats_ui_items.append(item)
@@ -127,54 +128,62 @@ class GameCheatsMenu:
             x=left_x, y=top_y + (cell_hgt + cell_space) * 2,
             width=cell_wdt, height=cell_hgt, label="CHT_Ot3",
             code="init_time", inv_code="empty_time",
-            kind="button", rel_to_center=False))
+            kind="button", rel_to_center=False, disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=left_x, y=top_y + (cell_hgt + cell_space) * 3,
             width=cell_wdt, height=cell_hgt, label="CHT_Ot4",
             code="phase_out_ghosts", inv_code="phase_in_ghosts",
-            kind="button", rel_to_center=False))
+            kind="button", rel_to_center=False, disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=left_x, y=top_y + (cell_hgt + cell_space) * 4,
             width=cell_wdt, height=cell_hgt, label="CHT_Ot5",
-            code="reset_level", kind="button", rel_to_center=False))
+            code="reset_level", kind="button", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=left_x, y=top_y + (cell_hgt + cell_space) * 5,
             width=cell_wdt, height=cell_hgt, label="CHT_Ot6",
             code="next_level", inv_code="prev_level",
-            kind="button", rel_to_center=False))
+            kind="button", rel_to_center=False, disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=left_x, y=top_y + (cell_hgt + cell_space) * 6,
             width=cell_wdt, height=cell_hgt, label="CHT_Ot7",
             code="fill_inventory", inv_code="flush_inventory",
-            kind="button", rel_to_center=False))
+            kind="button", rel_to_center=False, disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y,
             width=cell_wdt, height=cell_hgt, label="CHT_St1",
-            code="invulnerable", kind="r_checkbox", rel_to_center=False))
+            code="invulnerable", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y + (cell_hgt + cell_space),
             width=cell_wdt, height=cell_hgt, label="CHT_St2",
-            code="sprinter", kind="r_checkbox", rel_to_center=False))
+            code="sprinter", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y + (cell_hgt + cell_space) * 2,
             width=cell_wdt, height=cell_hgt, label="CHT_St3",
-            code="outatime", kind="r_checkbox", rel_to_center=False))
+            code="outatime", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y + (cell_hgt + cell_space) * 3,
             width=cell_wdt, height=cell_hgt, label="CHT_St4",
-            code="walldenier", kind="r_checkbox", rel_to_center=False))
+            code="walldenier", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y + (cell_hgt + cell_space) * 4,
             width=cell_wdt, height=cell_hgt, label="CHT_St5",
-            code="jackhammer", kind="r_checkbox", rel_to_center=False))
+            code="jackhammer", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y + (cell_hgt + cell_space) * 5,
             width=cell_wdt, height=cell_hgt, label="CHT_St6",
-            code="gumcharmer", kind="r_checkbox", rel_to_center=False))
+            code="gumcharmer", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
         self.cheats_ui_items.append(InterfaceItem(
             x=right_x, y=top_y + (cell_hgt + cell_space) * 6,
             width=cell_wdt, height=cell_hgt, label="CHT_St7",
-            code="gluttonous", kind="r_checkbox", rel_to_center=False))
+            code="gluttonous", kind="r_checkbox", rel_to_center=False,
+            disabled=minigame_running))
 
     def draw_cheats_menu(self) -> None:
         elapsed = time.perf_counter() - self.gamemenus.focus_anim_start

@@ -4,7 +4,6 @@ import time
 
 from collections.abc import Iterable, Iterator
 from contextlib import contextmanager
-from pathlib import Path
 from typing import Any, TypeAlias
 
 from pacman.base.geometry import Geometry
@@ -20,7 +19,8 @@ from .game_board import GameBoard
 from .raylib_log_formatter import RaylibLogFormatter
 from .shapes import Shapes
 from .textures import Textures
-from .x11_geometry import get_frame_extents, get_maximized_window_info
+from .x11_geometry import (get_frame_extents, get_window_info, get_workarea,
+                           WindowInfo)
 
 RaylibObject: TypeAlias = Any
 
@@ -53,10 +53,9 @@ class Graphics:
         self.base_frame_thick: int = (
             self.core.defaults.graphics_base_frame_thick)
         self.font_size: int = self.base_font_size
-        self.font_dir = (Path(__file__).resolve().parents[1]
-                         / "assets" / "fonts")
-        self.texture_dir = (Path(__file__).resolve().parents[1]
-                            / "assets" / "textures")
+        assets_dir = self.utils.get_resource_path() / "assets"
+        self.font_dir = assets_dir / "fonts"
+        self.texture_dir = assets_dir / "textures"
         self.font_regular: RaylibObject
         self.font_bold: RaylibObject
         self.font_italic: RaylibObject
@@ -67,6 +66,8 @@ class Graphics:
         self.ratio_g: float = 1.0
         self.screen_width = 1
         self.screen_height = 1
+        self.notmax_width = 1
+        self.notmax_height = 1
         self.last_resize_time: float = -1.0
         self.viewport_rectangle: tuple[int, int, int, int] = (0, 0, 0, 0)
         self.show_fps: bool = False
@@ -78,6 +79,9 @@ class Graphics:
         self.audio_volume_value: float = 0.0
         self.audio_volume_label: str = ""
         self.banner_skin = -1
+        self.window_info: WindowInfo
+        self.window_id: int | None = None
+        self.restore_resizable = False
 
     def launch(self) -> None:
         self.pr = pr
@@ -86,19 +90,29 @@ class Graphics:
         pr.set_trace_log_callback(self._raylib_callback)
         pr.set_trace_log_level(pr.LOG_INFO)  # type: ignore[attr-defined]
         flags = pr.FLAG_WINDOW_HIDDEN  # type: ignore[attr-defined]
-        if self.core.config.window_resizeable:
+        if self.core.config.window_resizable:
             flags |= pr.FLAG_WINDOW_RESIZABLE  # type: ignore[attr-defined]
         pr.set_config_flags(flags)
         pr.init_window(self.screen_width, self.screen_height,
                        self.core.title)
-        maximized_info = None
-        if self.core.config.window_maximized:
-            maximized_info = get_maximized_window_info(self.core.title)
+        icon = pr.load_image(
+            str(Utils().get_resource_path() / "assets" / "icon" / "icon.png"))
+        pr.image_resize(icon, 128, 128)
+        pr.set_window_icon(icon)
+        pr.unload_image(icon)
+        window_info = get_window_info(self.core.title)
+        if window_info is not None:
+            self.window_info = window_info
+            self.window_id = window_info.window_id
+        maximized_info = (window_info if self.core.config.window_maximized
+                          else None)
         pr.set_window_min_size(self.base_width // 2, self.base_height // 2)
         monitor = pr.get_current_monitor()
         monitor_width = pr.get_monitor_width(monitor)
         monitor_height = pr.get_monitor_height(monitor)
 
+        self.notmax_width = self.core.config.window_width
+        self.notmax_height = self.core.config.window_height
         if self.core.config.window_maximized and maximized_info is not None:
             self.screen_width = maximized_info.workarea.width
             self.screen_height = maximized_info.workarea.height
@@ -194,6 +208,41 @@ class Graphics:
         self.main_menu = MainMenu(self.core)
         self.gameboard = GameBoard(self.core)
 
+    def reposition_and_resize(self) -> None:
+        maximized_info = (self.window_info if self.core.config.window_maximized
+                          else None)
+        monitor = pr.get_current_monitor()
+        monitor_width = pr.get_monitor_width(monitor)
+        monitor_height = pr.get_monitor_height(monitor)
+        if maximized_info is not None:
+            self.screen_width = maximized_info.workarea.width
+            self.screen_height = maximized_info.workarea.height
+            x_pos = maximized_info.workarea.x
+            y_pos = maximized_info.workarea.y
+        else:
+            self.screen_width = self.notmax_width
+            self.screen_height = self.notmax_height
+            x_pos, y_pos = self.get_window_position(monitor_width,
+                                                    monitor_height,
+                                                    self.screen_width,
+                                                    self.screen_height)
+        if not self.core.config.window_resizable:
+            self.update_resizable_state(force=True)
+            self.restore_resizable = True
+        if not self.core.config.window_maximized:
+            pr.restore_window()
+        pr.set_window_size(self.screen_width, self.screen_height)
+        pr.set_window_position(x_pos, y_pos)
+        self.resize()
+
+    def update_resizable_state(self, force: bool = False) -> None:
+        if self.core.config.window_resizable or force:
+            pr.set_window_state(
+                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
+        else:
+            pr.clear_window_state(
+                pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
+
     def get_window_position(self, monitor_width: int, monitor_height: int,
                             screen_width: int,
                             screen_height: int) -> tuple[int, int]:
@@ -227,10 +276,66 @@ class Graphics:
             y_pos = wdw_top_to_center
         return (x_pos, y_pos)
 
+    def get_window_screensector(self) -> int:
+        if self.is_window_maximized():
+            return 4
+        workarea = get_workarea()
+        if workarea is None:
+            return 4
+        wdw_wdt, wdw_hgt = pr.get_screen_width(), pr.get_screen_height()
+        wdw_pos = pr.get_window_position()
+        wdw_x, wdw_y = round(wdw_pos.x), round(wdw_pos.y)
+        available_x = max(0, workarea.width - wdw_wdt)
+        available_y = max(0, workarea.height - wdw_hgt)
+        left = wdw_x - workarea.x
+        right = available_x - left
+        top = wdw_y - workarea.y
+        bottom = available_y - top
+        tolerance_x = available_x * 0.33
+        tolerance_y = available_y * 0.33
+        if abs(left - right) <= tolerance_x:
+            sector_x = 1
+        elif left < right:
+            sector_x = 0
+        else:
+            sector_x = 2
+        if abs(top - bottom) <= tolerance_y:
+            sector_y = 1
+        elif top < bottom:
+            sector_y = 0
+        else:
+            sector_y = 2
+        return sector_x + sector_y * 3
+
+    def is_window_maximized(self) -> bool:
+        if self.window_id is None:
+            return False
+        workarea = get_workarea()
+        if workarea is None:
+            return False
+        extents = get_frame_extents(self.window_id)
+        if extents is None:
+            return False
+        expected_x = workarea.x + extents.left
+        expected_y = workarea.y + extents.top
+        expected_width = workarea.width - extents.left - extents.right
+        expected_height = workarea.height - extents.top - extents.bottom
+        position = pr.get_window_position()
+        width = pr.get_screen_width()
+        height = pr.get_screen_height()
+        tolerance = 2
+        return (abs(round(position.x) - expected_x) <= tolerance
+                and abs(round(position.y) - expected_y) <= tolerance
+                and abs(width - expected_width) <= tolerance
+                and abs(height - expected_height) <= tolerance)
+
     def draw_window(self) -> None:
         now = time.perf_counter()
         pr.begin_drawing()
         pr.clear_background(rcl.BASE_BLACK)
+        if self.restore_resizable:
+            self.update_resizable_state()
+            self.restore_resizable = False
         self.draw_ui_frame()
         if self.core.gm_state.frame_and_banner:
             self.banner_anim.draw_banner_pacmen()
@@ -252,8 +357,11 @@ class Graphics:
         elif self.game.step in (1, 3, 4, 5):
             self.main_menu.draw_main_menu()
 
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12):
-            self.gameboard.draw_gameboard()
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
+            if self.core.gm_state.level >= 0:
+                self.gameboard.draw_gameboard()
+            else:
+                self.game.minigames.draw_minigames_board()
 
         if (self.show_hints
             and (now - self.interface.hint_wait
@@ -364,14 +472,25 @@ class Graphics:
 
     def check_window_resized(self) -> None:
         if pr.is_window_resized():
+            # width = pr.get_screen_width()
+            # height = pr.get_screen_height()
+            # if height > width:
+            #     self.notmax_width = width
+            #     self.notmax_height = width
+            #     self.reposition_and_resize()
+            # else:
+            #     self.resize()
             self.resize()
         elif self.last_resize_time > -1.0:
-            if time.perf_counter() - self.last_resize_time >= 1.0:
+            if time.perf_counter() - self.last_resize_time >= 0.5:
                 self.core._emit(
                     LogEvent(source="graphics", type="info",
                              message="Graphic window size: ",
                              text_var=(f"{self.screen_width} x "
                                        + f"{self.screen_height}")))
+                if not self.is_window_maximized():
+                    self.notmax_width = self.screen_width
+                    self.notmax_height = self.screen_height
                 self.last_resize_time = -1.0
 
     def toggle_frame_and_banner(self) -> None:
@@ -406,7 +525,7 @@ class Graphics:
         self.interface.rebuild()
         if self.game.step in (1, 3, 4, 5):
             self.main_menu.resize()
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
             self.gameboard.resize()
 
     def reload_fonts(self) -> None:
@@ -449,7 +568,11 @@ class Graphics:
             pr.LOG_INFO)  # type: ignore[attr-defined]
 
     def draw_ui_frame(self) -> None:
-        if self.banner_skin != self.core.gm_state.skin:
+        if (((self.core.gm_state.level >= 0
+              and self.banner_skin != self.core.gm_state.skin)
+             or (self.core.gm_state.level < 0
+                 and self.banner_skin != self.core.gm_state.level))
+                and self.core.gm_state.frame_and_banner):
             self.create_ui_frame_texture("ui_frame_texture")
         pr.clear_background(rcl.BASE_BLACK)
         if self.core.gm_state.frame_and_banner:
@@ -486,7 +609,7 @@ class Graphics:
             last_ch = ""
             gy = y + (dy * char_height)
             gx = x
-            for ch in line:
+            for dx, ch in enumerate(line):
                 if ch == " ":
                     gx += char_width
                     last_ch = ch
@@ -511,15 +634,30 @@ class Graphics:
                 elif ch == "▁":
                     draw.line(gx, gy + char_height, gx + char_width,
                               gy + char_height, thick=thick, cl=color)
-                    if last_ch == "╱":
-                        draw.line(gx - char_width, gy + char_height, gx,
-                                  gy + char_height, thick=thick, cl=color)
+                    if (last_ch == "╱"):
+                        add_line = True
+                        if dy + 1 < len(lines) and dx > 2:
+                            if lines[dy + 1][dx - 2] == "╲":
+                                add_line = False
+                        if add_line:
+                            draw.line(gx - char_width, gy + char_height, gx,
+                                      gy + char_height, thick=thick, cl=color)
                 elif ch == "─":
                     draw.line(gx, gy + char_height // 2, gx + char_width,
                               gy + char_height // 2, thick=thick, cl=color)
                 elif ch == "╱":
                     draw.line(gx, gy + char_height, gx + char_width, gy,
                               thick=thick, cl=color)
+                    add_line = False
+                    if 1 < dy + 1 < len(lines) and dx + 1 < len(line):
+                        if (lines[dy + 1][dx] == "╱" and last_ch == " "
+                            and (lines[dy][dx + 1] != "╱"
+                            or ((lines[dy][dx + 1] == "╱"
+                                 and lines[dy - 1][dx + 1] != "▁")))):
+                            add_line = True
+                    if add_line:
+                        draw.line(gx, gy + char_height, gx + char_width,
+                                  gy + char_height, thick=thick, cl=color)
                 elif ch == "╲":
                     draw.line(gx, gy, gx + char_width, gy + char_height,
                               thick=thick, cl=color)
@@ -529,8 +667,13 @@ class Graphics:
                 elif ch == "│":
                     draw.line(gx, gy, gx, gy + char_height,
                               thick=thick, cl=color)
-                    draw.line(gx, gy + char_height, gx + char_width,
-                              gy + char_height, thick=thick, cl=color)
+                    add_line = True
+                    if dy + 1 < len(lines):
+                        if lines[dy + 1][dx] == "│":
+                            add_line = False
+                    if add_line:
+                        draw.line(gx, gy + char_height, gx + char_width,
+                                  gy + char_height, thick=thick, cl=color)
                 elif 32 < ord(ch) <= 126:
                     draw.text(gx, gy, ch, font, font_size, cl=color)
                 gx += char_width
@@ -563,19 +706,28 @@ class Graphics:
         width, height = pr.get_screen_width(), pr.get_screen_height()
         margin, thick = self.base_margin, rg(self.base_frame_thick)
 
-        if self.core.gm_state.skin == 1:
-            center_banner = Banners.CENTER_BANNER_VARIANT_A
-            edition_banner = Banners.EDITION_BANNER_VARIANT_A
-        elif self.core.gm_state.skin == 2:
-            center_banner = Banners.CENTER_BANNER_VARIANT_B
-            edition_banner = Banners.EDITION_BANNER_VARIANT_B
-        elif self.core.gm_state.skin == 3:
-            center_banner = Banners.CENTER_BANNER_VARIANT_C
-            edition_banner = Banners.EDITION_BANNER_VARIANT_C
+        if self.core.gm_state.level >= 0:
+            if self.core.gm_state.skin == 1:
+                center_banner = Banners.CENTER_BANNER_VARIANT_A
+                edition_banner = Banners.EDITION_BANNER_VARIANT_A
+            elif self.core.gm_state.skin == 2:
+                center_banner = Banners.CENTER_BANNER_VARIANT_B
+                edition_banner = Banners.EDITION_BANNER_VARIANT_B
+            elif self.core.gm_state.skin == 3:
+                center_banner = Banners.CENTER_BANNER_VARIANT_C
+                edition_banner = Banners.EDITION_BANNER_VARIANT_C
+            else:
+                center_banner = Banners.CENTER_BANNER
+                edition_banner = Banners.EDITION_BANNER
+            self.banner_skin = self.core.gm_state.skin
         else:
-            center_banner = Banners.CENTER_BANNER
-            edition_banner = Banners.EDITION_BANNER
-        self.banner_skin = self.core.gm_state.skin
+            if self.core.gm_state.level == -1:
+                center_banner = Banners.CENTER_BANNER_PACSNAKE
+                edition_banner = Banners.EDITION_BANNER_PACSNAKE
+            elif self.core.gm_state.level == -2:
+                center_banner = Banners.CENTER_BANNER_PACBREAKER
+                edition_banner = Banners.EDITION_BANNER_PACBREAKER
+            self.banner_skin = self.core.gm_state.level
 
         self.textures.begin(texture_name, width, height)
 

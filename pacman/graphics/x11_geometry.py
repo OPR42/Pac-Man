@@ -17,7 +17,7 @@ class FrameExtents(NamedTuple):
     bottom: int
 
 
-class MaximizedWindowInfo(NamedTuple):
+class WindowInfo(NamedTuple):
     window_id: int
     workarea: WorkArea
 
@@ -66,14 +66,18 @@ def _get_workarea() -> WorkArea | None:
                     width=values[offset + 2], height=values[offset + 3])
 
 
-def get_maximized_window_info(title: str) -> MaximizedWindowInfo | None:
+def get_window_info(title: str) -> WindowInfo | None:
     window_id = _get_window_id(title)
     if window_id is None:
         return None
     workarea = _get_workarea()
     if workarea is None:
         return None
-    return MaximizedWindowInfo(window_id=window_id, workarea=workarea)
+    return WindowInfo(window_id=window_id, workarea=workarea)
+
+
+def get_workarea() -> WorkArea | None:
+    return _get_workarea()
 
 
 def get_frame_extents(window_id: int) -> FrameExtents | None:

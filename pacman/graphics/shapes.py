@@ -73,15 +73,25 @@ class Shapes:
 
     def text_block_max(self, x: int, y: int, width: int, height: int, txt: str,
                        font: RaylibObject, cl: Color = rcl.BASE_BLACK,
-                       justify: str = "left") -> None:
+                       justify: str = "left", align: str = "top") -> None:
         if width <= 0 or height <= 0 or not txt:
             return
+
         rg = self.graphics.rg
         sround = self.utils.sym_round
         lines, font_size = self.geometry.fit_wrapped_text(
             txt, max_width=width, max_height=height,
             max_size=rg(500), min_size=max(1, rg(5)))
         _, line_height = self.geometry.measure_text("Ag", font_size)
+        block_height = len(lines) * line_height
+
+        if align == "center":
+            start_y = y + sround((height - block_height) / 2)
+        elif align == "bottom":
+            start_y = y + sround(height - block_height)
+        else:
+            start_y = y
+
         for line_nb, line in enumerate(lines):
             line_width, _ = self.geometry.measure_text(line, font_size)
             if justify == "center":
@@ -90,7 +100,7 @@ class Shapes:
                 line_x = x + sround(width - line_width)
             else:
                 line_x = x
-            line_y = y + line_nb * int(line_height)
+            line_y = start_y + sround(line_nb * line_height)
             self.text(line_x, line_y, line, font, font_size, cl=cl)
 
     def line(self, x1: float, y1: float, x2: float, y2: float, thick: int = 1,
@@ -713,8 +723,11 @@ class Shapes:
         opacity = max(0.0, min(1.0, opacity))
 
         if variant == "slimer":
+            color = ((-1, -1, -1, -1) if face_color == rcl.PACMAN_YELLOW
+                     else face_color)
             self.slimer(center_x, center_y, radius, body_angle, mouth_angle,
-                        eye_opening, last_hor_dir)
+                        eye_opening, last_hor_dir, face_color=color,
+                        opacity=opacity)
             return
 
         if scale_x < 0.0:
@@ -829,10 +842,11 @@ class Shapes:
             tie_size = sround(radius)
             tie_half_size = tie_size / 2.0
             flip_x = selected_side == -1
+            tint = rcl.scale_alpha((255, 255, 255, 255), opacity)
             self.graphics.textures.draw(
-                "item_bowtie", sround(tie_x - tie_half_size),
+                "world_bowtie", sround(tie_x - tie_half_size),
                 sround(tie_y - tie_half_size), tie_size, tie_size,
-                angle=(tie_angle + 90.0) % 360.0, flip_x=flip_x)
+                angle=(tie_angle + 90.0) % 360.0, flip_x=flip_x, tint=tint)
             lip_rad = sround(radius * 1.02)
             lip_a_ax, lip_a_ay = self._point_on_circle(
                 center_x, center_y, lip_rad, body_angle + mouth_angle - 1.0)
@@ -842,7 +856,7 @@ class Shapes:
                 center_x, center_y, lip_rad, body_angle + 361.0 - mouth_angle)
             lip_b_bx, lip_b_by = self._point_on_circle(
                 center_x, center_y, lip_rad, body_angle + 356.0 - mouth_angle)
-            cl_lips = rcl.BOWTIE_RED
+            cl_lips = rcl.scale_alpha(rcl.BOWTIE_RED, opacity)
             self.triangle(center_x, center_y, lip_a_ax, lip_a_ay,
                           lip_a_bx, lip_a_by, cl=cl_lips, filled=True)
             self.triangle(center_x, center_y, lip_b_ax, lip_b_ay,
@@ -867,9 +881,10 @@ class Shapes:
             hat_size = sround(radius * 2.2)
             hat_half_size = hat_size / 2.0
             flip_x = selected_side == -1
+            tint = rcl.scale_alpha((255, 255, 255, 255), opacity)
             self.graphics.textures.draw(
-                "item_stetson", sround(hat_x - hat_half_size),
-                sround(hat_y - hat_half_size), hat_size, hat_size,
+                "world_stetson", sround(hat_x - hat_half_size),
+                sround(hat_y - hat_half_size), hat_size, hat_size, tint=tint,
                 angle=(hat_angle + 90.0) % 360.0, flip_x=flip_x, y_ratio=0.65)
 
         elif variant in ("badass", "add_life", "well_done"):
@@ -914,7 +929,8 @@ class Shapes:
               eye_color: Color = rcl.BASE_BR_WHITE,
               pupil_color: Color = rcl.EYE_BLUE, eye_opening: float = 1.0,
               wave: float = 1.0, name: str = "", contour: bool = False,
-              variant: str = "", actor_name: str = "") -> None:
+              variant: str = "", actor_name: str = "",
+              texture_free: bool = False) -> None:
         sround = self.utils.sym_round
 
         if variant == "ghostbuster":
@@ -959,25 +975,39 @@ class Shapes:
         body_texture = "ghost_body"
         body_width = radius * 2
         body_height = radius * 2 - wave_height
-        if (self.graphics.textures.size(body_texture)
-                != (body_width, body_height)):
-            self.graphics.textures.begin(body_texture, body_width, body_height)
-            self.circle_sector(radius, radius, radius, 180, 360, thick=1,
-                               cl=rcl.BASE_BR_WHITE, filled=True)
-            self.rectangle(0, radius, body_width, body_height - radius,
-                           cl=rcl.BASE_BR_WHITE, filled=True)
-            self.graphics.textures.end()
 
-        self.graphics.textures.draw(body_texture, left, center_y - radius,
-                                    tint=body_color)
+        if texture_free:
+            self.circle_sector(center_x, center_y, radius, 180, 360, thick=1,
+                               cl=body_color, filled=True)
+            self.rectangle(left, center_y, body_width, body_height - radius,
+                           cl=body_color, filled=True)
+        else:
+            if (self.graphics.textures.size(body_texture)
+                    != (body_width, body_height)):
+                self.graphics.textures.begin(body_texture, body_width,
+                                             body_height)
+                self.circle_sector(radius, radius, radius, 180, 360, thick=1,
+                                   cl=rcl.BASE_BR_WHITE, filled=True)
+                self.rectangle(0, radius, body_width, body_height - radius,
+                               cl=rcl.BASE_BR_WHITE, filled=True)
+                self.graphics.textures.end()
+            self.graphics.textures.draw(body_texture, left, center_y - radius,
+                                        tint=body_color)
 
         if variant == "dalton" and name != "dead":
             cl_stripes = rcl.BLACK_DARKGLASS
+            cl_jail = rcl.JAIL_YELLOW
             stripe_hgt = sround((body_height - radius) / 3.05)
             self.rectangle(left, body_bottom - stripe_hgt,
                            body_width, stripe_hgt, cl=cl_stripes, filled=True)
+            self.rectangle(left, body_bottom - sround(stripe_hgt * 1.5),
+                           body_width, sround(stripe_hgt * 0.5),
+                           cl=cl_jail, filled=True)
             self.rectangle(left, body_bottom - sround(stripe_hgt * 2.5),
                            body_width, stripe_hgt, cl=cl_stripes, filled=True)
+            self.rectangle(left, body_bottom - sround(stripe_hgt * 3),
+                           body_width, sround(stripe_hgt * 0.5),
+                           cl=cl_jail, filled=True)
             self.rectangle(left, body_bottom - sround(stripe_hgt * 4),
                            body_width, stripe_hgt, cl=cl_stripes, filled=True)
 
@@ -1003,9 +1033,12 @@ class Shapes:
                 lobe_center_x = left + lobe_radius_x
             if lobe_center_x + lobe_radius_x > right:
                 lobe_center_x = right - lobe_radius_x
+            cl_lobe = body_color
+            if variant == "dalton" and name != "dead":
+                cl_lobe = rcl.JAIL_YELLOW
             self.ellipse_sector(sround(lobe_center_x), sround(lobe_center_y),
                                 lobe_radius_x, max(1, sround(lobe_radius_y)),
-                                0, 180, 0, 1, cl=body_color, filled=True)
+                                0, 180, 0, 1, cl=cl_lobe, filled=True)
             if contour or name == "dead":
                 self.ellipse(sround(lobe_center_x), sround(lobe_center_y),
                              lobe_radius_x, max(1, sround(lobe_radius_y)),
@@ -1335,7 +1368,7 @@ class Shapes:
             if superpg:
                 self.burger(center_x, center_y, sround(size * 1.50))
             else:
-                self.bretzel(center_x, center_y, size)
+                self.bagel(center_x, center_y, size)
             return
 
         size_ref = size if not superpg else sround(size * 1.50)
@@ -1454,16 +1487,52 @@ class Shapes:
         self.circle(cx - r, cy - r, sr, cl=salt, filled=True)
         self.circle(cx + r, cy - r, sr, cl=salt, filled=True)
 
+    def bagel(self, center_x: int, center_y: int, size: int) -> None:
+        """Draw a sesame bagel with a genuinely transparent hole."""
+        import math
+        sround = self.utils.sym_round
+        cx, cy = center_x, center_y
+        thick = max(2, sround(size * 0.23))
+        radius = max(2, sround((size - thick) / 2))
+        thin = max(1, sround(size * 0.035))
+        crust = (166, 91, 32, 255)
+        dough = (211, 139, 45, 255)
+        light = (246, 185, 78, 255)
+        shadow = (125, 65, 28, 255)
+        sesame = (255, 235, 190, 255)
+        self.ellipse(cx, cy, radius, radius, thick=thick,
+                     cl=crust, filled=False)
+        self.ellipse(cx, cy - thin, radius - thin, radius - thin,
+                     thick=max(1, thick - 2 * thin), cl=dough, filled=False)
+        self.ellipse(cx, cy - thin, radius - thick // 4, radius - thick // 4,
+                     thick=max(1, thick // 3), cl=light, filled=False)
+        inner_radius = max(1, radius - thick // 2)
+        self.ellipse(cx, cy, inner_radius, inner_radius,
+                     thick=thin, cl=shadow, filled=False)
+        seed_radius = max(1, sround(size * 0.025))
+        seed_distance = radius - thick // 4
+        for angle in (20, 65, 115, 160, 205, 250, 295, 335):
+            rad = math.radians(angle)
+            x = cx + sround(math.cos(rad) * seed_distance)
+            y = cy + sround(math.sin(rad) * seed_distance)
+            self.circle(x, y, seed_radius, cl=sesame, filled=True)
+
     def slimer(self, center_x: int, center_y: int, radius: int,
                angle: int, mouth_angle: float, eye_opening: float,
-               last_hor_dir: str = "") -> None:
+               last_hor_dir: str = "", opacity: float = 1.0,
+               face_color: Color = (-1, -1, -1, -1)) -> None:
         sround = self.utils.sym_round
         rad = math.radians(angle)
         fx, fy = math.cos(rad), math.sin(rad)
         ux, uy = -fy, math.cos(rad)
-        green = (88, 218, 52, 255)
-        light = (132, 239, 76, 255)
-        tongue = (239, 91, 126, 255)
+        green = rcl.scale_alpha((88, 218, 52, 255), opacity)
+        light = rcl.scale_alpha((132, 239, 76, 255), opacity)
+        if face_color != (-1, -1, -1, -1):
+            green = rcl.scale_alpha(face_color, opacity)
+            light = rcl.scale_rgb(green, 1.35)
+        tongue = rcl.scale_alpha((239, 91, 126, 255), opacity)
+        eye_white = rcl.scale_alpha(rcl.BASE_BR_WHITE, opacity)
+        eye_black = rcl.scale_alpha(rcl.BASE_BLACK, opacity)
         mouth_angle *= 0.75
         side_a = -1
         side_b = 1
@@ -1515,12 +1584,12 @@ class Shapes:
         eye_rx = max(1, sround(radius * 0.18))
         eye_ry = max(1, sround(radius * 0.22 * eye_opening))
         self.ellipse(sround(eye_x), sround(eye_y), eye_rx, eye_ry, angle=angle,
-                     cl=rcl.BASE_BR_WHITE, filled=True)
+                     cl=eye_white, filled=True)
         pupil_radius = max(1, sround(radius * 0.07))
         pupil_x = eye_x + fx * eye_rx * 0.35
         pupil_y = eye_y + fy * eye_rx * 0.35
         self.circle(sround(pupil_x), sround(pupil_y), pupil_radius,
-                    cl=rcl.BASE_BLACK, filled=True)
+                    cl=eye_black, filled=True)
         skull_x = center_x - fx * radius * 0.05 + sx * radius * 0.80
         skull_y = center_y - fy * radius * 0.05 + sy * radius * 0.80
         self.ellipse(sround(skull_x), sround(skull_y), sround(radius * .40),
@@ -1626,7 +1695,15 @@ class Shapes:
 
         if state != "normal":
             return
-
+        angle = float((angle + 360.0) % 360.0)
+        if 60.0 < angle <= 90.0:
+            angle = 60.0
+        elif 90.0 < angle <= 120.0:
+            angle = 120.0
+        elif 240.0 < angle <= 270.0:
+            angle = 240.0
+        elif 270.0 < angle <= 300.0:
+            angle = 300.0
         rad = math.radians(angle)
         fx = math.cos(rad)
         fy = math.sin(rad)
@@ -1772,3 +1849,62 @@ class Shapes:
                        cl=mask, filled=True)
         self.rectangle(cx + leg_dx - leg_w // 2, knee_y, leg_w, leg_h,
                        cl=mask, filled=True)
+
+    def companion_square(self, center_x: int, center_y: int, size: int,
+                         lines_color: Color = rcl.CUBE_LINES) -> None:
+        sround = self.utils.sym_round
+        size = (size // 2) * 2
+        area = self.geometry.rectangle_geometry(
+            center_x - size // 2, center_y - size // 2, size, size)
+        margin = size // 10
+        self.rectangle(area.x + margin, area.y + margin, area.wdt - margin * 2,
+                       area.hgt - margin * 2, cl=rcl.CUBE_BOX, filled=True)
+        margin, thick = size // 15, size // 4
+        self.rectangle(area.x + margin, area.ct.y - sround(thick / 2),
+                       area.wdt - margin * 2, sround(thick / 2) * 2,
+                       cl=rcl.CUBE_FRAME, filled=True)
+        self.rectangle(area.ct.x - sround(thick / 2), area.y + margin,
+                       sround(thick / 2) * 2, area.hgt - margin * 2,
+                       cl=rcl.CUBE_FRAME, filled=True)
+
+        def bezeled_square(cx: int, cy: int, size: int, bzl: int = 6) -> None:
+            bezel_size = sround(size / bzl)
+            side_len = size - bezel_size * 2
+            half_size = sround(size / 2)
+            half_len = sround(side_len / 2)
+            xa, xb = cx - half_size, cx - half_len
+            xc, xd = cx + half_len, cx + half_size
+            ya, yb = cy - half_size, cy - half_len
+            yc, yd = cy + half_len, cy + half_size
+            self.rectangle(xa, yb, xd - xa, yc - yb,
+                           cl=rcl.CUBE_FRAME, filled=True)
+            self.rectangle(xb, ya, xc - xb, yd - ya,
+                           cl=rcl.CUBE_FRAME, filled=True)
+            self.triangle(xb, ya, xa, yb, xb, yb,
+                          cl=rcl.CUBE_FRAME, filled=True)
+            self.triangle(xc, ya, xc, yb, xd, yb,
+                          cl=rcl.CUBE_FRAME, filled=True)
+            self.triangle(xb, yc, xa, yc, xb, yd,
+                          cl=rcl.CUBE_FRAME, filled=True)
+            self.triangle(xc, yd, xc, yc, xd, yc,
+                          cl=rcl.CUBE_FRAME, filled=True)
+
+        sq_size = sround(size * 0.3)
+        sq_offset = sround(size * 0.15)
+        bezeled_square(area.x + sq_offset, area.y + sq_offset, sq_size)
+        bezeled_square(area.x + sq_offset, area.bct.y - sq_offset, sq_size)
+        bezeled_square(area.rct.x - sq_offset, area.y + sq_offset, sq_size)
+        bezeled_square(area.rct.x - sq_offset, area.bct.y - sq_offset, sq_size)
+        radius = sround(size / 2 - size / 8)
+        self.circle(center_x, center_y, radius, cl=rcl.CUBE_BOX, filled=True)
+        xa, ya = self._point_on_circle(center_x, center_y, radius, 0.0)
+        xb, yb = self._point_on_circle(center_x, center_y, radius, 90.0)
+        xc, yc = self._point_on_circle(center_x, center_y, radius, 180.0)
+        xd, yd = self._point_on_circle(center_x, center_y, radius, 270.0)
+        thick = sround(size * 0.075)
+        self.line(xa, ya, xc, yc, thick, cl=lines_color)
+        self.line(xb, yb, xd, yd, thick, cl=lines_color)
+        radius -= sround(size / 20)
+        self.circle(center_x, center_y, radius, cl=lines_color, filled=True)
+        radius -= sround(thick * 0.50)
+        self.circle(center_x, center_y, radius, cl=rcl.CUBE_PANEL, filled=True)

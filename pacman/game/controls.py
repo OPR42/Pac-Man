@@ -44,6 +44,7 @@ class Controls:
                                        "right", "left", "right", "pause_menu"]
         self.last_commands: list[str] = []
         self.maze_drag = False
+        self.previous_mouse_pos: tuple[float, float] = -1.0, -1.0
 
     def idle(self) -> bool:
         if pr.get_key_pressed() != 0:
@@ -128,6 +129,28 @@ class Controls:
 
         return average_x, average_y
 
+    def player_mouse_move(self, left: int, top: int, right: int,
+                          bottom: int) -> tuple[float, float, bool, bool]:
+        mouse_pos = pr.get_mouse_position()
+        pressed = (pr.is_mouse_button_pressed(
+                       pr.MouseButton.MOUSE_BUTTON_LEFT)
+                   or pr.is_mouse_button_pressed(
+                       pr.MouseButton.MOUSE_BUTTON_RIGHT))
+
+        released = (pr.is_mouse_button_released(
+                        pr.MouseButton.MOUSE_BUTTON_LEFT)
+                    or pr.is_mouse_button_released(
+                        pr.MouseButton.MOUSE_BUTTON_RIGHT))
+        if not (left <= mouse_pos.x <= right and top <= mouse_pos.y <= bottom):
+            return (-1.0, -1.0, False, False)
+        previous_x, previous_y = self.previous_mouse_pos
+        if previous_x == mouse_pos.x and previous_y == mouse_pos.y:
+            x, y = -1.0, -1.0
+        else:
+            self.previous_mouse_pos = (mouse_pos.x, mouse_pos.y)
+            x, y = mouse_pos.x, mouse_pos.y
+        return (x, y, pressed, released)
+
     def get_enter(self) -> bool:
         keys = pr.KeyboardKey
         if (pr.is_key_pressed(keys.KEY_ENTER)
@@ -148,6 +171,24 @@ class Controls:
         pad_btn = self._is_gamepad_button_pressed
         if pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR):
             return True
+
+        return False
+
+    def enter_is_down(self) -> bool:
+        keys = pr.KeyboardKey
+        mouse = pr.MouseButton
+
+        if (pr.is_key_down(keys.KEY_ENTER)
+                or pr.is_key_down(keys.KEY_KP_ENTER)
+                or pr.is_key_down(keys.KEY_SPACE)
+                or pr.is_mouse_button_down(mouse.MOUSE_BUTTON_LEFT)
+                or pr.is_mouse_button_down(mouse.MOUSE_BUTTON_RIGHT)):
+            return True
+
+        if self.gamepad >= 0 and pr.is_gamepad_available(self.gamepad):
+            pad_dwn = self._is_gamepad_button_down
+            if pad_dwn(RBD) or pad_dwn(TBL) or pad_dwn(TBR):
+                return True
 
         return False
 
@@ -263,7 +304,7 @@ class Controls:
                 return "volsound-"
             return "vol-"
 
-        if self.game.step in (1, 3, 4):
+        if self.game.step in (1, 3):
             if (pr.is_key_pressed(keys.KEY_UP)
                or pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_LEFT)
@@ -281,7 +322,7 @@ class Controls:
                or pr.is_key_pressed(keys.KEY_SPACE)):
                 return "enter"
 
-        if self.game.step in (3, 4):
+        if self.game.step in (3, 4, 15):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
                or pr.is_key_pressed(keys.KEY_ESCAPE)):
                 return "back"
@@ -310,13 +351,16 @@ class Controls:
             if pr.is_key_pressed(keys.KEY_GRAVE):
                 return "cheat_menu"
 
-        if self.game.step in (6, 7, 8, 9, 10, 12):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 15):
             if (pr.is_key_pressed(keys.KEY_ESCAPE)
                     or pr.is_key_pressed(keys.KEY_P)
                     or pr.is_key_pressed(keys.KEY_BACKSPACE)):
                 return "pause_menu"
 
-        if 8 <= self.game.step < 11 or self.game.step == 12:
+        if (self.game.step == 4 or 8 <= self.game.step < 11
+                or self.game.step >= 12
+                or (self.game.step == 7
+                    and self.core.gm_state.level < 0)):
             if (pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_UP)):
                 return "up"
@@ -336,7 +380,7 @@ class Controls:
             if (pr.is_key_pressed(keys.KEY_ENTER)
                or pr.is_key_pressed(keys.KEY_KP_ENTER)
                or pr.is_key_pressed(keys.KEY_SPACE)):
-                if self.game.step == 12 and (shift or ctrl):
+                if self.game.step in (4, 12) and (shift or ctrl):
                     return "inv_enter"
                 else:
                     return "enter"
@@ -404,6 +448,10 @@ class Controls:
                 code = self.graphics.interface.maze_pointer_code(clamp=True)
                 if code is not None:
                     return ("leftdrag", code)
+            elif self.game.step in (4, 15):
+                code = self.graphics.interface.clicked_code(numbars_only=True)
+                if code is not None:
+                    return ("leftclick", code)
         elif pr.is_mouse_button_released(pr.MouseButton.MOUSE_BUTTON_LEFT):
             self.maze_drag = False
         elif pr.is_mouse_button_pressed(pr.MouseButton.MOUSE_BUTTON_RIGHT):
@@ -489,7 +537,7 @@ class Controls:
                 return ("pad", "volsound-")
             return ("pad", "vol-")
 
-        if self.game.step in (1, 3, 4):
+        if self.game.step in (1, 3):
             if pad_btn(LBL) or pad_btn(LBU):
                 return ("pad", "prev")
             elif pad_btn(LBR) or pad_btn(LBD):
@@ -533,11 +581,11 @@ class Controls:
                 if direction > 0.0:
                     return ("pad", "next")
 
-        if self.game.step in (3, 4):
+        if self.game.step in (3, 4, 15):
             if pad_btn(RBL) or pad_btn(MBL):
                 return ("pad", "back")
 
-        if self.game.step in (6, 7, 8, 9, 10, 12):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 15):
             if pad_btn(MBR) or pad_btn(RBL):
                 return ("pad", "pause_menu")
 
@@ -549,7 +597,8 @@ class Controls:
             if pad_btn(LBR):
                 return ("pad", "inventory_02")
 
-        if self.game.step >= 8:
+        if (self.game.step == 4 or self.game.step >= 8
+                or (self.game.step == 7 and self.core.gm_state.level < 0)):
             default_release = self.core.defaults.gamepad_stick_release
             default_trigger = self.core.defaults.gamepad_stick_trigger
             x_direction, y_direction = 0.0, 0.0

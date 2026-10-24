@@ -34,10 +34,19 @@ class GameLauncher:
                                                 "darkerwood",
                                                 "granular"]
     # brushed_metal, lightwood
-        self.sounds_to_load: list[str] = ["eat_pacgum",
+        self.sounds_to_load: list[str] = ["applause",
+                                          "break",
+                                          "death",
+                                          "eat_ghost",
+                                          "eat_item",
+                                          "eat_pacgum",
                                           "eat_superpacgum",
                                           "enter_cheats",
+                                          "explode",
+                                          "game_over",
+                                          "mocking",
                                           "tadaaa",
+                                          "time's_up",
                                           "transition_0",
                                           "transition_1",
                                           "warp"]
@@ -101,7 +110,8 @@ class GameLauncher:
                 index = self.nb_loaded - (len(self.fonts_to_load)
                                           + len(self.textures_to_generate))
                 sound_name = self.sounds_to_load[index]
-                self.audio.sound_load(sound_name)
+                if self.audio.available:
+                    self.audio.sound_load(sound_name)
 
             self.nb_loaded += 1
             self.draw_loading_screen()
@@ -111,7 +121,7 @@ class GameLauncher:
                      graphics.font_script):
             pr.set_texture_filter(font.texture,
                                   pr.TextureFilter.TEXTURE_FILTER_BILINEAR)
-        if self.core.config.window_resizeable:
+        if self.core.config.window_resizable:
             pr.set_window_state(
                 pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
 
@@ -139,8 +149,11 @@ class GameLauncher:
                     mouth_opening=mouth_opening)
         draw.stick_text(vp.ct.x, vp.ct.y - base_height * 2,
                         lex("LDR_Lbl"), base_height, thick=rg(2), cl=cl_alt)
+        # draw.stick_text(vp.ct.x, vp.ct.y + base_height * 2,
+        #                 f"{self.nb_loaded:02}/{self.nb_elements:02}",
+        #                 base_height, thick=rg(2), cl=cl_alt)
         draw.stick_text(vp.ct.x, vp.ct.y + base_height * 2,
-                        f"{self.nb_loaded:02}/{self.nb_elements:02}",
+                        f"{round(progress * 100)}%",
                         base_height, thick=rg(2), cl=cl_alt)
         weight_fonts = min(1.0, self.nb_loaded / len(self.fonts_to_load))
         cl_fonts = rcl.mix_rgba(cl_alt, rcl.BASE_DARKER_GREY,
@@ -162,7 +175,12 @@ class GameLauncher:
             / len(self.sounds_to_load)))
         cl_sounds = rcl.mix_rgba(cl_alt, rcl.BASE_DARKER_GREY,
                                  weight_sounds)
+        txt_sounds = lex("LDR_Snd")
+        if not self.audio.available:
+            cl_sounds = rcl.mix_rgba(rcl.BASE_RED, rcl.BASE_DARKER_GREY,
+                                     weight_sounds)
+            txt_sounds = lex("LDR_SKO")
         draw.stick_text(vp.ct.x, round(vp.ct.y + base_height * 4.6),
-                        lex("LDR_Snd"), base_height // 2,
+                        txt_sounds, base_height // 2,
                         thick=max(1, rg(1)), cl=cl_sounds)
         pr.end_drawing()
