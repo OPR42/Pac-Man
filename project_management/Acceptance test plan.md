@@ -181,9 +181,9 @@
 |---|---|---|
 |Resume|[...]|☑️❌|
 |Back to main menu|[...]|☑️❌|
-|Settings|||
-|Cheats|||
-|Exit|||
+|Settings|[...]|☑️❌|
+|Cheats|[...]|☑️❌|
+|Exit|[...]|☑️❌|
 
 <span style='color: purple'>
 

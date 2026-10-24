@@ -32,7 +32,14 @@ text
 ### Risk 03 - Launch on a public platform does not work
 </span>
 
-text
+Tests were conducted during development on a specific public platform. Since we  
+already know which platform we will be using, the risk here is relatively limited.
+
+To ensure that all assets required for execution are included, we specify them using  
+the `--add-data` flag.
+
+We also tested the build on devices that do not have the base project installed, to  
+ensure it works correctly on its own for anyone.
 
 <span style="color: red">
 
@@ -58,7 +65,7 @@ work on a well-designed, readable, and precise program.
 Of course, managing and verifying compliance with the norm are part of our  
 pre-submission checks, just as it is for risk 04.
 
-<span style="color: lightgreen">
+<span style="color: gold">
 
 ### Risk 06 - Possible lag depending on the system
 </span>
