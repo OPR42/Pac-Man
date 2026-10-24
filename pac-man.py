@@ -6,7 +6,7 @@ from pacman.core import Core
 
 def main() -> int:
     if len(sys.argv) != 2:
-        print(f"Usage: {Path(sys.argv[0]).name} config.json")
+        print(f"Usage: {Path(sys.argv[0]).name} data/config.json")
         return 1
 
     config_filename = sys.argv[1]
