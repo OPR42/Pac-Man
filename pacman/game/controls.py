@@ -84,6 +84,11 @@ class Controls:
 
         return True
 
+    def direction_held(self, direction: str) -> bool:
+        x, y = self.player_key_pad_move()
+        return {"up": y < 0.0, "down": y > 0.0, "left": x < 0.0,
+                "right": x > 0.0}.get(direction, False)
+
     def player_key_pad_move(self) -> tuple[float, float]:
         keys = pr.KeyboardKey
         if self.gamepad < 0 or not pr.is_gamepad_available(self.gamepad):
@@ -320,9 +325,12 @@ class Controls:
             if (pr.is_key_pressed(keys.KEY_ENTER)
                or pr.is_key_pressed(keys.KEY_KP_ENTER)
                or pr.is_key_pressed(keys.KEY_SPACE)):
-                return "enter"
+                if self.game.step in (1,) and (shift or ctrl):
+                    return "inv_enter"
+                else:
+                    return "enter"
 
-        if self.game.step in (3, 4, 15):
+        if self.game.step in (1, 3, 4, 15):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
                or pr.is_key_pressed(keys.KEY_ESCAPE)):
                 return "back"

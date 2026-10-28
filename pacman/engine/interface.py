@@ -13,7 +13,7 @@ from pacman.graphics.colors import RenderColors as rcl
 InterfaceKind: TypeAlias = Literal["button", "table", "zone", "key",
                                    "r_checkbox", "maze", "clickable_label",
                                    "btn_prev", "list_next", "bar_next",
-                                   "rc_checkbox"]
+                                   "rc_checkbox", "dropdown"]
 
 
 @dataclass
@@ -77,6 +77,12 @@ class Interface:
 
     def rebuild(self) -> None:
         self._build_geometries()
+        self.hovered = None
+        self.hint = None
+        self.hint_wait = 0.0
+
+        if self.focus not in self._focusable_codes():
+            self.focus = None
 
     def _build_geometries(self) -> None:
         rg = self.graphics.rg
@@ -115,9 +121,9 @@ class Interface:
 
     def _focusable_codes(self, avoid: tuple[str, ...] = ("",)) -> list[str]:
         return [item.code for item in self.ui_items if (
-            item.kind in ("button", "r_checkbox",
-                          "clickable_label", "btn_prev",
-                          "list_next", "bar_next", "rc_checkbox")
+            item.kind in ("button", "r_checkbox", "clickable_label",
+                          "btn_prev", "list_next", "bar_next", "rc_checkbox",
+                          "dropdown")
             and item.code not in avoid and not item.disabled)]
 
     def focus_key(self, direction: str) -> None:
@@ -372,7 +378,7 @@ class Interface:
             if (hovered_item.item.kind in ("button", "table", "key",
                                            "r_checkbox", "clickable_label",
                                            "btn_prev", "list_next", "bar_next",
-                                           "rc_checkbox")
+                                           "rc_checkbox", "dropdown")
                or (hovered_item.item.kind == "zone"
                    and hovered_item.item.code[:7] == "letter_")
                or (hovered_item.item.kind == "maze" and self.game.step == 7)):
@@ -391,7 +397,7 @@ class Interface:
                 if hovered_item.item.kind in ("button", "key", "r_checkbox",
                                               "clickable_label", "btn_prev",
                                               "list_next", "bar_next",
-                                              "rc_checkbox"):
+                                              "rc_checkbox", "dropdown"):
                     self.focus = hovered_item.item.code
                     self.mouse_focus = hovered_item.item.code
                 elif self.mouse_focus is not None:
@@ -462,7 +468,15 @@ class Interface:
         clicked_item = self.item_at(mouse.x, mouse.y)
 
         if clicked_item is None:
+            if self.game.step == 1:
+                self.graphics.main_menu.quick_access_menu = False
             return None
+
+        if (self.game.step == 1
+                and clicked_item.item.kind != "dropdown"
+                and not (right_click
+                         and clicked_item.item.inv_code == "quick_access")):
+            self.graphics.main_menu.quick_access_menu = False
 
         if numbars_only and clicked_item.item.kind != "bar_next":
             return None
@@ -478,7 +492,7 @@ class Interface:
             self.core.game.controls.set_mouse_cursor("arrow")
         elif clicked_item.item.kind in ("r_checkbox", "clickable_label",
                                         "btn_prev", "list_next", "bar_next",
-                                        "rc_checkbox"):
+                                        "rc_checkbox", "dropdown"):
             self.focus = clicked_item.item.code
             self.mouse_focus = clicked_item.item.code
         else:

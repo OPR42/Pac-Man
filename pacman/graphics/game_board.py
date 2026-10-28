@@ -55,6 +55,7 @@ class GameBoard:
         self.bomb_cell: tuple[int, int] = (-1, -1)
         self.bomb_detonation: tuple[int, int, float] = (-1, -1, -1.0)
         self.stick_char_cache: dict[tuple[int, int, str], str] = {}
+        self.launched: bool = False
 
     def launch(self) -> None:
         self.core._emit(
@@ -72,6 +73,7 @@ class GameBoard:
             self.gamehuds.rvp = self.rvp
 
         self.game.audio.ingame_start()
+        self.launched = True
 
     def reset(self) -> None:
         self.obstacles = []
@@ -108,6 +110,8 @@ class GameBoard:
             self.gamehuds.resize()
             self.gamehuds.livebox_convert_coords_on_resize(old_cont_lives)
             self.game.inventory.resize()
+        if self.core.gm_state.level < 0:
+            self.game.minigames.resize()
         self.convert_coords_on_resize(old_mvp)
 
     def convert_coords_on_resize(self, old_mvp: RectangleGeometry) -> None:
@@ -193,21 +197,27 @@ class GameBoard:
         rg = self.graphics.rg
         sround = self.utils.sym_round
         char_width = math.ceil(size * 0.5125)
-        text_width = len(txt) * char_width
-        left = x - text_width / 2
+        lines = txt.split("\n")
+        line_height = size * 1.2
+        total_height = size + (len(lines) - 1) * line_height
+        top = y - total_height / 2
         outline_offset = rg(1)
-        for index, char in enumerate(txt):
-            if char == " ":
-                continue
-            texture_name = self.get_stick_char_texture(char, size, thick)
-            char_x = sround(left + index * char_width)
-            char_y = sround(y - size / 2)
-            if cl_outline is not None:
-                textures.draw(texture_name, char_x + outline_offset,
-                              char_y + outline_offset, tint=cl_outline)
-                textures.draw(texture_name, char_x - outline_offset,
-                              char_y + outline_offset, tint=cl_outline)
-            textures.draw(texture_name, char_x, char_y, tint=cl)
+
+        for line_index, line in enumerate(lines):
+            text_width = len(line) * char_width
+            left = x - text_width / 2
+            char_y = sround(top + line_index * line_height)
+            for index, char in enumerate(line):
+                if char == " ":
+                    continue
+                texture_name = self.get_stick_char_texture(char, size, thick)
+                char_x = sround(left + index * char_width)
+                if cl_outline is not None:
+                    textures.draw(texture_name, char_x + outline_offset,
+                                  char_y + outline_offset, tint=cl_outline)
+                    textures.draw(texture_name, char_x - outline_offset,
+                                  char_y + outline_offset, tint=cl_outline)
+                textures.draw(texture_name, char_x, char_y, tint=cl)
 
     def clear_stick_char_cache(self) -> None:
         textures = self.graphics.textures
@@ -239,9 +249,16 @@ class GameBoard:
         elif self.status == "warp_out":
             if self.warp_signal:
                 self.warp_signal = False
-                self.game._start_transition(7, 7, 1)
+                if self.game.one_level_only:
+                    self.game._start_transition(7, 1, 1)
+                else:
+                    self.game._start_transition(7, 7, 1)
             if self.warp_anim(out=True):
                 self.anim_start = -1.0
+                if self.game.one_level_only:
+                    self.status = "warp_finished"
+                    self.game.return_to_menu = "success"
+                    return
                 if self.core.gm_state.level < len(self.core.config.levels):
                     self.game.start_new_level(self.core.gm_state.level + 1)
                     if not self.game.interludes.active:

@@ -69,6 +69,9 @@ class Defaults(BaseModel):
     maze_min_height: int = 10
     maze_wall_debris_duration: float = 2.0
 
+    minigame_pactris_completed_threshold: int = 40
+    minigame_pactris_speed_multiplier: float = 1.5
+
     pacman_base_mouth_opening: float = 0.50
     pacman_min_mouth_opening: float = 0.25
     pacman_max_mouth_opening_to_pg: float = 1.00

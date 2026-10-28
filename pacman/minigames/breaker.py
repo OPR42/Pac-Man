@@ -838,6 +838,7 @@ class Breaker:
         self.lives = max(-1, self.lives - 1)
 
         if self.lives == -1:
+            self.game.audio.sound_play("game_over")
             self.pacman_launched = False
             self.over = True
             self.active_effects.clear()
@@ -1074,6 +1075,7 @@ class Breaker:
         self.lives = max(-1, self.lives - 1)
 
         if self.lives == -1:
+            self.game.audio.sound_play("game_over")
             self.pacman_launched = False
             self.over = True
             self.active_effects.clear()

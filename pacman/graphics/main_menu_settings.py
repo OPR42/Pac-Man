@@ -165,6 +165,7 @@ class MainMenuSettings:
             val_init = self.core.config.minigames
             val_updt = value_checkbox(val_init, cmd)
             self.core.config.minigames = val_updt
+            self.main_menu.qvp_ready = False
         elif focus.startswith("position_"):
             values = ["topleft", "top", "topright", "left", "center",
                       "right", "bottomleft", "bottom", "bottomright"]
@@ -439,6 +440,7 @@ class MainMenuSettings:
         words = dflt.timeout_consequence.lower().split(" ")
         self.core.config.timeout_consequence = f"{words[0]}_{words[1]}"
         self.core.config.minigames = dflt.minigames
+        self.main_menu.qvp_ready = False
         self.core.load_config_to_environment()
         self.graphics.reposition_and_resize()
         self.game.audio.restore_volume()

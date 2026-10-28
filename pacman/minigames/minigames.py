@@ -10,6 +10,8 @@ from pacman.graphics.colors import RenderColors as rcl
 
 from .snake import Snake
 from .breaker import Breaker
+from .tetris import Tetris
+from .invaders import Invaders
 
 
 class MiniGames:
@@ -32,6 +34,8 @@ class MiniGames:
         self.input_armed: bool = False
         self.snake = Snake(core)
         self.breaker = Breaker(core)
+        self.tetris = Tetris(core)
+        self.invaders = Invaders(core)
 
     def launch(self) -> None:
         self.snake.launch()
@@ -46,6 +50,8 @@ class MiniGames:
         self.input_armed = False
         self.snake.reset()
         self.breaker.reset()
+        self.tetris.reset()
+        self.invaders.reset()
 
     def start_level(self, level: int = 0, level_after: int = 0) -> None:
         if not (-4 <= level <= -1
@@ -82,6 +88,11 @@ class MiniGames:
             self.snake.initialize()
         elif self.level == -2:
             self.breaker.initialize()
+        elif self.level == -3:
+            self.tetris.initialize()
+        elif self.level == -4:
+            self.invaders.initialize()
+        self.gameboard.gamehuds.livebox_set_lives(self.core.gm_state.lives_cur)
 
     def resume_from_pause(self, pause_duration: float) -> None:
         if self.level == -2:
@@ -101,9 +112,16 @@ class MiniGames:
             if cmd == "enter":
                 cmd = self.graphics.interface.focus or ""
             if cmd == "continue":
-                self.game._play_transition(6, 7, 1)
-                self.game.start_new_level(self.level_after)
-                self.game.set_step(6)
+                if self.game.one_level_only:
+                    self.game._play_transition(9, 1, 1)
+                    self.graphics.gameboard.reset()
+                    self.graphics.main_menu.enter()
+                    self.game.set_step(1)
+                    self.game._play_transition(9, 1, 2)
+                else:
+                    self.game._play_transition(6, 7, 1)
+                    self.game.start_new_level(self.level_after)
+                    self.game.set_step(6)
             elif cmd == "again" and self.core.gm_state.lives_cur > 0:
                 self.game._add_life(-1)
                 self.start_level(self.level, self.level_after)
@@ -115,6 +133,10 @@ class MiniGames:
             self.snake.command(cmd)
         elif self.level == -2:
             self.breaker.command(cmd)
+        elif self.level == -3:
+            self.tetris.command(cmd)
+        elif self.level == -4:
+            self.invaders.command(cmd)
 
     def update(self) -> None:
         if not self.input_armed:
@@ -127,6 +149,10 @@ class MiniGames:
             self.snake.update()
         elif self.level == -2:
             self.breaker.update()
+        elif self.level == -3:
+            self.tetris.update()
+        elif self.level == -4:
+            self.invaders.update()
 
     def set_board_geometry(self, level: int) -> None:
         if not -4 <= level <= -1:
@@ -135,6 +161,10 @@ class MiniGames:
             self.snake.set_board_geometry()
         elif level == -2:
             self.breaker.set_board_geometry()
+        elif level == -3:
+            self.tetris.set_board_geometry()
+        elif level == -4:
+            self.invaders.set_board_geometry()
 
     def draw_minigames_board(self) -> None:
         gameboard = self.gameboard
@@ -169,6 +199,14 @@ class MiniGames:
             self.breaker.draw_board()
             if self.breaker.over:
                 self.endgame = True
+        elif self.level == -3:
+            self.tetris.draw_board()
+            if self.tetris.over:
+                self.endgame = True
+        elif self.level == -4:
+            self.invaders.draw_board()
+            if self.invaders.over:
+                self.endgame = True
         if self.endgame:
             self.play_again_offer()
 
@@ -179,6 +217,9 @@ class MiniGames:
 
         if not gamemenus.background_built:
             gamemenus.build_background()
+
+        if not self.offer_panel_built:
+            self.build_panel_offer()
 
         gamemenus.draw_background()
         sround = self.utils.sym_round
@@ -193,9 +234,6 @@ class MiniGames:
         x, y, w, h = gamemenus.background_geometry()
         draw.rectangle(x, y, w, h, cl=shadow, filled=True)
 
-        if not self.offer_panel_built:
-            self.build_panel_offer()
-
         ovp = self.ovp
         draw.rectangle(ovp.x, ovp.y, ovp.wdt, ovp.hgt, roundness=0.25,
                        cl=rcl.BLACK_GLASS, filled=True)
@@ -208,14 +246,14 @@ class MiniGames:
         for i, item in enumerate(self.offer_ui_items):
             if item.kind == "zone":
                 if item.code == "mgo_title":
-                    titles = ["MGO_Tt1", "MGO_Tt2"]
+                    titles = ["MGO_Tt1", "MGO_Tt2", "MGO_Tt3", "MGO_Tt4"]
                     draw.text_block_max(
                         item.x, item.y, item.width, item.height,
                         lex(titles[index]), self.graphics.font_bold,
                         cl, justify="center")
                 elif item.code == "mgo_text":
                     cl = rcl.scale_rgb(rcl.SAND, 1.0)
-                    texts = ["MGO_Snk", "MGO_Brk"]
+                    texts = ["MGO_Snk", "MGO_Brk", "MGO_Trs", "MGO_Nvd"]
                     txt = lex(texts[index])
                     score_gain = gmstate.score - self.score_before
                     score_txt = f"{score_gain:,}"
@@ -244,6 +282,21 @@ class MiniGames:
                         txt = txt.replace("$DESTRUCTS$", destructs_txt)
                         txt = txt.replace("$POINTS$", score_txt)
                         txt = txt.replace("$PERCENT$", f"{percent}")
+                    elif self.level == -3:
+                        percent = max(0, sround(
+                            (self.tetris.completed_rows
+                             / self.core.gm_state.maze_height) * 100))
+                        placed_txt = f"{self.tetris.placed_count:,}"
+                        placed_txt = placed_txt.replace(",", lex("kilo_sep"))
+                        completed_txt = f"{self.tetris.completed_rows:,}"
+                        completed_txt = completed_txt.replace(",",
+                                                              lex("kilo_sep"))
+                        txt = txt.replace("$PLACED$", placed_txt)
+                        txt = txt.replace("$COMPLETED$", completed_txt)
+                        txt = txt.replace("$POINTS$", score_txt)
+                        txt = txt.replace("$PERCENT$", f"{percent}")
+                    elif self.level == -4:
+                        pass
                     draw.text_block_max(
                         item.x, item.y, item.width, item.height,
                         txt, self.graphics.font_regular,
@@ -266,6 +319,7 @@ class MiniGames:
         row_height = sround(ovp.hgt / 4)
         item_height = sround(row_height * 0.7)
         item_width = sround(ovp.wdt / 2 * 0.8)
+        item_height = min(item_height, sround(item_width / 4))
         self.offer_ui_items = []
 
         for item in gamemenus.gamehuds.ui_items:
@@ -284,8 +338,9 @@ class MiniGames:
         self.offer_ui_items.append(InterfaceItem(
             lx, y, item_width, item_height, "MGO_Agn", "again", "button",
             rel_to_center=False))
+        label = "MGO_Qut" if self.game.one_level_only else "MGO_Cnt"
         self.offer_ui_items.append(InterfaceItem(
-            rx, y, item_width, item_height, "MGO_Cnt", "continue", "button",
+            rx, y, item_width, item_height, label, "continue", "button",
             rel_to_center=False))
 
         self.offer_panel_built = True

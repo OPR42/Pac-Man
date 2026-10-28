@@ -930,7 +930,8 @@ class Shapes:
               pupil_color: Color = rcl.EYE_BLUE, eye_opening: float = 1.0,
               wave: float = 1.0, name: str = "", contour: bool = False,
               variant: str = "", actor_name: str = "",
-              texture_free: bool = False) -> None:
+              texture_free: bool = False,
+              force_body_color: Color | None = None) -> None:
         sround = self.utils.sym_round
 
         if variant == "ghostbuster":
@@ -954,6 +955,9 @@ class Shapes:
             eye_color = rcl.BLOODY_EYE_SALMON
         elif name == "disgusted":
             body_color = rcl.DISGUSTED_GHOST_GREEN
+
+        if force_body_color:
+            body_color = force_body_color
 
         if contour:
             body_contour = rcl.scale_rgb(body_color, 0.80)

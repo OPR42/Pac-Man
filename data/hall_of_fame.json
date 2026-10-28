@@ -51,18 +51,13 @@
             "corrupted": false
         },
         {
-            "name": "OPR42",
-            "score": 7128,
-            "corrupted": false
-        },
-        {
-            "name": "Dr DOOM",
-            "score": 5000,
-            "corrupted": false
-        },
-        {
             "name": "thatsuxxx",
             "score": 3000,
+            "corrupted": false
+        },
+        {
+            "name": "Naze",
+            "score": 2878,
             "corrupted": false
         },
         {
@@ -86,6 +81,11 @@
             "corrupted": false
         },
         {
+            "name": "Gronul",
+            "score": 20,
+            "corrupted": false
+        },
+        {
             "name": "AFK",
             "score": 0,
             "corrupted": false
@@ -101,5 +101,5 @@
             "corrupted": false
         }
     ],
-    "signature": "7ffccc8babf8362b93da67ac8cde1953df71dcd0b22717d5816436b97b807d15707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157e1361e8d8321f103e78eb08ca015bf514f0553db6e99a0f06d005cab8d506528040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d04f99d163c8f5f2991fd4d9943fb70496170c7901271e6db3"
+    "signature": "7ffccc8babf8362b93da67ac8cde1953df71dcd0b22717d5816436b97b807d15707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157e1361e8d8321f1036d005cab8d506528b8bd563bca6d6136040ba8f13537c30b353774c281b073e80f0fd8ebaec21dedd109b57a71bed3d0ff63111fc93f83104f99d163c8f5f2991fd4d9943fb70496170c7901271e6db3"
 }

@@ -253,6 +253,7 @@ class Snake:
                 next_y = round(y) + dy
                 if (self.cell_blocked(next_x, next_y)
                         or self.body_blocked(next_x, next_y)):
+                    self.game.audio.sound_play("game_over")
                     self.collision = True
                     return
             position = x if dx else y

@@ -32,12 +32,15 @@ class MainMenu:
         self.focus_anim_start = time.perf_counter()
         self.last_mouse_pos = pr.get_mouse_position()
         self.mouse_armed: bool = False
+        quit_label = ("MM_Btn3" if self.core.defaults.allow_terminal_display
+                      else "MM_Btn3Dist")
         self.ui_items: list[InterfaceItem] = [
             InterfaceItem(-725, -290, 700, 160, "MM_Btn1", "play",
-                          "button", rel_to_center=True),
+                          "button", rel_to_center=True,
+                          inv_code="quick_access"),
             InterfaceItem(-725, -80, 700, 160, "MM_Btn2", "settings",
                           "button", rel_to_center=True),
-            InterfaceItem(-725, 130, 700, 160, "MM_Btn3", "exit",
+            InterfaceItem(-725, 130, 700, 160, quit_label, "exit",
                           "button", rel_to_center=True),
             InterfaceItem(250, 230, 350, 60, "MM_Btn4", "help",
                           "button", rel_to_center=True),
@@ -50,6 +53,10 @@ class MainMenu:
         self.highscores_flip_source = 0
         self.highscores_flip_target = 0
         self.obstacle_generations: dict[str, int] = {}
+        self.quick_access_menu: bool = False
+        self.qvp: RectangleGeometry
+        self.qvp_ready: bool = False
+        self.qvp_cleaned: bool = True
 
     def launch(self) -> None:
         self.core._emit(
@@ -69,6 +76,7 @@ class MainMenu:
         self.highscores_texture_dirty = True
         self.main_menu_settings.resize()
         self.background.resize()
+        self.qvp_ready = False
 
     def draw_main_menu(self) -> None:
         elapsed = time.perf_counter() - self.focus_anim_start
@@ -77,11 +85,19 @@ class MainMenu:
         self.background.update_and_draw()
 
         if self.game.step == 1:
+            if self.quick_access_menu and not self.qvp_ready:
+                self.build_quick_access_geometry()
             self.graphics.interface.set_items(self.ui_items)
             self.graphics.interface.update_mouse()
-            for i in range(4):
-                self.main_menu_button(i, rgb_factor)
+            for i, item in enumerate(self.ui_items):
+                if item.kind == "button":
+                    self.main_menu_button(i, rgb_factor)
             self.highscores_tab(rgb_factor)
+            if self.quick_access_menu:
+                self.draw_quick_access_menu(rgb_factor)
+            else:
+                self.qvp_ready = False
+                self.clean_quick_access_ui_items()
 
         elif self.game.step == 3:
             self.graphics.interface.set_items(self.main_menu_help.ui_items)
@@ -95,6 +111,154 @@ class MainMenu:
 
         elif self.game.step == 5:
             self.main_menu_idle.draw_idle_panel()
+
+    def draw_quick_access_menu(self, rgb_factor: float) -> None:
+        draw = self.shapes
+        rg = self.graphics.rg
+        qvp = self.qvp
+        draw.rectangle(qvp.x, qvp.y, qvp.wdt, qvp.hgt, roundness=0.25,
+                       cl=rcl.BLACK_DARKERGLASS, filled=True)
+        draw.rectangle(qvp.x, qvp.y, qvp.wdt, qvp.hgt, roundness=0.25,
+                       thick=rg(2), cl=rcl.PACMAN_YELLOW, filled=False)
+        for i, ui_item in enumerate(self.ui_items):
+            if ui_item.kind == "dropdown":
+                self.display_dropdown_button(i, rgb_factor)
+
+    def clean_quick_access_ui_items(self) -> None:
+        if not self.qvp_cleaned:
+            for item in self.ui_items[:]:
+                if (item.kind == "dropdown"
+                        and item.label.startswith("MM_L")):
+                    self.ui_items.remove(item)
+            self.qvp_cleaned = True
+            self.graphics.interface.rebuild()
+
+    def build_quick_access_geometry(self) -> None:
+        rg = self.graphics.rg
+        geo = self.geometry
+
+        self.clean_quick_access_ui_items()
+
+        for item in self.ui_items:
+            if item.inv_code == "quick_access":
+                vp_x, vp_y, vp_width, vp_height = (
+                    self.graphics.viewport_rectangle)
+                vp = geo.rectangle_geometry(vp_x, vp_y, vp_width, vp_height)
+                ref_button = geo.rectangle_geometry(
+                    vp.ct.x + rg(item.x), vp.ct.y + rg(item.y),
+                    rg(item.width), rg(item.height))
+                break
+        if not ref_button:
+            return
+
+        row_hgt = round(ref_button.hgt / 5.5)
+        nb_items = 12 + (4 if self.core.config.minigames else 0)
+        qvp = self.geometry.rectangle_geometry(
+            ref_button.x + ref_button.wdt // 2,
+            ref_button.y + ref_button.hgt - ref_button.hgt // 10,
+            round(ref_button.wdt * 0.30), row_hgt * nb_items)
+        self.qvp = qvp
+
+        labels = ["MM_L01", "MM_L02", "MM_L03", "MM_LSn", "MM_L04", "MM_L05",
+                  "MM_LBr", "MM_L06", "MM_L07", "MM_LTr", "MM_L08", "MM_L09",
+                  "MM_LNv", "MM_L10", "MM_L11", "MM_L12"]
+        i = 0
+        play_index = 0
+        for i, item in enumerate(self.ui_items):
+            if item.code == "play":
+                play_index = i
+                break
+        for label in labels:
+            if not self.core.config.minigames and label in (
+                    "MM_LSn", "MM_LBr", "MM_LTr", "MM_LNv"):
+                continue
+            self.ui_items.insert(play_index + 1 + i, InterfaceItem(
+                qvp.x, qvp.y + i * row_hgt, qvp.wdt, row_hgt, label,
+                f"jump_to_{label[-3:]}", "dropdown", rel_to_center=False))
+            i += 1
+        self.qvp_ready = True
+        self.qvp_cleaned = False
+        self.graphics.interface.rebuild()
+
+    def display_dropdown_button(self, index: int, rgb_factor: float) -> None:
+        draw = self.shapes
+        lex = self.core.lexicon
+        sround = self.utils.sym_round
+
+        if self.game.step == 1:
+            ui_items = self.ui_items
+
+        item = ui_items[index]
+
+        if item.kind != "dropdown":
+            return
+
+        button_active = self.graphics.interface.focused(item.code)
+        cl_text = rcl.BASE_BLACK if button_active else rcl.SAND
+        cl_back = rcl.PACMAN_YELLOW
+        cl_highlight = rcl.BASE_BR_PURPLE
+        cl_pulse = rcl.scale_rgb(cl_highlight, rgb_factor)
+        frame_round_rad = self.geometry.rectangle_round_radius(
+            self.qvp.wdt, self.qvp.hgt, 0.25)
+        max_label_width = item.width - frame_round_rad * 2
+        max_label_size = int(item.height * 0.9)
+        label_size = self.geometry.fit_text_size(
+            lex(item.label), max_width=max_label_width,
+            max_size=max_label_size, min_size=max(1, self.graphics.rg(5)))
+        label_width, label_height = self.geometry.measure_text(
+            lex(item.label), label_size)
+        label_x = sround(item.x + (item.width - label_width) / 2)
+        label_y_margin = sround((item.height - label_height) / 2)
+        if button_active:
+            if item.y == self.qvp.y:
+                draw.circle_sector(item.x + frame_round_rad,
+                                   item.y + frame_round_rad, frame_round_rad,
+                                   180.0, 270.0, cl=cl_back, filled=True)
+                draw.rectangle(item.x, item.y + frame_round_rad,
+                               frame_round_rad, item.height - frame_round_rad,
+                               cl=cl_back, filled=True)
+                draw.circle_sector(item.x + item.width - frame_round_rad,
+                                   item.y + frame_round_rad, frame_round_rad,
+                                   270.0, 360.0, cl=cl_back, filled=True)
+                draw.rectangle(item.x + item.width - frame_round_rad,
+                               item.y + frame_round_rad, frame_round_rad,
+                               item.height - frame_round_rad,
+                               cl=cl_back, filled=True)
+            elif item.y + item.height == self.qvp.bct.y:
+                draw.circle_sector(item.x + frame_round_rad,
+                                   item.y + item.height - frame_round_rad,
+                                   frame_round_rad,
+                                   90.0, 180.0, cl=cl_back, filled=True)
+                draw.rectangle(item.x, item.y, frame_round_rad,
+                               item.height - frame_round_rad,
+                               cl=cl_back, filled=True)
+                draw.circle_sector(item.x + item.width - frame_round_rad,
+                                   item.y + item.height - frame_round_rad,
+                                   frame_round_rad,
+                                   0.0, 90.0, cl=cl_back, filled=True)
+                draw.rectangle(item.x + item.width - frame_round_rad, item.y,
+                               frame_round_rad, item.height - frame_round_rad,
+                               cl=cl_back, filled=True)
+            else:
+                draw.rectangle(item.x, item.y, frame_round_rad,
+                               item.height, cl=cl_back, filled=True)
+                draw.rectangle(item.x + item.width - frame_round_rad, item.y,
+                               frame_round_rad, item.height,
+                               cl=cl_back, filled=True)
+            draw.rectangle_gradient(
+                item.x + frame_round_rad, item.y,
+                item.width - frame_round_rad * 2 + 1, item.height,
+                cl1=cl_back, cl2=cl_pulse, vertical=False, dual=True)
+            draw.text(label_x, item.y + label_y_margin, lex(item.label),
+                      self.graphics.font_bold, label_size, cl=cl_text)
+        else:
+            if item.code.endswith(("Sn", "Br", "Tr", "Nv")):
+                mix_factor = 0.50 + ((rgb_factor - 1.10) / 0.25) * 0.50
+                cl = rcl.mix_rgba(cl_text, cl_highlight, mix_factor)
+            else:
+                cl = cl_text
+            draw.text(label_x, item.y + label_y_margin, lex(item.label),
+                      self.graphics.font_regular, label_size, cl=cl)
 
     def main_menu_button(self, index: int, rgb_factor: float) -> None:
         draw = self.shapes

@@ -727,6 +727,12 @@ class Graphics:
             elif self.core.gm_state.level == -2:
                 center_banner = Banners.CENTER_BANNER_PACBREAKER
                 edition_banner = Banners.EDITION_BANNER_PACBREAKER
+            elif self.core.gm_state.level == -3:
+                center_banner = Banners.CENTER_BANNER_PACTRIS
+                edition_banner = Banners.EDITION_BANNER_PACTRIS
+            elif self.core.gm_state.level == -4:
+                center_banner = Banners.CENTER_BANNER_PACINVADERS
+                edition_banner = Banners.EDITION_BANNER_PACINVADERS
             self.banner_skin = self.core.gm_state.level
 
         self.textures.begin(texture_name, width, height)

@@ -43,6 +43,8 @@ class Game:
         self.complete_lvl_transfer_duration: float = 0.0
         self.revival_starttime: float = -1.0
         self.special_level_running: bool = False
+        self.one_level_only: bool = False
+        self.return_to_menu: str = ""
 
         """ STEPS
         00. Init
@@ -110,6 +112,23 @@ class Game:
 
     def run_loop(self) -> None:
         while not self.graphics.window_should_close():
+            if self.return_to_menu:
+                if self.return_to_menu == "success":
+                    if self.graphics.transitions.active:
+                        self.graphics.check_window_resized()
+                        self.graphics.draw_window()
+                        continue
+                else:
+                    self._play_transition(7, 1, 1)
+                self.return_to_menu = ""
+                self.audio.ingame_stop()
+                self.graphics.gameboard.reset()
+                self.graphics.main_menu.enter()
+                self.set_step(1)
+                self.last_activity = time.perf_counter()
+                self.already_idle = False
+                self._play_transition(9, 1, 2)
+                continue
             src, cmd = self.controls.control(self.step)
             idle = self.controls.idle()
             now = time.perf_counter()
@@ -172,11 +191,16 @@ class Game:
                         and cmd == "scores"):
                     if cmd == "scores":
                         self.graphics.main_menu.start_highscores_flip()
-                elif ((src in ("key", "pad") and cmd == "enter")
-                      or (src in ("leftclick", "rightclick") and cmd in (
-                            "exit", "help", "settings", "play"))):
+                elif ((src in ("key", "pad") and cmd in ("enter", "inv_enter",
+                                                         "back"))
+                      or (src in ("leftclick", "rightclick")
+                          and (cmd in ("exit", "help", "settings", "play",
+                                       "quick_access")
+                               or cmd.startswith("jump_to_L")))):
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
+                    elif src in ("key", "pad") and cmd == "inv_enter":
+                        cmd = self.graphics.interface.inv_code() or ""
                     if cmd == "exit":
                         self._play_transition(1, 2, 1)
                         self.set_step(2)
@@ -191,6 +215,7 @@ class Game:
                         self.set_step(4)
                         self._play_transition(1, 4, 2)
                     elif cmd == "play":
+                        self.one_level_only = False
                         self._play_transition(1, 6, 1)
                         self.start_new_level(1)
                         if self.core.gm_state.level < 0:
@@ -198,6 +223,50 @@ class Game:
                         else:
                             self.set_step(6)
                         self._play_transition(1, 6, 2)
+                    elif cmd == "quick_access":
+                        main_menu = self.graphics.main_menu
+                        if not main_menu.quick_access_menu:
+                            main_menu.quick_access_menu = True
+                        else:
+                            main_menu.quick_access_menu = False
+                    elif cmd == "back":
+                        if self.graphics.main_menu.quick_access_menu:
+                            main_menu.quick_access_menu = False
+                    elif cmd.startswith("jump_to_L"):
+                        self.one_level_only = True
+                        main_menu = self.graphics.main_menu
+                        if main_menu.quick_access_menu:
+                            main_menu.quick_access_menu = False
+                        dest = cmd[-2:]
+                        self._play_transition(1, 7, 1)
+                        if not self.graphics.gameboard.launched:
+                            self.graphics.gameboard.launch()
+                        else:
+                            self.audio.ingame_start()
+                        special_levels = {
+                            "Sn": (3, 4),
+                            "Br": (5, 6),
+                            "Tr": (7, 8),
+                            "Nv": (9, 10),
+                        }
+                        if (dest.isnumeric()
+                            and 1 <= int(dest) <= len(
+                                self.core.config.levels)):
+                            self.start_new_level(int(dest), no_special=True,
+                                                 new_start=True)
+                        elif (self.core.config.minigames
+                              and dest in special_levels):
+                            previous, target = special_levels[dest]
+                            self.core.gm_state.level = previous
+                            self.start_new_level(target, new_start=True)
+                        else:
+                            self.start_new_level(1, no_special=True,
+                                                 new_start=True)
+                        if self.core.gm_state.level < 0:
+                            self.set_step(7)
+                        else:
+                            self.set_step(6)
+                        self._play_transition(1, 7, 2)
 
             elif self.step == 3:
                 if ((src in ("key", "pad") and cmd == "enter")
@@ -267,6 +336,9 @@ class Game:
                             self.player.pilot(cmd, direct=(src == "leftdrag"))
                         self.player.move()
                 elif self.step == 7 and self.core.gm_state.level < 0:
+                    if self.core.gm_state.level == -3:
+                        self.minigames.tetris.soft_drop_active = (
+                            self.controls.direction_held("down"))
                     self.minigames.update()
                 if (src in ("key", "pad", "leftclick", "rightclick")
                    and cmd in ("pause_menu", "cheat_menu")):
@@ -349,7 +421,8 @@ class Game:
                     elif cmd == "no":
                         self.set_step(8)
                     elif cmd == "yes":
-                        if self.highscores.qualifies(self.core.gm_state.score):
+                        if (self.highscores.qualifies(self.core.gm_state.score)
+                                and not self.one_level_only):
                             gmmenu = self.graphics.gameboard.gamehuds.gamemenus
                             gmmenu.gamescoremenu.before_score_gamestep = (
                                 self.step)
@@ -505,6 +578,7 @@ class Game:
         if step == 1:
             gmstate = self.core.gm_state
             gmstate.level = 0
+            gmstate.score = 0
             lvdims = self.core.config.levels[0]
             gmstate.maze_width = lvdims.width
             gmstate.maze_height = lvdims.height
@@ -520,6 +594,7 @@ class Game:
             self.gamerun_starttime = 0.0
             self.gamerun_endtime = 0.0
             self.special_level_running = False
+            self.one_level_only = False
 
             self.core._emit(
                 LogEvent(source="  game  ", type="finish",
@@ -612,31 +687,14 @@ class Game:
                          duration=(time.perf_counter()
                                    - self.core.gm_state.starttime)))
 
-    def start_new_level(self, level: int) -> None:
+    def start_new_level(self, level: int, no_special: bool = False,
+                        new_start: bool = False) -> None:
         gmstate = self.core.gm_state
 
         self.cheats.disable_persistent_cheats()
         self.player._stop_pilot()
 
-        if self.core.config.minigames:
-            self.graphics.gameboard.launch()  # delete me
-            if gmstate.level == 3 and level == 4:
-                self.special_level_running = True
-                self.interludes.set_interlude(90001)
-                self.minigames.start_level(-1, level)
-                return
-            elif gmstate.level == 0 and level == 1:
-                self.special_level_running = True
-                self.interludes.set_interlude(90002)
-                self.minigames.start_level(-2, level)
-                return
-
-        gmstate.level = level
-        lvdims = self.core.config.levels[level - 1]
-        gmstate.maze_width, gmstate.maze_height = lvdims.width, lvdims.height
-        self.inventory.crates = []
-        gmstate.item_init, gmstate.item_eaten, gmstate.item_cur = 0, 0, 0
-        if level == 1:
+        if level == 1 or new_start:
             gmstate.seed = self.core.config.seed
             if self.old_step == 1:
                 gmstate.score = 0
@@ -644,6 +702,34 @@ class Game:
                 gmstate.lives_cur = self.core.config.lives
         else:
             gmstate.seed = int(self.random.uniform(0, 999999999999))
+
+        if self.core.config.minigames and not no_special:
+            if gmstate.level == 3 and level == 4:
+                self.special_level_running = True
+                self.interludes.set_interlude(90001)
+                self.minigames.start_level(-1, level)
+                return
+            elif gmstate.level == 5 and level == 6:
+                self.special_level_running = True
+                self.interludes.set_interlude(90002)
+                self.minigames.start_level(-2, level)
+                return
+            elif gmstate.level == 7 and level == 8:
+                self.special_level_running = True
+                self.interludes.set_interlude(90003)
+                self.minigames.start_level(-3, level)
+                return
+            elif gmstate.level == 9 and level == 10:
+                self.special_level_running = True
+                self.interludes.set_interlude(90004)
+                self.minigames.start_level(-4, level)
+                return
+
+        gmstate.level = level
+        lvdims = self.core.config.levels[level - 1]
+        gmstate.maze_width, gmstate.maze_height = lvdims.width, lvdims.height
+        self.inventory.crates = []
+        gmstate.item_init, gmstate.item_eaten, gmstate.item_cur = 0, 0, 0
         self.maze.generate(gmstate.maze_width, gmstate.maze_height,
                            gmstate.seed, log=True)
         start_cell_x = int((gmstate.maze_width - 1) / 2)
@@ -671,7 +757,8 @@ class Game:
         self.inventory.cancel_effects()
         self.pacgums.trigger_superpacgum_effect(disable=True)
         self._initialize_characters()
-        interludes = [-1, 0, 10102, 10203, 10304, 10405, 10506]
+        interludes = [-1, 0, 10102, 10203, 10304, 10405, 10506, 10607, 10708,
+                      10809, 10910, 11011, 11112]
         if gmstate.level < len(interludes):
             self.interludes.set_interlude(interludes[gmstate.level])
         self.special_level_running = False
@@ -736,7 +823,7 @@ class Game:
             self.complete_lvl_starttime = time.perf_counter()
             self.complete_lvl_src_init = gmstate.time_cur
             self.complete_lvl_dst_init = gmstate.score
-            self.complete_lvl_transfer_duration = gmstate.time_cur / 20
+            self.complete_lvl_transfer_duration = gmstate.time_cur / 50
         else:
             now = time.perf_counter()
             elapsed = now - self.complete_lvl_starttime
@@ -770,6 +857,9 @@ class Game:
 
     def game_over(self) -> None:
         if self.step in (11, 13, 14):
+            return
+        if self.one_level_only:
+            self.return_to_menu = "failure"
             return
         self.toggle_pause(force_pause=True)
         self.gamerun_endtime = time.perf_counter()

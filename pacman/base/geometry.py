@@ -274,6 +274,12 @@ class Geometry:
         y = center_y + dx * math.sin(radians) + dy * math.cos(radians)
         return sround(x), sround(y)
 
+    def rectangle_round_radius(self, wdt: int, hgt: int,
+                               roundness: float) -> int:
+        """Return the corner radius of a rounded rectangle."""
+        sround = self.utils.sym_round
+        return sround(min(wdt, hgt) * max(0.0, min(1.0, roundness)) / 2)
+
     def wrap_text(self, text: str, max_width: int,
                   font_size: int) -> list[str]:
         """Wrap text to fit a maximum pixel width."""

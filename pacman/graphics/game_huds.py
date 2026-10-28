@@ -195,6 +195,10 @@ class GameHUDs:
                     txt = "Pac-Snake"
                 elif gmstate.level == -2:
                     txt = "Pac-Breaker"
+                elif gmstate.level == -3:
+                    txt = "Pac-Tris"
+                elif gmstate.level == -4:
+                    txt = "Pac-Invaders"
             else:
                 txt = f"{value:,}".replace(",", lex("kilo_sep"))
 
