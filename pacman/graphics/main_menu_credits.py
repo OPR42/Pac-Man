@@ -120,7 +120,10 @@ class MainMenuCredits:
     def fit_credits_texts(self) -> None:
         measure = self.geometry.measure_text
         max_width = self.width
+        max_height = self.svp.hgt
         initial_size = max(1, self.svp.hgt // 20)
+        layouts = self.credits_panel_layouts()
+        last_layouts = layouts[-2:]
 
         for base_size in range(initial_size, 0, -1):
             fits = True
@@ -133,7 +136,23 @@ class MainMenuCredits:
                         break
                 if not fits:
                     break
-            if fits:
+            if not fits:
+                continue
+
+            sections = {section.key: section for section in self.sections}
+            final_height = 0
+            for index, (keys, scene, top_margin,
+                        scene_bottom, gaps) in enumerate(last_layouts):
+                if index == 0:
+                    top_margin = scene_bottom
+                final_height += (top_margin + scene_bottom + 1 + sum(gaps)
+                                 ) * base_size
+                for key in keys:
+                    for line in sections[key].lines:
+                        font_size = max(1, round(base_size * line.style.size))
+                        _, height = measure(line.text, font_size)
+                        final_height += max(font_size, round(height))
+            if final_height <= max_height:
                 break
 
         self.base_text_size = base_size
@@ -153,7 +172,7 @@ class MainMenuCredits:
             base_vp_x + base_vp_wdt // 4, base_vp_y + base_vp_hgt // 40,
             base_vp_wdt // 2, base_vp_hgt - base_vp_hgt // 20)
         self.cvp = cvp
-        margin = self.geometry.rectangle_round_radius(cvp.wdt, cvp.hgt, 0.25)
+        margin = self.geometry.rectangle_round_radius(cvp.wdt, cvp.hgt, 0.15)
         svp = self.geometry.rectangle_geometry(
             cvp.x + margin, cvp.y, cvp.wdt - margin * 2, cvp.hgt)
         self.svp = svp
@@ -195,8 +214,14 @@ class MainMenuCredits:
              ((4, "pacman", 340, 0.25, 2),),
              3, 3, (3,)),
             (("CRD_Developers", "CRD_Graphics", "CRD_Management"),
-             ((4, "pacman", 180, 0.80, 1),),
-             3, 2, (1, 1)),
+             ((1, "suppacgum", 0, 0.0, 1),
+              (2, "pacgum", 0, 0.0, 1),
+              (3, "pacgum", 0, 0.0, 1),
+              (4, "pacman", 0, 0.80, 1),
+              (5, "pacgum", 0, 0.0, 1),
+              (6, "pacgum", 0, 0.0, 1),
+              (7, "suppacgum", 0, 0.0, 1)),
+             2, 2, (1, 1)),
             (("CRD_Testers",),
              ((2, "blinky", 50, 0.30, 1),
               (3, "pinky", 70, 0.70, 1),
@@ -204,10 +229,12 @@ class MainMenuCredits:
               (6, "clyde", 130, 0.50, 1)),
              3, 2, ()),
             (("CRD_Musics",),
-             ((2, "pacman", 170, 0.20, 1),
+             ((1, "crate_bomb", 0, 0.0, 1),
+              (2, "pacman", 170, 0.20, 1),
               (4, "blinky", 190, 1.00, 1),
               (5, "inky", 160, 0.50, 1),
-              (6, "clyde", 200, 0.75, 1),),
+              (6, "clyde", 200, 0.75, 1),
+              (7, "crate_hourglass", 0, 0.0, 1)),
              3, 2, ()),
             (("CRD_Inspirations",),
              ((2, "dead", 160, 1.00, 1),
@@ -217,6 +244,7 @@ class MainMenuCredits:
              3, 2, ()),
             (("CRD_Thanks",),
              ((2, "pacman", 20, 0.50, 1),
+              (4, "crate_life", 0, 0.0, 1),
               (6, "pacman", 160, 0.50, 1),),
              3, 2, ()),
             (("CRD_NextToCome",),
@@ -224,15 +252,20 @@ class MainMenuCredits:
               (4, "crate_sage", 0, 0.00, 1),
               (5, "disgusted", 0, 0.50, 1),),
              3, 2, ()),
+            ((),
+             ((1, "portal_blue", 0, 0.0, 2),
+              (4, "pacman", 0, 0.25, 2),
+              (7, "portal_orange", 0, 0.0, 2)),
+             4, 3, ()),
             (("CRD_LastWord",),
-             ((3, "pacman", 210, 0.70, 1),
-              (5, "pacman", 330, 0.70, 1),),
-             5, 2, ()),
+             ((2, "pacman", 210, 0.70, 2),
+              (6, "pacman", 330, 0.70, 2),),
+             12, 3, ()),
             (("CRD_LastJoke",),
              ((3, "heart", 0, 0.00, 1),
               (4, "heart", 0, 0.00, 1),
               (5, "heart", 0, 0.00, 1),),
-             1, 3, ()),
+             2, 3, ()),
         )
 
     def credits_actor_x(self, cell: int) -> int:
@@ -252,11 +285,39 @@ class MainMenuCredits:
                             "dead", "disgusted"):
             draw.ghost(x, y, size, angle, wave=cycle, name=actor_type,
                        texture_free=True)
+        elif actor_type == "pacgum":
+            draw.pacgum(x, y, size // 2, superpg=False)
+        elif actor_type == "suppacgum":
+            draw.pacgum(x, y, size // 2, superpg=True)
         elif actor_type == "crate_sage":
             draw.companion_square(x, y, size * 2, rcl.SAGE_GREEN)
             draw.circle(x, y, size // 2, cl=rcl.SAGE_GREEN, filled=True)
+        elif actor_type == "crate_life":
+            draw.companion_square(x, y, size * 2, rcl.PACMAN_YELLOW)
+            draw.circle(x, y, size // 2, cl=rcl.PACMAN_YELLOW, filled=True)
+        elif actor_type == "crate_bowtie":
+            draw.companion_square(x, y, size * 2, rcl.BOWTIE_RED)
+            draw.circle(x, y, size // 2, cl=rcl.BOWTIE_RED, filled=True)
+        elif actor_type == "crate_slime":
+            draw.companion_square(x, y, size * 2, rcl.SLIME_GREEN)
+            draw.circle(x, y, size // 2, cl=rcl.SLIME_GREEN, filled=True)
+        elif actor_type == "crate_hourglass":
+            draw.companion_square(x, y, size * 2, rcl.HOURGLASS_WOOD)
+            draw.circle(x, y, size // 2, cl=rcl.HOURGLASS_WOOD, filled=True)
+        elif actor_type == "crate_bomb":
+            draw.companion_square(x, y, size * 2, rcl.BOMB_VIOLET)
+            draw.circle(x, y, size // 2, cl=rcl.BOMB_VIOLET, filled=True)
         elif actor_type == "heart":
             draw.heart(x, y, size, cl=rcl.PORTAL_BLUE)
+        elif actor_type in ("portal_blue", "portal_orange"):
+            cl = (rcl.PORTAL_BLUE if actor_type == "portal_blue"
+                  else rcl.PORTAL_ORANGE)
+            inner_cl = rcl.scale_rgb(cl, 0.1)
+            radius_y = size * 1.35
+            radius_x = radius_y * 0.6
+            draw.ellipse(x, y, radius_x, radius_y,
+                         thick=self.graphics.rg(8), cl=cl, filled=False)
+            draw.ellipse(x, y, radius_x, radius_y, cl=inner_cl, filled=True)
 
     def create_credits_panels(self) -> None:
         tex = self.graphics.textures
@@ -316,7 +377,7 @@ class MainMenuCredits:
         tex = self.graphics.textures
         cvp = self.cvp
         svp = self.svp
-        draw.rectangle(cvp.x, cvp.y, cvp.wdt, cvp.hgt, roundness=0.25,
+        draw.rectangle(cvp.x, cvp.y, cvp.wdt, cvp.hgt, roundness=0.15,
                        cl=rcl.BLACK_DARKGLASS, filled=True)
 
         self.update_scroll()
@@ -331,7 +392,7 @@ class MainMenuCredits:
                              self.width, panel_height)
                 panel_y += panel_height
 
-        draw.rectangle(cvp.x, cvp.y, cvp.wdt, cvp.hgt, roundness=0.25,
+        draw.rectangle(cvp.x, cvp.y, cvp.wdt, cvp.hgt, roundness=0.15,
                        thick=rg(4), cl=rcl.PACMAN_YELLOW, filled=False)
         self.draw_credits_indications()
 
@@ -385,25 +446,22 @@ class MainMenuCredits:
     def draw_credits_arrow(self, x: int, y: int,
                            size: int, up: bool, inv: bool) -> None:
         draw = self.graphics.shapes
-        pattern: tuple[str, ...] = (
-            "00100",
-            "01110",
-            "10101",
-            "00100",
-            "00100",
-        )
-        if not up:
-            pattern = tuple(reversed(pattern))
-        pixel = max(1, size // 5)
-        width = pixel * 5
-        offset = (size - width) // 2
+        thick = max(1, size // 5)
+        center_x = x + round(size / 2)
+        arm = round(size / 2)
         cl_arrow = rcl.BASE_BLACK if inv else rcl.BASE_WHITE
-        for row, pattern_line in enumerate(pattern):
-            for col, value in enumerate(pattern_line):
-                if value == "1":
-                    draw.rectangle(x + offset + col * pixel,
-                                   y + offset + row * pixel, pixel, pixel,
-                                   cl=cl_arrow, filled=True)
+        draw.line(center_x, y, center_x, y + size,
+                  thick=thick, cl=cl_arrow, edge_shortsharp=True)
+        if up:
+            draw.line(center_x, y, center_x - arm, y + arm,
+                      thick=thick, cl=cl_arrow, edge_shortsharp=True)
+            draw.line(center_x, y, center_x + arm, y + arm,
+                      thick=thick, cl=cl_arrow, edge_shortsharp=True)
+        else:
+            draw.line(center_x, y + size, center_x - arm, y + size - arm,
+                      thick=thick, cl=cl_arrow, edge_shortsharp=True)
+            draw.line(center_x, y + size, center_x + arm, y + size - arm,
+                      thick=thick, cl=cl_arrow, edge_shortsharp=True)
 
     def draw_credits_key(self, x: int, y: int, width: int, height: int,
                          label: str, font_size: int) -> None:

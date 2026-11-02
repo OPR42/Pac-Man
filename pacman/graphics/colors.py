@@ -48,6 +48,7 @@ class RenderColors:
     SAND = (211, 173, 124, 255)
     SAND_SPREAD = (211, 173, 124, 63)
     DARK_SAND = (106, 87, 62, 255)
+    BEIGE = (255, 191, 127, 255)
     LIGHT_WHITE = (221, 221, 221, 255)
     LIGHT_BEIGE = (255, 239, 191, 255)
     LIGHTER_BEIGE = (255, 247, 223, 255)

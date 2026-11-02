@@ -350,7 +350,8 @@ class Game:
                    and cmd in ("pause_menu", "cheat_menu")):
                     if (cmd == "pause_menu"
                             and not (self.core.gm_state.level < 0
-                                     and self.minigames.endgame)):
+                                     and (self.minigames.endgame
+                                          or not self.minigames.acknowledge))):
                         self.set_step(self.toggle_pause())
                     elif cmd == "cheat_menu" and self.core.cht_table.unlocked:
                         if self.toggle_pause() == 8:
@@ -368,7 +369,8 @@ class Game:
                 elif (self.core.gm_state.level < 0
                       and src in ("key", "pad", "leftclick")
                       and cmd in ("right", "down", "left", "up", "enter",
-                                  "tab", "backtab", "continue", "again")):
+                                  "tab", "backtab", "continue", "again",
+                                  "acknowledge")):
                     self.minigames.command(cmd)
 
             elif self.step == 8:

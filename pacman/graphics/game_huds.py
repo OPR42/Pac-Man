@@ -127,11 +127,12 @@ class GameHUDs:
 
         if self.game.step in (6, 7):
             if not (self.core.gm_state.level < 0
-                    and self.game.minigames.endgame):
+                    and (self.game.minigames.endgame
+                         or not self.game.minigames.acknowledge)):
                 self.graphics.interface.set_items(self.ui_items)
                 self.graphics.interface.update_mouse()
-            for i in range(len(self.ui_items)):
-                self.display_hud_buttons(i, rgb_factor)
+                for i in range(len(self.ui_items)):
+                    self.display_hud_buttons(i, rgb_factor)
 
         dt = min(self.game.pr.get_frame_time(), 0.05)
         self.livebox_update(dt)
@@ -244,8 +245,13 @@ class GameHUDs:
         lex = self.core.lexicon
 
         if self.game.step in (6, 7):
-            if self.core.gm_state.level < 0 and self.game.minigames.endgame:
-                ui_items = self.game.minigames.offer_ui_items
+            if self.core.gm_state.level < 0:
+                if not self.game.minigames.acknowledge:
+                    ui_items = self.game.minigames.intro_ui_items
+                elif self.game.minigames.endgame:
+                    ui_items = self.game.minigames.offer_ui_items
+                else:
+                    ui_items = self.ui_items
             else:
                 ui_items = self.ui_items
         elif self.game.step == 8:
