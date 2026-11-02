@@ -211,6 +211,7 @@ class MainMenuSettings:
             self.core.config.language = values[index_updt]
             self.core.load_language()
             self.graphics.main_menu.highscores_texture_dirty = True
+            self.graphics.main_menu.main_menu_credits.geometry_built = False
 
     def find_item_by(self,
                      code: str = "",
@@ -410,6 +411,7 @@ class MainMenuSettings:
         self.core.config.language = dflt.language.lower()
         self.core.load_language()
         self.graphics.main_menu.highscores_texture_dirty = True
+        self.graphics.main_menu.main_menu_credits.geometry_built = False
         self.core.config.hints = dflt.hints
         self.graphics.show_hints = dflt.hints
         self.core.config.main_menu_idle_time = dflt.screensaver_delay

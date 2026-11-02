@@ -354,7 +354,7 @@ class Graphics:
                 f"{self.viewport_rectangle[2]} x {self.viewport_rectangle[3]}",
                 self.font_regular, self.font_size, cl=rcl.BASE_DARK_GREY)
 
-        elif self.game.step in (1, 3, 4, 5):
+        elif self.game.step in (1, 3, 4, 5, 16):
             self.main_menu.draw_main_menu()
 
         elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
@@ -523,7 +523,7 @@ class Graphics:
                                 f"{self.screen_height}]")
         self.core.physics.invalidate()
         self.interface.rebuild()
-        if self.game.step in (1, 3, 4, 5):
+        if self.game.step in (1, 3, 4, 5, 16):
             self.main_menu.resize()
         elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
             self.gameboard.resize()

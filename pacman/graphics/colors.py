@@ -47,6 +47,7 @@ class RenderColors:
     HOURGLASS_BULB = (39, 39, 59, 255)
     SAND = (211, 173, 124, 255)
     SAND_SPREAD = (211, 173, 124, 63)
+    DARK_SAND = (106, 87, 62, 255)
     LIGHT_WHITE = (221, 221, 221, 255)
     LIGHT_BEIGE = (255, 239, 191, 255)
     LIGHTER_BEIGE = (255, 247, 223, 255)

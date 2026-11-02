@@ -208,6 +208,44 @@ class Controls:
         self.last_commands.clear()
         return True
 
+    def credits_scroll_control(self) -> tuple[str, str]:
+        keys = pr.KeyboardKey
+        mouse = pr.MouseButton
+
+        if pr.is_key_down(keys.KEY_UP):
+            return ("key", "up_held")
+        if pr.is_key_down(keys.KEY_DOWN):
+            return ("key", "down_held")
+
+        if pr.is_mouse_button_down(mouse.MOUSE_BUTTON_RIGHT):
+            return ("rightclick", "up_held")
+        if pr.is_mouse_button_down(mouse.MOUSE_BUTTON_LEFT):
+            return ("leftclick", "down_held")
+
+        if self.gamepad < 0 or not pr.is_gamepad_available(self.gamepad):
+            self.gamepad = -1
+            for testpad in range(8):
+                if pr.is_gamepad_available(testpad):
+                    self.gamepad = testpad
+                    break
+        if self.gamepad >= 0:
+            up = (self._is_gamepad_button_down(LBU)
+                  or self._gamepad_axis(LAY)
+                  <= -self.core.defaults.gamepad_stick_trigger
+                  or self._gamepad_axis(RAY)
+                  <= -self.core.defaults.gamepad_stick_trigger)
+            down = (self._is_gamepad_button_down(LBD)
+                    or self._gamepad_axis(LAY)
+                    >= self.core.defaults.gamepad_stick_trigger
+                    or self._gamepad_axis(RAY)
+                    >= self.core.defaults.gamepad_stick_trigger)
+            if up:
+                return ("pad", "up_held")
+            if down:
+                return ("pad", "down_held")
+
+        return ("key", "scroll_normal")
+
     def control(self, core_step: int) -> tuple[str, str]:
         key = self.key_control()
         if key:
@@ -216,16 +254,19 @@ class Controls:
                     return ("key", "konami_unlocked")
             return ("key", key)
 
-        mouse = self.mouse_control(core_step)
-        if mouse != ("", ""):
-            return mouse
-
         gamepad = self.gamepad_control(core_step)
         if gamepad != ("", ""):
             if self.game.step == 8 and not self.core.cht_table.unlocked:
                 if self.check_konami_code(gamepad[1]):
                     return ("pad", "konami_unlocked")
             return gamepad
+
+        mouse = self.mouse_control(core_step)
+        if mouse != ("", ""):
+            return mouse
+
+        if self.game.step == 16:
+            return self.credits_scroll_control()
 
         if self.game.step == 11:
             allowed = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -330,7 +371,7 @@ class Controls:
                 else:
                     return "enter"
 
-        if self.game.step in (1, 3, 4, 15):
+        if self.game.step in (1, 3, 4, 15, 16):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
                or pr.is_key_pressed(keys.KEY_ESCAPE)):
                 return "back"
@@ -589,7 +630,7 @@ class Controls:
                 if direction > 0.0:
                     return ("pad", "next")
 
-        if self.game.step in (3, 4, 15):
+        if self.game.step in (3, 4, 15, 16):
             if pad_btn(RBL) or pad_btn(MBL):
                 return ("pad", "back")
 

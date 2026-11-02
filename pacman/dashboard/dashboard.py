@@ -254,7 +254,7 @@ class Dashboard:
         labels = ["Start", "Main Menu", "Exit", "Help", "Settings",
                   "Highscore", "Generating", "Playing", "Pause",
                   "Back Confirm", "Exit Confirm", "Enter Name", "Cheat Menu",
-                  "Game Over", "Victory", "IG Settings"]
+                  "Game Over", "Victory", "IG Settings", "Credits"]
         display_value(86, 13, 12, labels[gm_state.status])
         labels = ["Pac-Man", "Ms. Pac-Man",
                   "Packy Pake", "Pacbusters"]

@@ -73,7 +73,8 @@ class Shapes:
 
     def text_block_max(self, x: int, y: int, width: int, height: int, txt: str,
                        font: RaylibObject, cl: Color = rcl.BASE_BLACK,
-                       justify: str = "left", align: str = "top") -> None:
+                       justify: str = "left", align: str = "top",
+                       preserve_spacing: bool = False) -> None:
         if width <= 0 or height <= 0 or not txt:
             return
 
@@ -81,7 +82,8 @@ class Shapes:
         sround = self.utils.sym_round
         lines, font_size = self.geometry.fit_wrapped_text(
             txt, max_width=width, max_height=height,
-            max_size=rg(500), min_size=max(1, rg(5)))
+            max_size=rg(500), min_size=max(1, rg(5)),
+            preserve_spacing=preserve_spacing)
         _, line_height = self.geometry.measure_text("Ag", font_size)
         block_height = len(lines) * line_height
 
@@ -1912,3 +1914,21 @@ class Shapes:
         self.circle(center_x, center_y, radius, cl=lines_color, filled=True)
         radius -= sround(thick * 0.50)
         self.circle(center_x, center_y, radius, cl=rcl.CUBE_PANEL, filled=True)
+
+    def heart(self, center_x: int, center_y: int, size: int,
+              cl: Color = rcl.BLINKY_RED) -> None:
+        if size <= 0:
+            return
+        radius = max(1, round(size * 0.5))
+        left_x = center_x - radius
+        right_x = center_x + radius
+        top_y = center_y - round(size * 0.5)
+        bottom_y = center_y + size
+        self.circle(left_x, top_y, radius, cl=cl, filled=True)
+        self.circle(right_x, top_y, radius, cl=cl, filled=True)
+        ltx, lty = self._point_on_circle(left_x, top_y, radius, 135.0)
+        rtx, rty = self._point_on_circle(right_x, top_y, radius, 45.0)
+        self.triangle(ltx, lty, rtx, rty, center_x, bottom_y,
+                      cl=cl, filled=True)
+        self.triangle(ltx, lty, rtx, rty, center_x, top_y,
+                      cl=cl, filled=True)

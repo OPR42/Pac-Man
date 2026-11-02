@@ -15,6 +15,7 @@ from .main_menu_background import MainMenuBackground
 from .main_menu_help import MainMenuHelp
 from .main_menu_idle import MainMenuIdle
 from .main_menu_settings import MainMenuSettings
+from .main_menu_credits import MainMenuCredits
 from .shapes import Shapes
 
 RaylibObject: TypeAlias = Any
@@ -42,7 +43,9 @@ class MainMenu:
                           "button", rel_to_center=True),
             InterfaceItem(-725, 130, 700, 160, quit_label, "exit",
                           "button", rel_to_center=True),
-            InterfaceItem(250, 230, 350, 60, "MM_Btn4", "help",
+            InterfaceItem(125, 230, 275, 60, "MM_Btn4", "help",
+                          "button", rel_to_center=True),
+            InterfaceItem(450, 230, 275, 60, "MM_Btn5", "credits",
                           "button", rel_to_center=True),
             InterfaceItem(125, -290, 600, 470, "MM_HighScores", "scores",
                           "table", rel_to_center=True)]
@@ -65,6 +68,7 @@ class MainMenu:
         self.main_menu_help = MainMenuHelp(self.core)
         self.main_menu_idle = MainMenuIdle(self.core)
         self.main_menu_settings = MainMenuSettings(self.core)
+        self.main_menu_credits = MainMenuCredits(self.core)
         self.enter()
 
     def enter(self) -> None:
@@ -76,6 +80,7 @@ class MainMenu:
         self.highscores_texture_dirty = True
         self.main_menu_settings.resize()
         self.background.resize()
+        self.main_menu_credits.resize()
         self.qvp_ready = False
 
     def draw_main_menu(self) -> None:
@@ -111,6 +116,9 @@ class MainMenu:
 
         elif self.game.step == 5:
             self.main_menu_idle.draw_idle_panel()
+
+        elif self.game.step == 16:
+            self.main_menu_credits.draw_credits()
 
     def draw_quick_access_menu(self, rgb_factor: float) -> None:
         draw = self.shapes

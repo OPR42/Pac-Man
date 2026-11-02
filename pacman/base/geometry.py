@@ -281,8 +281,11 @@ class Geometry:
         return sround(min(wdt, hgt) * max(0.0, min(1.0, roundness)) / 2)
 
     def wrap_text(self, text: str, max_width: int,
-                  font_size: int) -> list[str]:
+                  font_size: int, preserve_spacing: bool = False) -> list[str]:
         """Wrap text to fit a maximum pixel width."""
+        if preserve_spacing:
+            return text.split("\n")
+
         result: list[str] = []
         for original_line in text.split("\n"):
             if not original_line:
@@ -303,17 +306,20 @@ class Geometry:
                 result.append(current)
         return result
 
-    def fit_wrapped_text(self, text: str, max_width: int,
-                         max_height: int, max_size: int,
-                         min_size: int = 1) -> tuple[list[str], int]:
+    def fit_wrapped_text(
+            self, text: str, max_width: int, max_height: int, max_size: int,
+            min_size: int = 1,
+            preserve_spacing: bool = False) -> tuple[list[str], int]:
         """Return wrapped lines and the largest font size that fits."""
         for font_size in range(max_size, min_size - 1, -1):
-            lines = self.wrap_text(text, max_width, font_size)
+            lines = self.wrap_text(text, max_width, font_size,
+                                   preserve_spacing=preserve_spacing)
             wrapped = "\n".join(lines)
             width, height = self.measure_text(wrapped, font_size)
             if width <= max_width and height <= max_height:
                 return lines, font_size
-        return self.wrap_text(text, max_width, min_size), min_size
+        return self.wrap_text(text, max_width, min_size,
+                              preserve_spacing=preserve_spacing), min_size
 
     def wrap_text_ratio(self, text: str, font_size: int,
                         ratio: float) -> list[str]:

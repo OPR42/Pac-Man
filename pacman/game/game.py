@@ -63,6 +63,7 @@ class Game:
         13. Game Over
         14. Victory
         15. Ingame Settings
+        16. Credits
         """
 
     def launch(self) -> None:
@@ -172,7 +173,7 @@ class Game:
                 elif cmd == "toggle_frame_and_banner":
                     self.graphics.toggle_frame_and_banner()
 
-            if self.step in (1, 3):
+            if self.step in (1, 3, 16):
                 if src in ("key", "pad") and cmd in ("next", "prev"):
                     if cmd == "next":
                         self.graphics.interface.focus_next()
@@ -195,7 +196,7 @@ class Game:
                                                          "back"))
                       or (src in ("leftclick", "rightclick")
                           and (cmd in ("exit", "help", "settings", "play",
-                                       "quick_access")
+                                       "quick_access", "credits")
                                or cmd.startswith("jump_to_L")))):
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
@@ -214,6 +215,11 @@ class Game:
                         self._play_transition(1, 4, 1)
                         self.set_step(4)
                         self._play_transition(1, 4, 2)
+                    elif cmd == "credits":
+                        self._play_transition(1, 16, 1)
+                        self.set_step(16)
+                        self.graphics.main_menu.main_menu_credits.enter()
+                        self._play_transition(1, 16, 2)
                     elif cmd == "play":
                         self.one_level_only = False
                         self._play_transition(1, 6, 1)
@@ -560,11 +566,29 @@ class Game:
                     else:
                         gamemenu.gamesettingsmenu.command(cmd)
 
+            elif self.step == 16:
+                if (src in ("key", "pad", "leftclick", "rightclick")
+                        and cmd in ("back", "up_held", "down_held",
+                                    "scroll_normal")):
+                    credits = self.graphics.main_menu.main_menu_credits
+                    if cmd == "back":
+                        self._play_transition(16, 1, 1)
+                        self.graphics.interface.focus = None
+                        self.set_step(1)
+                        self.graphics.main_menu.enter()
+                        self._play_transition(16, 1, 2)
+                    elif cmd == "up_held":
+                        credits.set_scroll_direction(-1)
+                    elif cmd == "down_held":
+                        credits.set_scroll_direction(1)
+                    elif cmd == "scroll_normal":
+                        credits.set_scroll_direction(0)
+
             self.graphics.draw_window()
             self.dashboard.update_dashboard()
 
     def set_step(self, step: int) -> None:
-        if not 0 <= step <= 15:
+        if not 0 <= step <= 16:
             return
 
         self.old_step = self.step
@@ -684,6 +708,12 @@ class Game:
             self.core._emit(
                 LogEvent(source="  game  ", type="finish",
                          message=" Entering Ingame Settings ",
+                         duration=(time.perf_counter()
+                                   - self.core.gm_state.starttime)))
+        elif step == 16:
+            self.core._emit(
+                LogEvent(source="  game  ", type="finish",
+                         message=" Entering Game Credits ",
                          duration=(time.perf_counter()
                                    - self.core.gm_state.starttime)))
 
