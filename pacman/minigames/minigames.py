@@ -220,7 +220,8 @@ class MiniGames:
         elif gameboard.status == "pause" and not self.game.pause_menu:
             gameboard.status = "play"
 
-        if self.level == -2 and self.game.step == 7 and not self.endgame:
+        if (self.level in (-2, -4) and self.game.step == 7
+                and not self.endgame and self.acknowledge):
             mouse = pr.get_mouse_position()
             mvp = self.gameboard.mvp
             if (mvp.x <= mouse.x <= mvp.rct.x
@@ -228,7 +229,7 @@ class MiniGames:
                 pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_CROSSHAIR)
             else:
                 pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_DEFAULT)
-        else:
+        elif not self.graphics.interface.focus:
             pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_DEFAULT)
 
         if self.level == -1:

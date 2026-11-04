@@ -366,7 +366,8 @@ class Interface:
             self.hovered = None
             self.hint = None
             self.hint_wait = 0.0
-            if not (self.game.step == 7 and self.core.gm_state.level == -2):
+            if not (self.game.step == 7
+                    and self.core.gm_state.level in (-2, -4)):
                 self.core.game.controls.set_mouse_cursor("arrow")
             if mouse_moved and self.mouse_focus is not None:
                 if self.focus == self.mouse_focus:

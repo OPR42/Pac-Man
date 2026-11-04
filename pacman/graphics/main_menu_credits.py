@@ -392,6 +392,15 @@ class MainMenuCredits:
                              self.width, panel_height)
                 panel_y += panel_height
 
+        base_vp_x, base_vp_y, base_vp_wdt, base_vp_hgt = (
+            self.graphics.viewport_rectangle)
+        draw.rectangle_gradient(base_vp_x, base_vp_y, base_vp_wdt,
+                                base_vp_hgt // 5, cl1=rcl.BLACK_DARKERGLASS,
+                                cl2=rcl.BLANK, vertical=True)
+        draw.rectangle_gradient(base_vp_x,
+                                base_vp_y + base_vp_hgt - base_vp_hgt // 5,
+                                base_vp_wdt, base_vp_hgt // 5, cl1=rcl.BLANK,
+                                cl2=rcl.BLACK_DARKERGLASS, vertical=True)
         draw.rectangle(cvp.x, cvp.y, cvp.wdt, cvp.hgt, roundness=0.15,
                        thick=rg(4), cl=rcl.PACMAN_YELLOW, filled=False)
         self.draw_credits_indications()
