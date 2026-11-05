@@ -21,6 +21,8 @@ class InvadersProjectile:
     vy: float
     column: int = -1
     shooter_row: int = -1
+    bomb: bool = False
+    destroyed: bool = False
 
 
 @dataclass
@@ -54,6 +56,22 @@ class Reinforcement:
     column: int
 
 
+@dataclass
+class Crate:
+    x: float
+    y: float
+    size: int
+    kind: str
+
+
+@dataclass
+class Explosion:
+    x: float
+    y: float
+    created: float
+    duration: float = 1.0
+
+
 class Invaders:
     def __init__(self, core: Core) -> None:
         self.core = core
@@ -64,6 +82,7 @@ class Invaders:
         self.geometry = Geometry(core)
         self.vvp: RectangleGeometry
         self.utils = Utils()
+        self.random = random.Random()
         self.cell_size: int = 0
         self.brick_size: int = 0
         self.over: bool = False
@@ -76,8 +95,9 @@ class Invaders:
         self.swarm_grid_pos: tuple[float, float] = (
             float(-self.swarm_dimensions[0]), 2.0)
         self.swarm_direction: int = 1
-        self.swarm_speed: float = (
+        self.swarm_base_speed: float = (
             self.core.defaults.minigame_invaders_swarm_speed)
+        self.swarm_speed: float = self.swarm_base_speed
         self.swarm_wave: int = 1
         self.swarm_arrived: bool = False
         self.swarm_descending: bool = False
@@ -94,10 +114,12 @@ class Invaders:
         self.pacman_revival_starttime: float = -1.0
         self.pacman_death_duration: float = 1.75
         self.pacman_projectiles: list[InvadersProjectile] = []
-        self.pacman_projectile_speed: float = (
+        self.pacman_projectile_base_speed: float = (
             self.core.defaults.minigame_invaders_pacman_projectile_speed)
+        self.pacman_projectile_speed: float = self.pacman_projectile_base_speed
         self.pacman_shots: int = 0
         self.pacman_kills: int = 0
+        self.pacman_last_shot_time: float = -1.0
         self.ghost_projectile_bonus: int = 0
         self.ghost_projectiles: list[InvadersProjectile] = []
         self.ghost_projectile_speed: float = (
@@ -113,6 +135,13 @@ class Invaders:
         self.mothership_wait_duration: float = 3.0
         self.reinforcements: list[Reinforcement] = []
         self.reinforcement_speed: float = 5.0
+        self.falling_crates: list[Crate] = []
+        self.falling_crates_speed: float = (
+            self.core.defaults.minigame_invaders_falling_crates_speed)
+        self.active_effects: dict[str, float] = {}
+        self.bomb_loaded: bool = False
+        self.explosions: list[Explosion] = []
+        self.bomb_radius: float = 1.5
 
     def launch(self) -> None:
         self.minigames = self.core.game.minigames
@@ -129,7 +158,9 @@ class Invaders:
         self.swarm = []
         self.swarm_grid_pos = (float(-self.swarm_dimensions[0]), 2.0)
         self.swarm_direction = 1
-        self.swarm_speed = self.core.defaults.minigame_invaders_swarm_speed
+        self.swarm_base_speed = (
+            self.core.defaults.minigame_invaders_swarm_speed)
+        self.swarm_speed = self.swarm_base_speed
         self.swarm_wave = 1
         self.swarm_arrived = False
         self.swarm_descending = False
@@ -144,10 +175,12 @@ class Invaders:
         self.pacman_final_death = False
         self.pacman_revival_starttime = -1.0
         self.pacman_projectiles = []
-        self.pacman_projectile_speed = (
+        self.pacman_projectile_base_speed = (
             self.core.defaults.minigame_invaders_pacman_projectile_speed)
+        self.pacman_projectile_speed = self.pacman_projectile_base_speed
         self.pacman_shots = 0
         self.pacman_kills = 0
+        self.pacman_last_shot_time = -1.0
         self.ghost_projectile_bonus = 0
         self.ghost_projectiles = []
         self.ghost_projectile_speed = (
@@ -159,6 +192,12 @@ class Invaders:
         self.mothership_next_spawn = self.anim_time + random.uniform(5.0, 15.0)
         self.mothership_next_direction = 1
         self.reinforcements = []
+        self.falling_crates = []
+        self.falling_crates_speed = (
+            self.core.defaults.minigame_invaders_falling_crates_speed)
+        self.active_effects = {}
+        self.bomb_loaded = False
+        self.explosions = []
 
     def initialize(self) -> None:
         self.over = False
@@ -171,11 +210,13 @@ class Invaders:
         self.pacman_deathtime = -1.0
         self.pacman_final_death = False
         self.pacman_revival_starttime = -1.0
-        self.pacman_projectile_speed = (
+        self.pacman_projectile_base_speed = (
             self.core.defaults.minigame_invaders_pacman_projectile_speed)
+        self.pacman_projectile_speed = self.pacman_projectile_base_speed
         self.pacman_projectiles = []
         self.pacman_shots = 0
         self.pacman_kills = 0
+        self.pacman_last_shot_time = -1.0
         self.anim_time = 0.0
         self.ghost_projectiles = []
         self.lives = self.core.config.lives
@@ -197,15 +238,26 @@ class Invaders:
         self.mothership_next_spawn = self.anim_time + random.uniform(5.0, 15.0)
         self.mothership_next_direction = 1
         self.reinforcements = []
+        self.falling_crates = []
+        self.falling_crates_speed = (
+            self.core.defaults.minigame_invaders_falling_crates_speed)
+        self.active_effects = {}
         self.game.set_step(7)
         self.gameboard.status = "play"
+        self.bomb_loaded = False
+        self.explosions = []
 
     def initialize_swarm(self) -> None:
         self.reinforcements.clear()
-        self.swarm_speed = (self.core.defaults.minigame_invaders_swarm_speed
-                            * self.swarm_speed_multiplier)
+        self.swarm_base_speed = (
+            self.core.defaults.minigame_invaders_swarm_speed
+            * self.swarm_speed_multiplier)
+        self.swarm_speed = self.swarm_base_speed
         self.ghost_projectile_speed = (
             self.core.defaults.minigame_invaders_swarm_projectile_speed
+            * self.swarm_speed_multiplier)
+        self.falling_crates_speed = (
+            self.core.defaults.minigame_invaders_falling_crates_speed
             * self.swarm_speed_multiplier)
         self.ghost_next_fire = self.anim_time + self.ghost_fire_interval
         self.ghost_projectile_bonus = 0
@@ -264,10 +316,10 @@ class Invaders:
                     texture_name = f"pacinvaders_ghost_{i}_w{wave}"
                 if self.graphics.textures.exists(texture_name):
                     self.graphics.textures.unload(texture_name)
-                self.graphics.textures.begin(texture_name, self.brick_size,
-                                             self.brick_size)
-                draw.ghost(self.brick_size // 2, self.brick_size // 2,
-                           self.brick_size // 2, name="clyde",
+                self.graphics.textures.begin(texture_name, self.brick_size * 2,
+                                             self.brick_size * 2)
+                draw.ghost(self.brick_size, self.brick_size,
+                           self.brick_size, name="clyde",
                            angle=60.0 + (i * 42.0) % 60.0, texture_free=True,
                            force_body_color=color, wave=wave * 0.25)
                 self.graphics.textures.end()
@@ -326,6 +378,34 @@ class Invaders:
                        cl=cl_shield_in, roundness=1.0, filled=True)
         self.graphics.textures.end()
 
+        self.game.inventory._create_bomb_texture(size=self.brick_size,
+                                                 invaders=True)
+
+        crates = [("extra_life", rcl.PACMAN_YELLOW),
+                  ("regen_shields", rcl.WALL_STD),
+                  ("mothership", rcl.BOWTIE_RED),
+                  ("bomb", rcl.BOMB_VIOLET),
+                  ("fast_bullets", rcl.SLIME_GREEN),
+                  ("multi_bullets", rcl.SAGE_GREEN),
+                  ("slow_swarm", rcl.HOURGLASS_WOOD),
+                  ("fast_swarm", rcl.STETSON_IVORY),
+                  ("invulnerable", rcl.INKY_CYAN),
+                  ("reload", rcl.PINKY_PINK)]
+        dot_radius = sround(self.brick_size * 0.3325)
+        half_brick_size = self.brick_size // 2
+        for crate in crates:
+            label, color = crate
+            crate_name = "pacinvaders_crate_" + label
+            if self.graphics.textures.exists(crate_name):
+                self.graphics.textures.unload(crate_name)
+            self.graphics.textures.begin(crate_name, self.brick_size,
+                                         self.brick_size)
+            draw.companion_square(half_brick_size, half_brick_size,
+                                  half_brick_size * 2, color)
+            draw.circle(half_brick_size, half_brick_size, dot_radius,
+                        cl=color, filled=True)
+            self.graphics.textures.end()
+
         texture_name = "pacinvaders_background"
         if self.graphics.textures.exists(texture_name):
             self.graphics.textures.unload(texture_name)
@@ -375,6 +455,7 @@ class Invaders:
         vvp = self.vvp
         radius = self.brick_size / 2
         available_x = max(1.0, vvp.wdt - radius * 2)
+        self.update_effects(dt)
 
         if self.pacman_deathtime >= 0.0:
             if now - self.pacman_deathtime >= self.pacman_death_duration:
@@ -413,6 +494,10 @@ class Invaders:
         self.debris = [debris for debris in self.debris
                        if debris.created + debris.duration >= self.anim_time]
 
+        self.explosions = [explosion for explosion in self.explosions
+                           if (self.anim_time - explosion.created
+                               < explosion.duration)]
+
         if not self.pacman_final_death:
             self.update_swarm(dt)
             self.update_swarm_collisions()
@@ -432,6 +517,7 @@ class Invaders:
 
         self.update_pacman_projectiles(dt)
         self.update_ghost_projectiles(dt)
+        self.update_falling_crates(dt)
         self.update_swarm_wave()
 
     def update_ghost_projectiles(self, dt: float) -> None:
@@ -503,8 +589,11 @@ class Invaders:
                                        destroyed=self.shields[j][i] == 0,
                                        impact_x=impact_x)
                 elif kind == "pacman":
-                    self.pacman_dies()
-                elif kind == "wall":
+                    if self.is_effect_active("invulnerable") == -1.0:
+                        self.pacman_dies()
+                elif (kind == "wall" or (
+                        kind == "pacman"
+                        and self.is_effect_active("invulnerable") != -1.0)):
                     self.game.audio.sound_play("break")
                     impact_x = old_x + (new_x - old_x) * hit
                     self.debris.append(Debris(
@@ -525,6 +614,8 @@ class Invaders:
         remaining = []
 
         for projectile in self.pacman_projectiles:
+            if projectile.destroyed:
+                continue
             old_x, old_y = projectile.x, projectile.y
             new_x = old_x + projectile.vx * dt
             new_y = old_y + projectile.vy * dt
@@ -580,20 +671,60 @@ class Invaders:
                 if hit is not None:
                     impacts.append((hit, "reinforcement", -1, i))
 
+            board_width = self.core.gm_state.maze_width
+            wall_hit: tuple[float, float, float] | None = None
+            if projectile.vy < 0.0 and new_y - radius <= 0.0:
+                t = (radius - old_y) / (new_y - old_y)
+                if 0.0 <= t <= 1.0:
+                    wall_hit = (t, old_x + (new_x - old_x) * t, 0.0)
+            if projectile.vx < 0.0 and new_x - radius <= 0.0:
+                t = (radius - old_x) / (new_x - old_x)
+                if 0.0 <= t <= 1.0:
+                    if wall_hit is None or t < wall_hit[0]:
+                        wall_hit = (t, 0.0, old_y + (new_y - old_y) * t)
+            elif projectile.vx > 0.0 and new_x + radius >= board_width:
+                t = (board_width - radius - old_x) / (new_x - old_x)
+                if 0.0 <= t <= 1.0:
+                    if wall_hit is None or t < wall_hit[0]:
+                        wall_hit = (t, board_width,
+                                    old_y + (new_y - old_y) * t)
+            if wall_hit is not None:
+                impacts.append((wall_hit[0], "wall", -1, -1))
+
             if impacts:
                 hit, kind, j, i = min(impacts, key=lambda item: item[0])
+                impact_x = old_x + (new_x - old_x) * hit
+                impact_y = old_y + (new_y - old_y) * hit
                 colors = [rcl.BLINKY_RED, rcl.CLYDE_ORANGE, rcl.PACMAN_YELLOW,
                           rcl.DISGUSTED_GHOST_GREEN, rcl.INKY_CYAN,
                           rcl.SCARED_GHOST_BLUE, rcl.BOMB_VIOLET]
+
+                if projectile.bomb:
+                    projectile.x = impact_x
+                    projectile.y = impact_y
+                    projectile.destroyed = True
+                    self.explode_bomb(impact_x, impact_y)
+                    continue
+
+                if kind == "wall":
+                    self.game.audio.sound_play("break")
+                    self.ghost_projectile_bonus += 1
+                    self.debris.append(Debris(
+                        x=impact_x, y=impact_y, size=self.brick_size,
+                        color=rcl.PACGUM, created=self.anim_time,
+                        duration=2.0))
+                    continue
+
                 if kind == "shield":
                     self.game.audio.sound_play("break")
                     self.shields[j][i] -= 1
-                    impact_x = old_x + (new_x - old_x) * hit
                     self.shield_debris(i, j, "up",
                                        destroyed=self.shields[j][i] == 0,
                                        impact_x=impact_x)
+
                 elif kind == "mothership":
                     self.hit_mothership(i)
+
                 elif kind == "ghost":
                     self.game.audio.sound_play("eat_pacgum")
                     self.pacman_kills += 1
@@ -607,6 +738,11 @@ class Invaders:
                         sround(ghost_x), sround(ghost_y), str(points),
                         colors[ghost - 1], self.brick_size, 5.0, 2.0,
                         outlined=True)
+                    falling = len(self.falling_crates)
+                    self.spawn_falling_crate(
+                        swarm_x + i + 0.5, swarm_y + j + 0.5,
+                        0.20 - falling * 0.02)
+
                 elif kind == "reinforcement":
                     reinforcement = self.reinforcements.pop(i)
                     self.game.audio.sound_play("eat_pacgum")
@@ -618,21 +754,249 @@ class Invaders:
                         sround(self.vvp.y + reinforcement.y * cell_size),
                         str(points), colors[reinforcement.color - 1],
                         self.brick_size, 5.0, 2.0, outlined=True)
+                    falling = len(self.falling_crates)
+                    self.spawn_falling_crate(reinforcement.x, reinforcement.y,
+                                             0.20 - falling * 0.02)
                 continue
 
-            if new_y + radius < 0.0:
+            if not projectile.destroyed:
+                projectile.x = new_x
+                projectile.y = new_y
+                remaining.append(projectile)
+
+        self.pacman_projectiles = [projectile for projectile in remaining
+                                   if not projectile.destroyed]
+
+    def update_falling_crates(self, dt: float) -> None:
+        sround = self.utils.sym_round
+        lex = self.core.lexicon
+        vvp = self.vvp
+        cell_size = vvp.wdt / self.core.gm_state.maze_width
+        radius = self.brick_size / (1.5 * cell_size)
+        pacman_x = (vvp.ct.x + self.pacman_pos *
+                    (vvp.wdt - self.brick_size) / 2 - vvp.x) / cell_size
+        pacman_y = (vvp.bct.y - 1.5 * cell_size - vvp.y) / cell_size
+        pacman_radius = self.brick_size / (2.0 * cell_size)
+        remaining: list[Crate] = []
+
+        crate_color = {"extra_life": rcl.PACMAN_YELLOW,
+                       "regen_shields": rcl.WALL_STD,
+                       "mothership": rcl.BOWTIE_RED,
+                       "bomb": rcl.BOMB_VIOLET,
+                       "fast_bullets": rcl.SLIME_GREEN,
+                       "multi_bullets": rcl.SAGE_GREEN,
+                       "slow_swarm": rcl.HOURGLASS_WOOD,
+                       "fast_swarm": rcl.STETSON_IVORY,
+                       "invulnerable": rcl.INKY_CYAN,
+                       "reload": rcl.PINKY_PINK}
+
+        for crate in self.falling_crates:
+            old_x, old_y = crate.x, crate.y
+            new_x = old_x
+            new_y = old_y + self.falling_crates_speed * dt
+            wall_y = self.core.gm_state.maze_height - 1
+            if new_y + radius >= wall_y:
                 self.game.audio.sound_play("break")
-                self.ghost_projectile_bonus += 1
+                color = crate_color.get(crate.kind, rcl.GREY)
                 self.debris.append(Debris(
-                    x=new_x, y=0.0, size=self.brick_size,
-                    color=rcl.PACGUM, created=self.anim_time, duration=2.0))
+                    x=old_x, y=wall_y, size=self.brick_size,
+                    color=color, created=self.anim_time,
+                    duration=2.0))
                 continue
+            if (self.pacman_deathtime < 0.0
+                    and self.pacman_revival_starttime < 0.0):
+                if self.projectile_rect_hit(
+                        old_x, old_y, new_x, new_y, pacman_x - pacman_radius,
+                        pacman_y - pacman_radius, pacman_x + pacman_radius,
+                        pacman_y + pacman_radius, radius) is not None:
+                    self.apply_crate_effect(crate.kind)
+                    self.game.audio.sound_play("eat_superpacgum")
+                    text = lex(f"NVD_{crate.kind}")
+                    color = crate_color.get(crate.kind, rcl.GREY)
+                    self.gameboard.add_board_text(
+                        sround(self.vvp.x + crate.x * cell_size),
+                        sround(self.vvp.y + crate.y * cell_size),
+                        text, color, self.brick_size, 5.0, 2.0, outlined=True)
+                    continue
+            crate.x = new_x
+            crate.y = new_y
+            remaining.append(crate)
 
-            projectile.x = new_x
-            projectile.y = new_y
-            remaining.append(projectile)
+        self.falling_crates = remaining
 
-        self.pacman_projectiles = remaining
+    def spawn_falling_crate(self, x_cell: float, y_cell: float,
+                            probability: float) -> None:
+        if self.random.random() >= probability:
+            return
+
+        crate_names = ["extra_life", "regen_shields", "mothership", "bomb",
+                       "fast_bullets", "multi_bullets", "slow_swarm",
+                       "fast_swarm", "invulnerable", "reload", "nothing"]
+        crate_weights = [10, 10, 8, 6, 12, 10, 12, 8, 12, 10, 2]
+
+        lives_present = self.lives
+        for crate in self.falling_crates:
+            if crate.kind == "extra_life":
+                lives_present += 1
+        if ((lives_present + 1 + 0.5 * lives_present) * self.brick_size
+                >= self.gameboard.mvp.wdt):
+            crate_weights[0] = 0
+
+        crate_kind = self.random.choices(crate_names,
+                                         weights=crate_weights, k=1)[0]
+
+        if crate_kind == "nothing":
+            return
+
+        self.falling_crates.append(Crate(
+            x=x_cell, y=y_cell, size=self.brick_size, kind=crate_kind))
+
+    def apply_crate_effect(self, kind: str = "") -> None:
+        if kind == "extra_life":
+            self.lives += 1
+        elif kind == "slow_swarm":
+            self.activate_effect(kind, 20.0)
+        elif kind == "fast_swarm":
+            self.activate_effect(kind, 10.0)
+        elif kind == "fast_bullets":
+            self.activate_effect(kind, 10.0)
+        elif kind == "multi_bullets":
+            self.activate_effect(kind, 10.0)
+        elif kind == "mothership":
+            self.spawn_mothership(natural=False)
+        elif kind == "regen_shields":
+            for j in range(5):
+                for i in range(int(self.board_dimensions[0] / 6)):
+                    self.shields[j][i] = min(2, self.shields[j][i] + 1)
+        elif kind == "invulnerable":
+            self.activate_effect(kind, 15.0)
+        elif kind == "bomb":
+            self.bomb_loaded = True
+        elif kind == "reload":
+            self.activate_effect(kind, 15.0)
+
+    def activate_effect(self, kind: str, duration: float) -> None:
+        incompatible = {"slow_swarm": "fast_swarm",
+                        "fast_swarm": "slow_swarm"}
+        opposite = incompatible.get(kind)
+        if opposite is not None:
+            self.active_effects.pop(opposite, None)
+        self.active_effects[kind] = duration
+        if kind == "fast_swarm":
+            self.swarm_speed = self.swarm_base_speed * 1.6
+        elif kind == "slow_swarm":
+            self.swarm_speed = self.swarm_base_speed / 1.6
+        elif kind == "fast_bullets":
+            self.pacman_projectile_speed = (
+                self.pacman_projectile_base_speed * 2.0)
+
+    def update_effects(self, dt: float) -> None:
+        for kind, remaining in list(self.active_effects.items()):
+            remaining -= dt
+            if remaining <= 0.0:
+                del self.active_effects[kind]
+                if kind in ("fast_swarm", "slow_swarm"):
+                    self.swarm_speed = self.swarm_base_speed
+                elif kind == "fast_bullets":
+                    self.pacman_projectile_speed = (
+                        self.pacman_projectile_base_speed)
+                continue
+            else:
+                self.active_effects[kind] = remaining
+
+    def is_effect_active(self, kind: str) -> float:
+        return self.active_effects.get(kind, -1.0)
+
+    def explode_bomb(self, x: float, y: float) -> None:
+        sround = self.utils.sym_round
+        cell_size = self.vvp.wdt / self.core.gm_state.maze_width
+        radius_sq = self.bomb_radius ** 2
+
+        def inside(px: float, py: float) -> bool:
+            return (px - x) ** 2 + (py - y) ** 2 <= radius_sq
+
+        self.explosions.append(Explosion(
+            x=x, y=y, created=self.anim_time))
+        self.game.audio.sound_play("explode")
+        colors = [rcl.BLINKY_RED, rcl.CLYDE_ORANGE, rcl.PACMAN_YELLOW,
+                  rcl.DISGUSTED_GHOST_GREEN, rcl.INKY_CYAN,
+                  rcl.SCARED_GHOST_BLUE, rcl.BOMB_VIOLET]
+
+        swarm_x, swarm_y = self.swarm_grid_pos
+        for j, row in enumerate(self.swarm):
+            for i, ghost in enumerate(row):
+                if not 1 <= ghost <= 7:
+                    continue
+                gx = swarm_x + i + 0.5
+                gy = swarm_y + j + 0.5
+                if not inside(gx, gy):
+                    continue
+                self.swarm[j][i] = 0
+                self.pacman_kills += 1
+                points = (8 - ghost) * 10
+                self.game._add_points_to_score(points)
+                self.gameboard.add_board_text(
+                    sround(self.vvp.x + gx * cell_size),
+                    sround(self.vvp.y + gy * cell_size),
+                    str(points), colors[ghost - 1],
+                    self.brick_size, 5.0, 2.0, outlined=True)
+
+        remaining_reinforcements: list[Reinforcement] = []
+        for reinforcement in self.reinforcements:
+            if not inside(reinforcement.x, reinforcement.y):
+                remaining_reinforcements.append(reinforcement)
+                continue
+            self.pacman_kills += 1
+            points = (8 - reinforcement.color) * 10
+            self.game._add_points_to_score(points)
+            self.gameboard.add_board_text(
+                sround(self.vvp.x + reinforcement.x * cell_size),
+                sround(self.vvp.y + reinforcement.y * cell_size),
+                str(points), colors[reinforcement.color - 1],
+                self.brick_size, 5.0, 2.0, outlined=True)
+        self.reinforcements = remaining_reinforcements
+
+        for i in range(len(self.motherships) - 1, -1, -1):
+            ship = self.motherships[i]
+            if inside(ship.x, 1.0):
+                ship.health = 1
+                self.hit_mothership(i)
+
+        shields_y = (self.vvp.bct.y - cell_size * 4 - self.vvp.y
+                     ) / cell_size
+        for j, row in enumerate(self.shields):
+            for i, shield in enumerate(row):
+                if shield <= 0:
+                    continue
+                sx = 3.0 + i * 6.0 + 1.5
+                sy = shields_y + j * 0.4 + 0.2
+                if inside(sx, sy):
+                    self.shields[j][i] = 0
+                    self.shield_debris(i, j, destroyed=True)
+
+        self.falling_crates = [crate for crate in self.falling_crates
+                               if not inside(crate.x, crate.y)]
+
+        self.ghost_projectiles = [projectile for projectile
+                                  in self.ghost_projectiles
+                                  if not inside(projectile.x, projectile.y)]
+
+        for projectile in self.pacman_projectiles:
+            if projectile.destroyed:
+                continue
+            if inside(projectile.x, projectile.y):
+                projectile.destroyed = True
+                if projectile.bomb:
+                    self.explode_bomb(projectile.x, projectile.y)
+
+        vvp = self.vvp
+        pacman_x = (vvp.ct.x + self.pacman_pos
+                    * (vvp.wdt - self.brick_size) / 2
+                    - vvp.x) / cell_size
+        pacman_y = (vvp.bct.y - 1.5 * cell_size - vvp.y) / cell_size
+        if (inside(pacman_x, pacman_y)
+                and self.is_effect_active("invulnerable") == -1.0):
+            self.pacman_dies()
 
     def hit_mothership(self, index: int) -> None:
         sround = self.utils.sym_round
@@ -900,19 +1264,55 @@ class Invaders:
                     color=color, created=self.anim_time, duration=2.0))
 
     def pacman_shoot(self) -> None:
-        if (self.over or self.pacman_deathtime >= 0.0
-                or self.pacman_projectiles):
+        if self.over or self.pacman_deathtime >= 0.0:
             return
 
+        if self.pacman_projectiles:
+            if self.is_effect_active("reload") == -1.0:
+                return
+            reload_limit = self.core.gm_state.maze_height * 2.0 / 3.0
+            if any(projectile.y >= reload_limit
+                   for projectile in self.pacman_projectiles):
+                return
+
+        self.pacman_last_shot_time = self.anim_time
         vvp = self.vvp
         cell_size = vvp.wdt / self.core.gm_state.maze_width
         pacman_x = vvp.ct.x + self.pacman_pos * (vvp.wdt - self.brick_size) / 2
         pacman_y = vvp.bct.y - 1.5 * cell_size
         x = (pacman_x - vvp.x) / cell_size
         y = (pacman_y - vvp.y) / cell_size
+        bomb = self.bomb_loaded
+        self.bomb_loaded = False
         self.pacman_projectiles.append(InvadersProjectile(
-            x=x, y=y, vx=0.0, vy=-self.pacman_projectile_speed))
+            x=x, y=y, vx=0.0, vy=-self.pacman_projectile_speed, bomb=bomb))
         self.pacman_shots += 1
+        if self.is_effect_active("multi_bullets") != -1.0:
+            for degrees in (10.0, 20.0):
+                angle = math.radians(degrees)
+                vx = self.pacman_projectile_speed * math.sin(angle)
+                vy = -self.pacman_projectile_speed * math.cos(angle)
+                for direction in (-1, 1):
+                    self.pacman_projectiles.append(InvadersProjectile(
+                        x=x, y=y, vx=direction * vx, vy=vy, bomb=bomb))
+            self.pacman_shots += 4
+
+    def pacman_shoot_animation(self) -> tuple[float, float]:
+        phase = self.anim_time * 2.0 * math.pi / 1.5
+        mouth = 0.75 + 0.25 * math.cos(phase)
+        eye = 1.0
+        elapsed = self.anim_time - self.pacman_last_shot_time
+
+        if 0.0 <= elapsed < 0.20:
+            if elapsed < 0.05:
+                contraction = elapsed / 0.05
+            else:
+                contraction = (0.20 - elapsed) / 0.15
+            contraction = max(0.0, min(1.0, contraction))
+            mouth += (0.25 - mouth) * contraction
+            eye += (0.50 - eye) * contraction
+
+        return mouth, eye
 
     def pacman_respawn(self) -> None:
         self.pacman_pos = 0.0
@@ -1161,11 +1561,21 @@ class Invaders:
                 tex.draw(texture_name, sround(x - size / 2),
                          sround(y - size / 2), size, size)
 
+            for crate in self.falling_crates:
+                x = vvp.x + crate.x * cell_size
+                y = vvp.y + crate.y * cell_size
+                tex.draw(f"pacinvaders_crate_{crate.kind}",
+                         sround(x - self.brick_size / 2),
+                         sround(y - self.brick_size / 2),
+                         self.brick_size, self.brick_size)
+
             pacgum_size = self.brick_size / 2
             for projectile in self.pacman_projectiles:
                 x = vvp.x + projectile.x * cell_size
                 y = vvp.y + projectile.y * cell_size
-                tex.draw("pacinvaders_pacgum", sround(x - pacgum_size / 2),
+                texture_name = ("pacinvaders_bomb" if projectile.bomb
+                                else "pacinvaders_pacgum")
+                tex.draw(texture_name, sround(x - pacgum_size / 2),
                          sround(y - pacgum_size / 2),
                          sround(pacgum_size), sround(pacgum_size))
 
@@ -1189,11 +1599,25 @@ class Invaders:
                     opacity = 0.5 + 0.5 * blink
                     if progress >= 1.0:
                         opacity = 1.0
+                mouth, eye = self.pacman_shoot_animation()
                 draw.pacman(sround(vvp.ct.x + self.pacman_pos *
                                    (vvp.wdt - self.brick_size) / 2),
                             vvp.bct.y - sround(1.5 * cell_size),
-                            self.brick_size // 2, 270,
-                            last_hor_dir=self.pacman_last_dir, opacity=opacity)
+                            self.brick_size // 2, 270, mouth_opening=mouth,
+                            eye_opening=eye, last_hor_dir=self.pacman_last_dir,
+                            opacity=opacity)
+
+            remaining = self.is_effect_active("invulnerable")
+            if remaining != -1.0:
+                cl_in, cl_out = rcl.SHIELD_IN, rcl.SHIELD_OUT
+                if remaining <= 5.0:
+                    cl_in = rcl.scale_alpha(cl_in, remaining / 5.0)
+                    cl_out = rcl.scale_alpha(cl_out, remaining / 5.0)
+                draw.circle_gradient(
+                    sround(vvp.ct.x + self.pacman_pos
+                           * (vvp.wdt - self.brick_size) / 2),
+                    sround(vvp.bct.y - 1.5 * cell_size), sround(cell_size / 2),
+                    cl1=cl_in, cl2=cl_out)
 
             for projectile in self.ghost_projectiles:
                 x = vvp.x + projectile.x * cell_size
@@ -1208,6 +1632,22 @@ class Invaders:
                 draw.circle_gradient(sround(vvp.x + debris.x * cell_size),
                                      sround(vvp.y + debris.y * cell_size),
                                      debris.size, cl1=color, cl2=rcl.BLANK)
+
+            for explosion in self.explosions:
+                elapsed = self.anim_time - explosion.created
+                progress = elapsed / explosion.duration
+                opacity = min(1.0, (1.0 - progress) * 2.0)
+                blast_x = sround(vvp.x + explosion.x * cell_size)
+                blast_y = sround(vvp.y + explosion.y * cell_size)
+                cl_out = rcl.scale_alpha(rcl.BLAST_OUT, opacity)
+                cl_med = rcl.scale_alpha(rcl.BLAST_MED, opacity)
+                cl_cnt = rcl.scale_alpha(rcl.BLAST_CNT, opacity)
+                draw.circle(blast_x, blast_y, sround(1.5 * cell_size),
+                            cl=cl_out, filled=True)
+                draw.circle(blast_x, blast_y, sround(1.0 * cell_size),
+                            cl=cl_med, filled=True)
+                draw.circle(blast_x, blast_y, sround(0.5 * cell_size),
+                            cl=cl_cnt, filled=True)
 
         gameboard.gamehuds.draw_huds()
 

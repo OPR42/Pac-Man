@@ -79,6 +79,8 @@ class RenderColors:
     HOURGLASS_WOOD = (125, 85, 55, 255)
     BOMB_VIOLET = (105, 55, 175, 255)
     WOUNDED = (140, 10, 45, 255)
+    SHIELD_IN = (2, 255, 226, 31)
+    SHIELD_OUT = (2, 255, 226, 63)
 
     @staticmethod
     def scale_rgb(rgb: tuple[int, int, int, int],

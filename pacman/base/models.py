@@ -72,6 +72,7 @@ class Defaults(BaseModel):
     minigame_breaker_base_paddle_width: float = 5.0
     minigame_breaker_base_speed: float = 12.0
     minigame_invaders_board_dimensions: tuple[int, int] = (21, 18)
+    minigame_invaders_falling_crates_speed: float = 4.0
     minigame_invaders_pacman_projectile_speed: float = 12.0
     minigame_invaders_swarm_dimensions: tuple[int, int] = (11, 7)
     minigame_invaders_swarm_speed: float = 2.0
