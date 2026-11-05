@@ -555,7 +555,17 @@ class MiniGames:
                         txt = txt.replace("$POINTS$", score_txt)
                         txt = txt.replace("$PERCENT$", f"{percent}")
                     elif self.level == -4:
-                        pass
+                        precision = max(0, min(100, sround(
+                            (self.invaders.pacman_kills
+                             / self.invaders.pacman_shots) * 100)))
+                        kills_txt = f"{self.invaders.pacman_kills:,}"
+                        kills_txt = kills_txt.replace(",", lex("kilo_sep"))
+                        waves_txt = f"{(self.invaders.swarm_wave - 1):,}"
+                        waves_txt = waves_txt.replace(",", lex("kilo_sep"))
+                        txt = txt.replace("$KILLS$", kills_txt)
+                        txt = txt.replace("$WAVES$", waves_txt)
+                        txt = txt.replace("$POINTS$", score_txt)
+                        txt = txt.replace("$PRECISION$", f"{precision}")
                     draw.text_block_max(
                         item.x, item.y, item.width, item.height,
                         txt, self.graphics.font_regular,

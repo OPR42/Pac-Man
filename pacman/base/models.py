@@ -69,8 +69,17 @@ class Defaults(BaseModel):
     maze_min_height: int = 10
     maze_wall_debris_duration: float = 2.0
 
+    minigame_breaker_base_paddle_width: float = 5.0
+    minigame_breaker_base_speed: float = 12.0
+    minigame_invaders_board_dimensions: tuple[int, int] = (21, 18)
+    minigame_invaders_pacman_projectile_speed: float = 12.0
+    minigame_invaders_swarm_dimensions: tuple[int, int] = (11, 7)
+    minigame_invaders_swarm_speed: float = 2.0
+    minigame_invaders_swarm_projectile_speed: float = 4.0
     minigame_pactris_completed_threshold: int = 40
     minigame_pactris_speed_multiplier: float = 1.5
+    minigame_snake_board_dimensions: tuple[int, int] = (16, 8)
+    minigame_snake_speed: float = 3.0
 
     pacman_base_mouth_opening: float = 0.50
     pacman_min_mouth_opening: float = 0.25
