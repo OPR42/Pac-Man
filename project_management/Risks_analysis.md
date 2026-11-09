@@ -25,7 +25,15 @@ text
 ### Risk 02 - Incomplete / poor error handling
 </span>
 
-text
+Thanks to our acceptance test plan, we have a fairly exhaustive list of the many potential sources of error.
+
+We built this plan :
+
+- According to the constraints of the subject
+- Drawing on our experience with errors encountered in other projects
+- By talking with others who have already submitted the project
+
+To ensure that none of the mentioned errors were overlooked, we reviewed the entire plan at the end of the project, point by point, and verified that every error had been addressed in accordance with the plan.
 
 <span style="color: red">
 

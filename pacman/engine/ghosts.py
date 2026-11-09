@@ -125,9 +125,12 @@ class Ghosts:
 
         for i, actor in enumerate(self.states):
             dest_x, dest_y = actor.cell_x, actor.cell_y
+            # Hunt mode
             if actor.activity == 2:
+                # Blinky
                 if i == 0:
                     dest_x, dest_y = pacman_x, pacman_y
+                # Pinky
                 elif i == 1:
                     pdir = pacman.direction % 360
                     if 0 <= pdir < 45 or 315 <= pdir < 360:
@@ -142,6 +145,7 @@ class Ghosts:
                     dest_x, dest_y = (
                         self.core.game.maze.closest_available_cell(dest_x,
                                                                    dest_y))
+                # Inky
                 elif i == 2:
                     blinky_x = self.states[0].cell_x
                     blinky_y = self.states[0].cell_y
@@ -150,9 +154,11 @@ class Ghosts:
                     dest_x, dest_y = (
                         self.core.game.maze.closest_available_cell(dest_x,
                                                                    dest_y))
+                # Clyde
                 elif i == 3:
                     dest_x, dest_y = pacman_x, pacman_y
 
+            # Return home
             elif actor.activity == 5:
                 last_x = max(0, self.core.gm_state.maze_width - 1)
                 last_y = max(0, self.core.gm_state.maze_height - 1)
