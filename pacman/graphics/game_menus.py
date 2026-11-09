@@ -121,7 +121,8 @@ class GameMenus:
                                                mvp.wdt - margin * 2,
                                                mvp.hgt - margin * 2)
         self.pvp = pvp
-        row_height = sround(pvp.hgt / (5 if gmstate.level > 0 else 6))
+        resign_option = gmstate.level > 0 and not self.game.one_level_only
+        row_height = sround(pvp.hgt / (6 if resign_option else 5))
         self.ref_row_height = row_height
         item_height, item_width = sround(row_height * 0.7), sround(pvp.wdt / 2)
         self.pause_ui_items = []
@@ -132,7 +133,7 @@ class GameMenus:
         self.pause_ui_items.append(InterfaceItem(
             x, y, item_width, item_height, "PAU_Res", "resume", "button",
             rel_to_center=False))
-        if gmstate.level < 0:
+        if resign_option:
             y += row_height
             self.pause_ui_items.append(InterfaceItem(
                 x, y, item_width, item_height, "PAU_Nrm", "back_to_std",

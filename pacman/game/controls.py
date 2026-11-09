@@ -84,6 +84,11 @@ class Controls:
 
         return True
 
+    def direction_held(self, direction: str) -> bool:
+        x, y = self.player_key_pad_move()
+        return {"up": y < 0.0, "down": y > 0.0, "left": x < 0.0,
+                "right": x > 0.0}.get(direction, False)
+
     def player_key_pad_move(self) -> tuple[float, float]:
         keys = pr.KeyboardKey
         if self.gamepad < 0 or not pr.is_gamepad_available(self.gamepad):
@@ -203,6 +208,44 @@ class Controls:
         self.last_commands.clear()
         return True
 
+    def credits_scroll_control(self) -> tuple[str, str]:
+        keys = pr.KeyboardKey
+        mouse = pr.MouseButton
+
+        if pr.is_key_down(keys.KEY_UP):
+            return ("key", "up_held")
+        if pr.is_key_down(keys.KEY_DOWN):
+            return ("key", "down_held")
+
+        if pr.is_mouse_button_down(mouse.MOUSE_BUTTON_RIGHT):
+            return ("rightclick", "up_held")
+        if pr.is_mouse_button_down(mouse.MOUSE_BUTTON_LEFT):
+            return ("leftclick", "down_held")
+
+        if self.gamepad < 0 or not pr.is_gamepad_available(self.gamepad):
+            self.gamepad = -1
+            for testpad in range(8):
+                if pr.is_gamepad_available(testpad):
+                    self.gamepad = testpad
+                    break
+        if self.gamepad >= 0:
+            up = (self._is_gamepad_button_down(LBU)
+                  or self._gamepad_axis(LAY)
+                  <= -self.core.defaults.gamepad_stick_trigger
+                  or self._gamepad_axis(RAY)
+                  <= -self.core.defaults.gamepad_stick_trigger)
+            down = (self._is_gamepad_button_down(LBD)
+                    or self._gamepad_axis(LAY)
+                    >= self.core.defaults.gamepad_stick_trigger
+                    or self._gamepad_axis(RAY)
+                    >= self.core.defaults.gamepad_stick_trigger)
+            if up:
+                return ("pad", "up_held")
+            if down:
+                return ("pad", "down_held")
+
+        return ("key", "scroll_normal")
+
     def control(self, core_step: int) -> tuple[str, str]:
         key = self.key_control()
         if key:
@@ -211,16 +254,19 @@ class Controls:
                     return ("key", "konami_unlocked")
             return ("key", key)
 
-        mouse = self.mouse_control(core_step)
-        if mouse != ("", ""):
-            return mouse
-
         gamepad = self.gamepad_control(core_step)
         if gamepad != ("", ""):
             if self.game.step == 8 and not self.core.cht_table.unlocked:
                 if self.check_konami_code(gamepad[1]):
                     return ("pad", "konami_unlocked")
             return gamepad
+
+        mouse = self.mouse_control(core_step)
+        if mouse != ("", ""):
+            return mouse
+
+        if self.game.step == 16:
+            return self.credits_scroll_control()
 
         if self.game.step == 11:
             allowed = ("ABCDEFGHIJKLMNOPQRSTUVWXYZ"
@@ -262,25 +308,21 @@ class Controls:
                 self.graphics.show_hints = True
 
         if pr.is_key_pressed(keys.KEY_PAGE_UP):
-            if ctrl:
+            if shift:
                 self.dashboard.receive_key("up")
+            elif ctrl:
+                self.dashboard.receive_key("top")
             else:
                 self.dashboard.receive_key("pgup")
             return None
 
         if pr.is_key_pressed(keys.KEY_PAGE_DOWN):
-            if ctrl:
+            if shift:
                 self.dashboard.receive_key("down")
+            elif ctrl:
+                self.dashboard.receive_key("bottom")
             else:
                 self.dashboard.receive_key("pgdown")
-            return None
-
-        if pr.is_key_pressed(keys.KEY_HOME):
-            self.dashboard.receive_key("top")
-            return None
-
-        if pr.is_key_pressed(keys.KEY_END):
-            self.dashboard.receive_key("bottom")
             return None
 
         if pr.is_key_pressed(keys.KEY_KP_MULTIPLY):
@@ -320,9 +362,12 @@ class Controls:
             if (pr.is_key_pressed(keys.KEY_ENTER)
                or pr.is_key_pressed(keys.KEY_KP_ENTER)
                or pr.is_key_pressed(keys.KEY_SPACE)):
-                return "enter"
+                if self.game.step in (1,) and (shift or ctrl):
+                    return "inv_enter"
+                else:
+                    return "enter"
 
-        if self.game.step in (3, 4, 15):
+        if self.game.step in (1, 3, 4, 15, 16):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
                or pr.is_key_pressed(keys.KEY_ESCAPE)):
                 return "back"
@@ -380,7 +425,9 @@ class Controls:
             if (pr.is_key_pressed(keys.KEY_ENTER)
                or pr.is_key_pressed(keys.KEY_KP_ENTER)
                or pr.is_key_pressed(keys.KEY_SPACE)):
-                if self.game.step in (4, 12) and (shift or ctrl):
+                if (shift or ctrl) and (self.game.step in (4, 12)
+                                        or (self.game.step == 7
+                                            and self.core.gm_state.level < 0)):
                     return "inv_enter"
                 else:
                     return "enter"
@@ -504,19 +551,19 @@ class Controls:
         pad_dwn = self._is_gamepad_button_down
 
         if pad_btn(RT1):
-            if pad_dwn(LT1):
+            if pad_dwn(LT1) and pad_dwn(LT2):
                 self.dashboard.receive_key("top")
-            elif pad_dwn(LT2):
+            elif pad_dwn(LT1):
                 self.dashboard.receive_key("up")
-            else:
+            elif pad_dwn(LT2):
                 self.dashboard.receive_key("pgup")
 
         elif pad_btn(RT2):
-            if pad_dwn(LT1):
+            if pad_dwn(LT1) and pad_dwn(LT2):
                 self.dashboard.receive_key("bottom")
-            elif pad_dwn(LT2):
+            elif pad_dwn(LT1):
                 self.dashboard.receive_key("down")
-            else:
+            elif pad_dwn(LT2):
                 self.dashboard.receive_key("pgdown")
 
         elif pad_btn(RBU):
@@ -543,7 +590,10 @@ class Controls:
             elif pad_btn(LBR) or pad_btn(LBD):
                 return ("pad", "next")
             elif pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR):
-                return ("pad", "enter")
+                if pad_dwn(LT1) or pad_dwn(LT2):
+                    return ("pad", "inv_enter")
+                else:
+                    return ("pad", "enter")
             elif pad_btn(MBR):
                 return ("pad", "scores")
             left_x, left_y = self._gamepad_stick(LAX, LAY)
@@ -581,7 +631,7 @@ class Controls:
                 if direction > 0.0:
                     return ("pad", "next")
 
-        if self.game.step in (3, 4, 15):
+        if self.game.step in (3, 4, 15, 16):
             if pad_btn(RBL) or pad_btn(MBL):
                 return ("pad", "back")
 
@@ -590,12 +640,20 @@ class Controls:
                 return ("pad", "pause_menu")
 
         if self.game.step == 7:
-            if pad_btn(LBU):
-                return ("pad", "inventory_00")
-            if pad_btn(LBL):
-                return ("pad", "inventory_01")
-            if pad_btn(LBR):
-                return ("pad", "inventory_02")
+            if pad_dwn(LT1) or pad_dwn(LT2):
+                if pad_btn(LBU):
+                    return ("pad", "inventory_03")
+                if pad_btn(LBL):
+                    return ("pad", "inventory_04")
+                if pad_btn(LBR):
+                    return ("pad", "inventory_05")
+            else:
+                if pad_btn(LBU):
+                    return ("pad", "inventory_00")
+                if pad_btn(LBL):
+                    return ("pad", "inventory_01")
+                if pad_btn(LBR):
+                    return ("pad", "inventory_02")
 
         if (self.game.step == 4 or self.game.step >= 8
                 or (self.game.step == 7 and self.core.gm_state.level < 0)):
@@ -651,7 +709,7 @@ class Controls:
                     return ("pad", "clear")
                 else:
                     return ("pad", "backspace")
-            if pad_btn(RBL):
+            if pad_btn(MBL):
                 if pad_dwn(LT1) or pad_dwn(LT2):
                     return ("pad", "clear")
                 else:

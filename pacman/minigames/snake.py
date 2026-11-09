@@ -20,7 +20,9 @@ class Snake:
         self.path: list[tuple[float, float]] = []
         self.direction: int = 0
         self.requested_direction: int = 0
-        self.speed: float = 3.0
+        self.speed: float = self.core.defaults.minigame_snake_speed
+        self.board_dimensions: tuple[int, int] = (
+            self.core.defaults.minigame_snake_board_dimensions)
         self.length: float = 0.0
         self.last_update: float = 0.0
         self.started: bool = False
@@ -44,7 +46,9 @@ class Snake:
         self.path = []
         self.direction = 0
         self.requested_direction = 0
-        self.speed = 3.0
+        self.speed = self.core.defaults.minigame_snake_speed
+        self.board_dimensions = (
+            self.core.defaults.minigame_snake_board_dimensions)
         self.length = 0.0
         self.last_update = 0.0
         self.started = False
@@ -69,7 +73,9 @@ class Snake:
         self.started = False
         self.direction = 0
         self.requested_direction = 0
-        self.speed = 3.0
+        self.speed = self.core.defaults.minigame_snake_speed
+        self.board_dimensions = (
+            self.core.defaults.minigame_snake_board_dimensions)
         self.length = 0.0
         self.last_hor_dir = ""
         self.collision = False
@@ -96,7 +102,7 @@ class Snake:
         draw = self.graphics.shapes
         gameboard = self.gameboard
         vp_x, vp_y, vp_width, vp_height = self.graphics.viewport_rectangle
-        gmstate.maze_width, gmstate.maze_height = 16, 8
+        gmstate.maze_width, gmstate.maze_height = self.board_dimensions
         hud_width = rg(300)
         hud_gap = rg(25)
         reserved_width = hud_width + hud_gap
@@ -253,6 +259,7 @@ class Snake:
                 next_y = round(y) + dy
                 if (self.cell_blocked(next_x, next_y)
                         or self.body_blocked(next_x, next_y)):
+                    self.game.audio.sound_play("game_over")
                     self.collision = True
                     return
             position = x if dx else y
@@ -428,7 +435,7 @@ class Snake:
         cell_size = mvp.wdt / gmstate.maze_width
         head_size = sround(cell_size * 0.9)
         body_size = sround(head_size * 0.8)
-        half_body_size = sround(body_size / 2)
+        half_body_size = int(body_size / 2)
         cl_wall = rcl.WALL_STD
         cl_snake = (rcl.BLAST_OUT if self.collision
                     else rcl.PACMAN_YELLOW)

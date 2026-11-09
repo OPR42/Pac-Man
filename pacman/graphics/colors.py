@@ -47,6 +47,8 @@ class RenderColors:
     HOURGLASS_BULB = (39, 39, 59, 255)
     SAND = (211, 173, 124, 255)
     SAND_SPREAD = (211, 173, 124, 63)
+    DARK_SAND = (106, 87, 62, 255)
+    BEIGE = (255, 191, 127, 255)
     LIGHT_WHITE = (221, 221, 221, 255)
     LIGHT_BEIGE = (255, 239, 191, 255)
     LIGHTER_BEIGE = (255, 247, 223, 255)
@@ -77,6 +79,8 @@ class RenderColors:
     HOURGLASS_WOOD = (125, 85, 55, 255)
     BOMB_VIOLET = (105, 55, 175, 255)
     WOUNDED = (140, 10, 45, 255)
+    SHIELD_IN = (2, 255, 226, 31)
+    SHIELD_OUT = (2, 255, 226, 63)
 
     @staticmethod
     def scale_rgb(rgb: tuple[int, int, int, int],

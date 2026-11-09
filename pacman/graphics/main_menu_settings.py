@@ -165,6 +165,7 @@ class MainMenuSettings:
             val_init = self.core.config.minigames
             val_updt = value_checkbox(val_init, cmd)
             self.core.config.minigames = val_updt
+            self.main_menu.qvp_ready = False
         elif focus.startswith("position_"):
             values = ["topleft", "top", "topright", "left", "center",
                       "right", "bottomleft", "bottom", "bottomright"]
@@ -210,6 +211,7 @@ class MainMenuSettings:
             self.core.config.language = values[index_updt]
             self.core.load_language()
             self.graphics.main_menu.highscores_texture_dirty = True
+            self.graphics.main_menu.main_menu_credits.geometry_built = False
 
     def find_item_by(self,
                      code: str = "",
@@ -409,6 +411,7 @@ class MainMenuSettings:
         self.core.config.language = dflt.language.lower()
         self.core.load_language()
         self.graphics.main_menu.highscores_texture_dirty = True
+        self.graphics.main_menu.main_menu_credits.geometry_built = False
         self.core.config.hints = dflt.hints
         self.graphics.show_hints = dflt.hints
         self.core.config.main_menu_idle_time = dflt.screensaver_delay
@@ -439,6 +442,7 @@ class MainMenuSettings:
         words = dflt.timeout_consequence.lower().split(" ")
         self.core.config.timeout_consequence = f"{words[0]}_{words[1]}"
         self.core.config.minigames = dflt.minigames
+        self.main_menu.qvp_ready = False
         self.core.load_config_to_environment()
         self.graphics.reposition_and_resize()
         self.game.audio.restore_volume()

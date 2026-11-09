@@ -41,14 +41,14 @@ class Transitions:
         self.phase = ""
         sdp = self.road
 
-        if sdp == (0, 1, 0):
+        if sdp in ((0, 1, 0), (16, 1, 2)):
             self.phase = "fade_in"
 
-        elif sdp in ((1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 6, 1)):
+        elif sdp in ((1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 6, 1), (1, 16, 1)):
             self.preserve_button_pacmen = False
             self.phase = "turn_button_pacmen"
 
-        elif sdp in ((1, 3, 2), (1, 4, 2), (1, 6, 2)):
+        elif sdp in ((1, 3, 2), (1, 4, 2), (1, 6, 2), (1, 16, 2)):
             self.phase = "fade_in"
 
         elif sdp in ((3, 1, 1), (4, 1, 1)):
@@ -59,15 +59,19 @@ class Transitions:
             self.phase = "fade_in"
 
         elif sdp in ((1, 5, 1), (5, 1, 1), (6, 7, 1), (6, 7, 3), (9, 1, 1),
-                     (10, 2, 1)):
+                     (10, 2, 1), (1, 7, 1), (16, 1, 1)):
             self.preserve_button_pacmen = True
             self.phase = "fade_out"
 
-        elif sdp in ((1, 5, 2), (5, 1, 2), (6, 7, 2), (9, 1, 2)):
+        elif sdp in ((1, 5, 2), (5, 1, 2), (6, 7, 2), (9, 1, 2), (1, 7, 2)):
             self.preserve_button_pacmen = True
             self.phase = "fade_in"
 
         elif sdp == (7, 7, 1):
+            self.preserve_button_pacmen = True
+            self.phase = "iris_fade_out"
+
+        elif sdp == (7, 1, 1):
             self.preserve_button_pacmen = True
             self.phase = "iris_fade_out"
 
@@ -89,18 +93,18 @@ class Transitions:
         src, dst, phase = self.road
         sdp = self.road
 
-        if sdp in ((0, 1, 0), (9, 1, 2)):
+        if sdp in ((0, 1, 0), (9, 1, 2), (16, 1, 2)):
             if self.phase == "fade_in":
                 if self._fade_in(now, audio_fade=True):
                     self._finish()
 
-        elif sdp in ((1, 3, 2), (1, 4, 2), (1, 6, 2)):
+        elif sdp in ((1, 3, 2), (1, 4, 2), (1, 6, 2), (1, 16, 2)):
             if self.phase == "fade_in":
-                if self._fade_in(now, audio_fade=(dst == 6)):
+                if self._fade_in(now, audio_fade=(dst in (6, 16))):
                     self._finish()
 
         elif sdp in ((1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 6, 1), (3, 1, 1),
-                     (4, 1, 1)):
+                     (4, 1, 1), (1, 16, 1)):
             if self.phase == "turn_button_pacmen":
                 if self._turn_button_pacmen(now):
                     self.phase = "pacmen_eat_button"
@@ -112,13 +116,24 @@ class Transitions:
                     self.start_time = now
 
             if self.phase == "fade_out":
-                audio_fade = dst in (2, 6)
+                audio_fade = dst in (2, 6, 16)
                 if self._fade_out(now, audio_fade=audio_fade, quit=dst == 2):
                     self.eat_clip = (False, "", 0, 0, 0, 0)
                     if src == 1 and dst == 6:
                         self.game.audio.jukebox_stop()
                         self.game.audio.jukebox_unload()
-                        self.game.audio.restore_volume()
+                    self._finish()
+
+        elif sdp in ((1, 7, 1), (16, 1, 1)):
+            if self.phase == "fade_out":
+                if self._fade_out(now, audio_fade=True, pacmen=False):
+                    self.game.audio.jukebox_stop()
+                    self.game.audio.jukebox_unload()
+                    self._finish()
+
+        elif sdp in ((1, 7, 2),):
+            if self.phase == "fade_in":
+                if self._fade_in(now, audio_fade=True):
                     self._finish()
 
         elif sdp in ((1, 5, 1), (5, 1, 1), (6, 7, 1), (6, 7, 3)):
@@ -139,6 +154,17 @@ class Transitions:
                                        audio_fade=False):
                     self._finish()
 
+        elif sdp == (7, 1, 1):
+            if self.phase == "iris_fade_out":
+                target_x = self.core.chr_states[0].pos_x
+                target_y = self.core.chr_states[0].pos_y
+                if self._iris_fade_out(now, target_x, target_y,
+                                       audio_fade=True):
+                    self.game.audio.jukebox_stop()
+                    self.game.audio.jukebox_unload()
+                    self.game.audio.ingame_stop()
+                    self._finish()
+
         elif sdp in ((6, 7, 4), (7, 7, 2)):
             if self.phase == "iris_fade_in":
                 if self._iris_fade_in(now, audio_fade=False):
@@ -148,7 +174,6 @@ class Transitions:
             if self.phase == "fade_out":
                 if self._fade_out(now, audio_fade=True, pacmen=False):
                     self.game.audio.ingame_stop()
-                    self.game.audio.restore_volume()
                     self._finish()
 
     def _finish(self) -> None:

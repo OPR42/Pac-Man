@@ -81,8 +81,9 @@ class Breaker:
         self.grid: list[list[int]] = [[0] * 39 for _ in range(25)]
         self.cell_size: int = 0
         self.brick_size: int = 0
-        self.paddle_base_width: float = 5
-        self.paddle_width: float = 5
+        self.paddle_base_width: float = (
+            self.core.defaults.minigame_breaker_base_paddle_width)
+        self.paddle_width: float = self.paddle_base_width
         self.paddle_pos: float = 0.0
         self.paddle_speed: float = 0.05
         self.paddle_y: int = 0
@@ -124,8 +125,9 @@ class Breaker:
         self.over = False
         self.cell_size = 0
         self.brick_size = 0
-        self.paddle_width = 5
-        self.paddle_base_width = 5
+        self.paddle_width = (
+            self.core.defaults.minigame_breaker_base_paddle_width)
+        self.paddle_base_width = self.paddle_width
         self.paddle_pos = 0.0
         self.paddle_speed = 0.05
         self.paddle_y = 0
@@ -213,7 +215,8 @@ class Breaker:
              1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 0]]
         self.initial_grid = [row.copy() for row in self.grid]
         self.lives = self.core.config.lives
-        self.paddle_base_width = 5
+        self.paddle_base_width = (
+            self.core.defaults.minigame_breaker_base_paddle_width)
         self.paddle_pos = 0.0
         self.reset_pacman()
         self.bombs = []
@@ -223,7 +226,7 @@ class Breaker:
         self.bomb_projectile = None
         self.explosions = []
         self.last_update = time.perf_counter()
-        self.pacman_base_speed = 12
+        self.pacman_base_speed = self.core.defaults.minigame_breaker_base_speed
         self.pacman_speed = self.pacman_base_speed
         self.board_count = 0
         self.impacts_count = 0
@@ -838,6 +841,7 @@ class Breaker:
         self.lives = max(-1, self.lives - 1)
 
         if self.lives == -1:
+            self.game.audio.sound_play("game_over")
             self.pacman_launched = False
             self.over = True
             self.active_effects.clear()
@@ -1074,6 +1078,7 @@ class Breaker:
         self.lives = max(-1, self.lives - 1)
 
         if self.lives == -1:
+            self.game.audio.sound_play("game_over")
             self.pacman_launched = False
             self.over = True
             self.active_effects.clear()

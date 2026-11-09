@@ -73,7 +73,8 @@ class Shapes:
 
     def text_block_max(self, x: int, y: int, width: int, height: int, txt: str,
                        font: RaylibObject, cl: Color = rcl.BASE_BLACK,
-                       justify: str = "left", align: str = "top") -> None:
+                       justify: str = "left", align: str = "top",
+                       preserve_spacing: bool = False) -> None:
         if width <= 0 or height <= 0 or not txt:
             return
 
@@ -81,7 +82,8 @@ class Shapes:
         sround = self.utils.sym_round
         lines, font_size = self.geometry.fit_wrapped_text(
             txt, max_width=width, max_height=height,
-            max_size=rg(500), min_size=max(1, rg(5)))
+            max_size=rg(500), min_size=max(1, rg(5)),
+            preserve_spacing=preserve_spacing)
         _, line_height = self.geometry.measure_text("Ag", font_size)
         block_height = len(lines) * line_height
 
@@ -930,7 +932,8 @@ class Shapes:
               pupil_color: Color = rcl.EYE_BLUE, eye_opening: float = 1.0,
               wave: float = 1.0, name: str = "", contour: bool = False,
               variant: str = "", actor_name: str = "",
-              texture_free: bool = False) -> None:
+              texture_free: bool = False,
+              force_body_color: Color | None = None) -> None:
         sround = self.utils.sym_round
 
         if variant == "ghostbuster":
@@ -954,6 +957,9 @@ class Shapes:
             eye_color = rcl.BLOODY_EYE_SALMON
         elif name == "disgusted":
             body_color = rcl.DISGUSTED_GHOST_GREEN
+
+        if force_body_color:
+            body_color = force_body_color
 
         if contour:
             body_contour = rcl.scale_rgb(body_color, 0.80)
@@ -1219,6 +1225,14 @@ class Shapes:
             "|": (5258,),
             "}": (3252, 5263, 6364, 6475, 7566, 6667, 6758, 5838),
             "~": (2645, 4566, 6685),
+            "é": (7838, 3827, 2726, 2635, 3575, 7586, 8677, 7727, 3473),
+            "è": (7838, 3827, 2726, 2635, 3575, 7586, 8677, 7727, 3374),
+            "ê": (7838, 3827, 2726, 2635, 3575, 7586, 8677, 7727, 3453, 5374),
+            "à": (3575, 7586, 8688, 9838, 3827, 2727, 2736, 3686, 3374),
+            "â": (3575, 7586, 8688, 9838, 3827, 2727, 2736, 3686, 3453, 5374),
+            "ç": (3526, 2627, 2738, 3575, 3878, 7586, 7887, 6849),
+            "ù": (2527, 2738, 3878, 7887, 8785, 3374),
+            "É": (2228, 2282, 2888, 2555, 3271),
         }
 
         if not text or size <= 0:
@@ -1908,3 +1922,119 @@ class Shapes:
         self.circle(center_x, center_y, radius, cl=lines_color, filled=True)
         radius -= sround(thick * 0.50)
         self.circle(center_x, center_y, radius, cl=rcl.CUBE_PANEL, filled=True)
+
+    def heart(self, center_x: int, center_y: int, size: int,
+              cl: Color = rcl.BLINKY_RED) -> None:
+        if size <= 0:
+            return
+        radius = max(1, round(size * 0.5))
+        left_x = center_x - radius
+        right_x = center_x + radius
+        top_y = center_y - round(size * 0.5)
+        bottom_y = center_y + size
+        self.circle(left_x, top_y, radius, cl=cl, filled=True)
+        self.circle(right_x, top_y, radius, cl=cl, filled=True)
+        ltx, lty = self._point_on_circle(left_x, top_y, radius, 142.0)
+        rtx, rty = self._point_on_circle(right_x, top_y, radius, 38.0)
+        self.triangle(ltx, lty, rtx, rty, center_x, bottom_y,
+                      cl=cl, filled=True)
+        self.triangle(ltx, lty, rtx, rty, center_x, top_y,
+                      cl=cl, filled=True)
+
+    def key(self, center_x: int, center_y: int, text: str, size: int,
+            cl: Color = rcl.BASE_WHITE, cl_back: Color = rcl.BLANK,
+            cl_body: Color = rcl.BLANK, cl_frame: Color = rcl.BASE_BR_WHITE,
+            kind: str = "key") -> int:
+        """ Draws a keyboard or gamepad key, and returns its width """
+        if size <= 0 or not text:
+            return 0
+        sround = self.utils.sym_round
+        ratio = 0.5125
+        size = (size // 2) * 2
+        half_size = sround(size / 2)
+        text_size = sround(size * 0.80)
+        add_width = math.ceil((len(text) - 1) * size * 0.80 * ratio)
+        self.rectangle(center_x - half_size - sround(add_width / 2),
+                       center_y - half_size, half_size * 2 + add_width,
+                       half_size * 2, cl=cl_back, filled=True)
+        key_size = sround(size * 0.90)
+        key_half_size = sround(key_size / 2)
+        border_thick = max(2, sround(key_size / 24))
+        text_thick = max(2, sround(key_size / 24))
+        glyph_thick = max(2, sround(key_size / 24))
+        if kind == "key":
+            self.rectangle(center_x - key_half_size - sround(add_width / 2),
+                           center_y - key_half_size, key_size + add_width,
+                           key_size, roundness=0.15, cl=cl_body, filled=True)
+            self.rectangle(center_x - key_half_size - sround(add_width / 2),
+                           center_y - key_half_size, key_size + add_width,
+                           key_size, roundness=0.15, thick=border_thick,
+                           cl=cl_frame, filled=False)
+        elif kind == "pad":
+            self.circle_sector(center_x - sround(add_width / 2), center_y,
+                               key_half_size, 90, 270,
+                               cl=cl_body, filled=True)
+            self.circle_sector(center_x + sround(add_width / 2), center_y,
+                               key_half_size, 270, 450,
+                               cl=cl_body, filled=True)
+            self.rectangle(center_x - sround(add_width / 2),
+                           center_y - key_half_size, add_width, key_size,
+                           cl=cl_body, filled=True)
+            self.arc(center_x - sround(add_width / 2), center_y, key_half_size,
+                     90, 270, cl=cl_frame, thick=border_thick)
+            self.arc(center_x + sround(add_width / 2), center_y, key_half_size,
+                     270, 450, cl=cl_frame, thick=border_thick)
+            self.line(
+                center_x - sround(add_width / 2), center_y - key_half_size,
+                center_x + sround(add_width / 2), center_y - key_half_size,
+                thick=border_thick, cl=cl_frame)
+            self.line(
+                center_x - sround(add_width / 2), center_y + key_half_size,
+                center_x + sround(add_width / 2), center_y + key_half_size,
+                thick=border_thick, cl=cl_frame)
+
+        t10 = sround(text_size / 10)
+        t3 = sround(text_size / 3)
+        if text in ("←", "→", "↔", "↑", "↓", "↕", "⊙"):
+            m = 1 if text == "⊙" else 2
+            if text in ("←", "→", "↔", "⊙"):
+                self.line(center_x - t3, center_y, center_x + t3, center_y,
+                          thick=glyph_thick, cl=cl, edge_shortsharp=True)
+                if text in ("←", "↔", "⊙"):
+                    self.line(center_x - t3, center_y, center_x - t3 + t10 * m,
+                              center_y - t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+                    self.line(center_x - t3, center_y, center_x - t3 + t10 * m,
+                              center_y + t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+                if text in ("→", "↔", "⊙"):
+                    self.line(center_x + t3, center_y, center_x + t3 - t10 * m,
+                              center_y - t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+                    self.line(center_x + t3, center_y, center_x + t3 - t10 * m,
+                              center_y + t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+            if text in ("↑", "↓", "↕", "⊙"):
+                self.line(center_x, center_y - t3, center_x, center_y + t3,
+                          thick=glyph_thick, cl=cl, edge_shortsharp=True)
+                if text in ("↑", "↕", "⊙"):
+                    self.line(center_x, center_y - t3, center_x - t10 * m,
+                              center_y - t3 + t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+                    self.line(center_x, center_y - t3, center_x + t10 * m,
+                              center_y - t3 + t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+                if text in ("↓", "↕", "⊙"):
+                    self.line(center_x, center_y + t3, center_x - t10 * m,
+                              center_y + t3 - t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+                    self.line(center_x, center_y + t3, center_x + t10 * m,
+                              center_y + t3 - t10 * m, thick=glyph_thick,
+                              cl=cl, edge_shortsharp=True)
+            if text == "⊙":
+                self.circle(center_x, center_y, t10, cl=cl, filled=True)
+        else:
+            self.stick_text(center_x, center_y, text, text_size,
+                            thick=text_thick, cl=cl)
+
+        return half_size * 2 + add_width

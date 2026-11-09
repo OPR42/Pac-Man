@@ -1,6 +1,8 @@
 import math
 from typing import NamedTuple
 
+from collections.abc import Callable
+
 from pacman.base.utils import Utils
 from pacman.core import Core
 
@@ -274,20 +276,40 @@ class Geometry:
         y = center_y + dx * math.sin(radians) + dy * math.cos(radians)
         return sround(x), sround(y)
 
-    def wrap_text(self, text: str, max_width: int,
-                  font_size: int) -> list[str]:
+    def rectangle_round_radius(self, wdt: int, hgt: int,
+                               roundness: float) -> int:
+        """Return the corner radius of a rounded rectangle."""
+        sround = self.utils.sym_round
+        return sround(min(wdt, hgt) * max(0.0, min(1.0, roundness)) / 2)
+
+    def wrap_text(self, text: str, max_width: int, font_size: int,
+                  preserve_spacing: bool = False,
+                  measure: Callable[[str, int], float] | None = None,
+                  tokenize: Callable[[str], list[str]] | None = None
+                  ) -> list[str]:
         """Wrap text to fit a maximum pixel width."""
+        if preserve_spacing:
+            return text.split("\n")
+
+        def get_width(value: str) -> float:
+            if measure is not None:
+                return measure(value, font_size)
+            width, _ = self.measure_text(value, font_size)
+            return width
+
         result: list[str] = []
+
         for original_line in text.split("\n"):
             if not original_line:
                 result.append("")
                 continue
-            words = original_line.split()
+            words = (tokenize(original_line)
+                     if tokenize is not None
+                     else original_line.split())
             current = ""
             for word in words:
                 candidate = word if not current else f"{current} {word}"
-                width, _ = self.measure_text(candidate, font_size)
-                if width <= max_width:
+                if get_width(candidate) <= max_width:
                     current = candidate
                 else:
                     if current:
@@ -295,19 +317,50 @@ class Geometry:
                     current = word
             if current:
                 result.append(current)
+
         return result
 
-    def fit_wrapped_text(self, text: str, max_width: int,
-                         max_height: int, max_size: int,
-                         min_size: int = 1) -> tuple[list[str], int]:
+    # def wrap_text(self, text: str, max_width: int,
+    #               font_size: int,
+    #               preserve_spacing: bool = False) -> list[str]:
+    #     """Wrap text to fit a maximum pixel width."""
+    #     if preserve_spacing:
+    #         return text.split("\n")
+
+    #     result: list[str] = []
+    #     for original_line in text.split("\n"):
+    #         if not original_line:
+    #             result.append("")
+    #             continue
+    #         words = original_line.split()
+    #         current = ""
+    #         for word in words:
+    #             candidate = word if not current else f"{current} {word}"
+    #             width, _ = self.measure_text(candidate, font_size)
+    #             if width <= max_width:
+    #                 current = candidate
+    #             else:
+    #                 if current:
+    #                     result.append(current)
+    #                 current = word
+    #         if current:
+    #             result.append(current)
+    #     return result
+
+    def fit_wrapped_text(
+            self, text: str, max_width: int, max_height: int, max_size: int,
+            min_size: int = 1,
+            preserve_spacing: bool = False) -> tuple[list[str], int]:
         """Return wrapped lines and the largest font size that fits."""
         for font_size in range(max_size, min_size - 1, -1):
-            lines = self.wrap_text(text, max_width, font_size)
+            lines = self.wrap_text(text, max_width, font_size,
+                                   preserve_spacing=preserve_spacing)
             wrapped = "\n".join(lines)
             width, height = self.measure_text(wrapped, font_size)
             if width <= max_width and height <= max_height:
                 return lines, font_size
-        return self.wrap_text(text, max_width, min_size), min_size
+        return self.wrap_text(text, max_width, min_size,
+                              preserve_spacing=preserve_spacing), min_size
 
     def wrap_text_ratio(self, text: str, font_size: int,
                         ratio: float) -> list[str]:

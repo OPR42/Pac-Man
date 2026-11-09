@@ -3,16 +3,17 @@
 ## Summary
 
 1. [Launch](#1-launch)
-2. [Maze generation](#2-maze-generation)
-3. [Player](#3-player)
-4. [Ghosts](#4-ghosts)
-5. [Pacgums and Super-pacgums](#5-pacgums-and-super-pacgums)
-6. [Cheat mode](#6-cheat-mode)
-7. [Scoring](#7-scoring)
-8. [Game progression](#8-game-progression)
-9. [User interface](#9-user-interface)
-10. [General operation](#10-general-operation)
-11. [Bugs fixed](#11-bugs-fixed)
+2. [Configuration file](#2-configuration-file)
+3. [Maze generation](#3-maze-generation)
+4. [Player](#4-player)
+5. [Ghosts](#5-ghosts)
+6. [Pacgums and Super-pacgums](#6-pacgums-and-super-pacgums)
+7. [Cheat mode](#7-cheat-mode)
+8. [Scoring](#8-scoring)
+9. [Game progression](#9-game-progression)
+10. [User interface](#10-user-interface)
+11. [General operation](#11-general-operation)
+12. [Bugs fixed](#12-bugs-fixed)
 
 ## 1. Launch
 
@@ -25,7 +26,19 @@
 |Permission denied on config file|`python3 pac-man.py data/config.json`|Game launches with default values|☑️❌|
 |Non-json config file|`python3 pac-man some_file.txt`|Game launches with default values|☑️❌|
 
-## 2. Level generation
+## 2. Configuration file
+
+|Test performed|Command|Result||
+|---|---|---|---|
+|Empty JSON|`{}`|Config file is rewritten with default values, game launches|☑️❌|
+|Missing key|Delete a key from the JSON|Game launches with a default value|☑️❌|
+|Invalid key (replace)|Replace a key by something else|Game launches with an overwritten default value|☑️❌|
+|Invalid key (add)|Add a random `key: value` pair|Game launches, key is ignored|☑️❌|
+|Invalid value (type)|`"level_max_time": "time"`|Game launches with an overwritten default value|☑️❌|
+|Value too high|`level_max_time` > 180|Game launches with an overwritten default value|☑️❌|
+|Negative value|`level_max_time` < 0|Game launches with an overwritten default value|☑️❌|
+
+## 3. Level generation
 
 |Test performed|Result||
 |---|---|---|
@@ -36,7 +49,7 @@
 |Failed generation|[...]|☑️❌|
 
 
-## 3. Player
+## 4. Player
 
 |Test performed|Action|Result||
 |---|---|---|---|
@@ -49,7 +62,7 @@
 |Last life loss|Move onto a ghost|Game ends|☑️❌|
 
 
-## 4. Ghosts
+## 5. Ghosts
 
 |Test performed|Action|Result||
 |---|---|---|---|
@@ -59,14 +72,14 @@
 |Contact with Pac-man (non-edible)|Move onto a ghost|Eats Pac-man and continues on its way|☑️❌|
 |Contact with Pac-man (edible)|Move onto a ghost|Is eaten, respawns in its corner|☑️❌|
 
-## 5. Pacgums and Super-pacgums
+## 6. Pacgums and Super-pacgums
 
 |Test performed|Action|Result||
 |---|---|---|---|
-|Eat a pacgum|Move onto a pacgum|Score increased by [...] points|☑️❌|
-|Eat a super-pacgum|Move onto a super-pacgum|Score increased by [...] points, makes ghosts edible|☑️❌|
+|Eat a pacgum|Move onto a pacgum|Pacgum disappears, score increases|☑️❌|
+|Eat a super-pacgum|Move onto a super-pacgum|Super-pacgum disappears, score increases, ghosts become edible|☑️❌|
 
-## 6. Cheat mode
+## 7. Cheat mode
 
 <span style='color: purple'>
 
@@ -98,7 +111,7 @@
 |Advance to next level|Completes this level and starts the next one. Right-click to return to the previous level|☑️❌|
 |Fill inventory|Adds each item type to the inventory. Right-click to empty it|☑️❌|
 
-## 7. Scoring
+## 8. Scoring
 
 |Test performed|Result||
 |---|---|---|
@@ -108,9 +121,9 @@
 |Take a crate|Score increased by X points|☑️❌|
 |Finish a level with time left|Score increased by X points / second left|☑️❌|
 |Finish the game with lives left|Score increases by one-fifth of the points required to earn a life for each remaining life.|☑️❌|
-|Decrease the score|No action can decrease the score|☑️❌|
+|Decrease the score|No action (other than cheating) can decrease the score|☑️❌|
 
-## 8. Game progression
+## 9. Game progression
 
 <span style='color: purple'>
 
@@ -145,7 +158,7 @@
 |Score retained between levels|Score for level N is displayed at level N+1|☑️❌|
 |Lives retained between levels|Remaining lives for level N are displayed at level N+1|☑️❌|
 
-## 9. User interface
+## 10. User interface
 
 <span style='color: purple'>
 
@@ -205,14 +218,14 @@
 |Final score display|[...]|☑️❌|
 |Enter name|[...]|☑️❌|
 
-## 10. General operation
+## 11. General operation
 
 |Test performed|Result||
 |---|---|---|
 |Norm|No flake8 or mypy errors|☑️❌|
 |No crashes|All errors are catched and displayed|☑️❌
 
-## 11. Bugs fixed
+## 12. Bugs fixed
 
 <span style='color: goldenrod'>
 
@@ -249,8 +262,8 @@
 - In point-and-click mode, when clicking on a blocked tile, Pacman always targets the nearest tile in a clockwise direction (1st up, 2nd right, etc.)  
 ↳ Issue: Pacman should target a tile based on the section of the clicked square.
 
-- Cheat menu is accessible even when not visible.  
-↳ Issue: Not a big deal, but still a bit strange.
+- Cheat menu is accessible even when not visible : it is hidden, not disabled.  
+↳ Issue: Anyone can access it simply by knowing that it's here.
 
 - After winning, the player cannot return to the main menu after entering their name.  
 ↳ Issue: The player is forced to restart the game to play another round. 
