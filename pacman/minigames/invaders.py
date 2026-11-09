@@ -267,8 +267,11 @@ class Invaders:
             for i in range(self.swarm_dimensions[0]):
                 swarm_row.append(min(7, j + 1))
             self.swarm.append(swarm_row)
-        self.swarm_grid_pos = (float(-self.swarm_dimensions[0]), 2.0)
-        self.swarm_direction = 1
+        self.swarm_direction = self.random.choice([1, -1])
+        if self.swarm_direction == 1:
+            self.swarm_grid_pos = (float(-self.swarm_dimensions[0]), 2.0)
+        else:
+            self.swarm_grid_pos = (float(self.board_dimensions[0]), 2.0)
         self.swarm_arrived = False
 
     def set_board_geometry(self) -> None:
@@ -832,7 +835,7 @@ class Invaders:
         crate_names = ["extra_life", "regen_shields", "mothership", "bomb",
                        "fast_bullets", "multi_bullets", "slow_swarm",
                        "fast_swarm", "invulnerable", "reload", "nothing"]
-        crate_weights = [10, 10, 8, 6, 12, 10, 12, 8, 12, 10, 2]
+        crate_weights = [11, 7, 8, 6, 12, 11, 12, 8, 11, 12, 2]
 
         lives_present = self.lives
         for crate in self.falling_crates:
@@ -1038,7 +1041,7 @@ class Invaders:
         min_x = -float(left)
         max_x = float(board_width - 1 - right)
 
-        if self.swarm_descending:
+        if self.swarm_descending and self.swarm_arrived:
             y = min(y + distance, self.swarm_descent_target)
             if y >= self.swarm_descent_target:
                 self.swarm_descending = False
@@ -1078,6 +1081,7 @@ class Invaders:
 
         if (self.swarm_bounds() is None and not self.reinforcements
                 and not pending_motherships):
+            self.swarm_arrived = False
             self.swarm_next_wave_time = (
                 self.anim_time + self.swarm_wave_delay)
 

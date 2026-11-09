@@ -1,4 +1,6 @@
+import ast
 import json
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -52,6 +54,7 @@ class Core:
                                / "assets" / "languages")
         self.languages: list[str] = []
         self.physics = Physics()
+        self.azerty_layout: bool = False
 
     def launch(self, arg: str = "") -> None:
         self.dashboard.launch()
@@ -66,6 +69,7 @@ class Core:
         self.load_config_to_environment()
         self.languages = sorted(self.available_languages())
         self.load_language()
+        self.azerty_layout = self.is_layout_azerty()
         self.title = self.lexicon("GameTitle")
         from pacman.base.geometry import Geometry
         self.geometry = Geometry(self)
@@ -219,3 +223,27 @@ class Core:
                 data.pop(key)
 
         return data
+
+    def is_layout_azerty(self) -> bool:
+        try:
+            result = subprocess.run(
+                ["gsettings", "get", "org.gnome.desktop.input-sources",
+                 "mru-sources"],
+                capture_output=True, text=True, check=True)
+
+            output = result.stdout.strip()
+
+            if output.startswith("@a(ss)"):
+                output = output[len("@a(ss)"):].strip()
+
+            sources = ast.literal_eval(output)
+
+            if sources:
+                layout = sources[0][1].lower()
+                return bool(layout.startswith(("fr", "be")))
+
+        except (OSError, ValueError, SyntaxError,
+                subprocess.CalledProcessError):
+            pass
+
+        return False

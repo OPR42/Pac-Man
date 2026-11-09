@@ -308,25 +308,21 @@ class Controls:
                 self.graphics.show_hints = True
 
         if pr.is_key_pressed(keys.KEY_PAGE_UP):
-            if ctrl:
+            if shift:
                 self.dashboard.receive_key("up")
+            elif ctrl:
+                self.dashboard.receive_key("top")
             else:
                 self.dashboard.receive_key("pgup")
             return None
 
         if pr.is_key_pressed(keys.KEY_PAGE_DOWN):
-            if ctrl:
+            if shift:
                 self.dashboard.receive_key("down")
+            elif ctrl:
+                self.dashboard.receive_key("bottom")
             else:
                 self.dashboard.receive_key("pgdown")
-            return None
-
-        if pr.is_key_pressed(keys.KEY_HOME):
-            self.dashboard.receive_key("top")
-            return None
-
-        if pr.is_key_pressed(keys.KEY_END):
-            self.dashboard.receive_key("bottom")
             return None
 
         if pr.is_key_pressed(keys.KEY_KP_MULTIPLY):
@@ -553,19 +549,19 @@ class Controls:
         pad_dwn = self._is_gamepad_button_down
 
         if pad_btn(RT1):
-            if pad_dwn(LT1):
+            if pad_dwn(LT1) and pad_dwn(LT2):
                 self.dashboard.receive_key("top")
-            elif pad_dwn(LT2):
+            elif pad_dwn(LT1):
                 self.dashboard.receive_key("up")
-            else:
+            elif pad_dwn(LT2):
                 self.dashboard.receive_key("pgup")
 
         elif pad_btn(RT2):
-            if pad_dwn(LT1):
+            if pad_dwn(LT1) and pad_dwn(LT2):
                 self.dashboard.receive_key("bottom")
-            elif pad_dwn(LT2):
+            elif pad_dwn(LT1):
                 self.dashboard.receive_key("down")
-            else:
+            elif pad_dwn(LT2):
                 self.dashboard.receive_key("pgdown")
 
         elif pad_btn(RBU):
@@ -593,6 +589,9 @@ class Controls:
                 return ("pad", "next")
             elif pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR):
                 return ("pad", "enter")
+            elif ((pad_dwn(LT1) or pad_dwn(LT2))
+                  and (pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR))):
+                return ("pad", "inv_enter")
             elif pad_btn(MBR):
                 return ("pad", "scores")
             left_x, left_y = self._gamepad_stick(LAX, LAY)
@@ -639,12 +638,20 @@ class Controls:
                 return ("pad", "pause_menu")
 
         if self.game.step == 7:
-            if pad_btn(LBU):
-                return ("pad", "inventory_00")
-            if pad_btn(LBL):
-                return ("pad", "inventory_01")
-            if pad_btn(LBR):
-                return ("pad", "inventory_02")
+            if pad_dwn(LT1) or pad_dwn(LT2):
+                if pad_btn(LBU):
+                    return ("pad", "inventory_03")
+                if pad_btn(LBL):
+                    return ("pad", "inventory_04")
+                if pad_btn(LBR):
+                    return ("pad", "inventory_05")
+            else:
+                if pad_btn(LBU):
+                    return ("pad", "inventory_00")
+                if pad_btn(LBL):
+                    return ("pad", "inventory_01")
+                if pad_btn(LBR):
+                    return ("pad", "inventory_02")
 
         if (self.game.step == 4 or self.game.step >= 8
                 or (self.game.step == 7 and self.core.gm_state.level < 0)):
@@ -700,7 +707,7 @@ class Controls:
                     return ("pad", "clear")
                 else:
                     return ("pad", "backspace")
-            if pad_btn(RBL):
+            if pad_btn(MBL):
                 if pad_dwn(LT1) or pad_dwn(LT2):
                     return ("pad", "clear")
                 else:

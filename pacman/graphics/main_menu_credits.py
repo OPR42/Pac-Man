@@ -410,7 +410,11 @@ class MainMenuCredits:
         lex = self.core.lexicon
         measure = self.geometry.measure_text
         vp_x, vp_y, vp_w, vp_h = self.graphics.viewport_rectangle
-        lines = lex("CRD_Indications").split("\n")
+        text = lex("CRD_Indications")
+        esc_key = (lex("CRD_EscKeyFR") if self.core.azerty_layout
+                   else lex("CRD_EscKeyUS"))
+        text = text.replace("<altkey=Esc>", esc_key)
+        lines = text.split("\n")
         if len(lines) != 2:
             return
         first_parts = lines[0].split(" ", 2)
