@@ -209,7 +209,7 @@ class Game:
                     elif cmd == "help":
                         self._play_transition(1, 3, 1)
                         self.set_step(3)
-                        self.graphics.main_menu.main_menu_help.start_reveal()
+                        self.graphics.main_menu.main_menu_help.enter()
                         self._play_transition(1, 3, 2)
                     elif cmd == "settings":
                         self._play_transition(1, 4, 1)
@@ -275,9 +275,12 @@ class Game:
                         self._play_transition(1, 7, 2)
 
             elif self.step == 3:
-                if ((src in ("key", "pad") and cmd == "enter")
-                   or (src in ("key", "pad", "leftclick", "rightclick")
-                       and cmd == "back")):
+                if ((src in ("key", "pad") and cmd in (
+                        "enter", "back", "scroll_down", "scroll_up",
+                        "scroll_top", "scroll_bottom",
+                        "scroll_pgup", "scroll_pgdown"))
+                   or (src in ("leftclick", "rightclick") and (
+                        cmd == "back" or cmd.startswith("scroll_")))):
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd == "back":
@@ -285,6 +288,8 @@ class Game:
                         self._play_transition(3, 1, 1)
                         self.set_step(1)
                         self._play_transition(3, 1, 2)
+                    else:
+                        self.graphics.main_menu.main_menu_help.command(cmd)
 
             elif self.step == 4:
                 if ((src in ("key", "pad") and cmd in ("enter", "up", "down",
@@ -379,7 +384,8 @@ class Game:
                       and src in ("key", "pad", "leftclick")
                       and cmd in ("right", "down", "left", "up", "enter",
                                   "tab", "backtab", "continue", "again",
-                                  "acknowledge", "inv_enter")):
+                                  "acknowledge", "inv_enter",
+                                  "generic_acknowledge")):
                     self.minigames.command(cmd)
 
             elif self.step == 8:

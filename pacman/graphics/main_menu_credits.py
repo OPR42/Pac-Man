@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TypeAlias, Any
 
 from pacman.base.geometry import Geometry, RectangleGeometry
+from pacman.base.utils import Utils
 from pacman.core import Core
 
 from .colors import RenderColors as rcl
@@ -51,11 +52,12 @@ class MainMenuCredits:
         self.game = core.game
         self.graphics = core.game.graphics
         self.main_menu = core.game.graphics.main_menu
+        self.utils = Utils()
         self.shapes = Shapes(core)
         self.geometry = Geometry(self.core)
         self.cvp: RectangleGeometry
         self.svp: RectangleGeometry
-        self.duration: float = 90.0
+        self.duration: float = 124.0
         self.progress: float = 0.0
         self.width: int = 0
         self.height: int = 0
@@ -264,7 +266,7 @@ class MainMenuCredits:
              12, 3, ()),
             (("CRD_LastJoke",),
              ((3, "heart", 0, 0.00, 1),
-              (4, "heart", 0, 0.00, 1),
+              (4, "school42", 0, 0.00, 2),
               (5, "heart", 0, 0.00, 1),),
              2, 3, ()),
         )
@@ -276,6 +278,8 @@ class MainMenuCredits:
 
     def draw_credits_actor(self, actor: CreditActor, y: int,
                            base_size: int) -> None:
+        sround = self.utils.sym_round
+        tex = self.graphics.textures
         draw = self.graphics.shapes
         cell, actor_type, angle, cycle, scale = actor
         x = self.credits_actor_x(cell)
@@ -292,33 +296,45 @@ class MainMenuCredits:
             draw.pacgum(x, y, size // 2, superpg=True)
         elif actor_type == "crate_sage":
             draw.companion_square(x, y, size * 2, rcl.SAGE_GREEN)
-            draw.circle(x, y, size // 2, cl=rcl.SAGE_GREEN, filled=True)
+            tex.draw("item_sage", x - size // 2, y - size // 2,
+                     size, size, angle=42)
         elif actor_type == "crate_life":
             draw.companion_square(x, y, size * 2, rcl.PACMAN_YELLOW)
-            draw.circle(x, y, size // 2, cl=rcl.PACMAN_YELLOW, filled=True)
+            tex.draw("item_pacman", x - size // 2, y - size // 2,
+                     size, size, angle=345)
         elif actor_type == "crate_bowtie":
             draw.companion_square(x, y, size * 2, rcl.BOWTIE_RED)
-            draw.circle(x, y, size // 2, cl=rcl.BOWTIE_RED, filled=True)
+            tex.draw("item_bowtie", x - size // 2, y - size // 2,
+                     size, size, angle=10)
         elif actor_type == "crate_slime":
             draw.companion_square(x, y, size * 2, rcl.SLIME_GREEN)
-            draw.circle(x, y, size // 2, cl=rcl.SLIME_GREEN, filled=True)
+            tex.draw("item_slime", x - size // 2, y - size // 2,
+                     size, size, angle=0)
         elif actor_type == "crate_hourglass":
             draw.companion_square(x, y, size * 2, rcl.HOURGLASS_WOOD)
-            draw.circle(x, y, size // 2, cl=rcl.HOURGLASS_WOOD, filled=True)
+            tex.draw("item_hourglass", x - size // 2, y - size // 2,
+                     size, size, angle=30)
         elif actor_type == "crate_bomb":
             draw.companion_square(x, y, size * 2, rcl.BOMB_VIOLET)
-            draw.circle(x, y, size // 2, cl=rcl.BOMB_VIOLET, filled=True)
+            tex.draw("item_bomb", x - size // 2, y - size // 2,
+                     size, size, angle=25)
+        elif actor_type == "crate_stetson":
+            draw.companion_square(x, y, size * 2, rcl.STETSON_IVORY)
+            tex.draw("item_stetson", x - size // 2, y - size // 2,
+                     size, size, angle=15)
         elif actor_type == "heart":
             draw.heart(x, y, size, cl=rcl.PORTAL_BLUE)
+        elif actor_type == "school42":
+            draw.school42(x, y, size, cl=rcl.PORTAL_BLUE)
         elif actor_type in ("portal_blue", "portal_orange"):
             cl = (rcl.PORTAL_BLUE if actor_type == "portal_blue"
                   else rcl.PORTAL_ORANGE)
             inner_cl = rcl.scale_rgb(cl, 0.1)
             radius_y = size * 1.35
             radius_x = radius_y * 0.6
-            draw.ellipse(x, y, radius_x, radius_y,
-                         thick=self.graphics.rg(8), cl=cl, filled=False)
-            draw.ellipse(x, y, radius_x, radius_y, cl=inner_cl, filled=True)
+            draw.ellipse(x, y, radius_x, radius_y, cl=cl, filled=True)
+            draw.ellipse(x, y, sround(radius_x * 0.90),
+                         sround(radius_y * 0.90), cl=inner_cl, filled=True)
 
     def create_credits_panels(self) -> None:
         tex = self.graphics.textures
@@ -326,6 +342,7 @@ class MainMenuCredits:
         width = self.width
         sections = {section.key: section for section in self.sections}
         self.panel_heights = []
+        self.game.inventory._create_inventory_textures(base)
 
         for index, layout in enumerate(self.credits_panel_layouts()):
             keys, scene, top_margin, scene_bottom, gaps = layout

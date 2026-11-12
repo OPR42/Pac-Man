@@ -17,6 +17,7 @@ class RenderColors:
     BASE_DARKERER_GREY = (31, 31, 31, 255)
 
     BLUE42 = (16, 32, 96, 255)
+    BRIGHT_BLUE42 = (32, 64, 192, 255)
     DEEP_PURPLE = (54, 18, 72, 255)
     BLACK_LIGHTGLASS = (0, 0, 0, 63)
     BLACK_GLASS = (0, 0, 0, 127)

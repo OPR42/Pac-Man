@@ -79,6 +79,7 @@ class MainMenu:
     def resize(self) -> None:
         self.highscores_texture_dirty = True
         self.main_menu_settings.resize()
+        self.main_menu_help.resize()
         self.background.resize()
         self.main_menu_credits.resize()
         self.qvp_ready = False
@@ -427,6 +428,112 @@ class MainMenu:
             self._remove_registered_obstacle(f"{item.code}_button_left_pacman")
             self._remove_registered_obstacle(
                 f"{item.code}_button_right_pacman")
+
+    def display_scroll_button(self, index: int, rgb_factor: float) -> None:
+        sround = self.utils.sym_round
+        draw = self.shapes
+        rg = self.graphics.rg
+        geo = self.geometry
+        georec = self.geometry.rectangle_geometry
+
+        if self.game.step == 3:
+            ui_items = self.main_menu_help.ui_items
+        item = ui_items[index]
+        if item.kind not in ("scroll_rightbtn_up", "scroll_rightbtn_down"):
+            return
+
+        button_active = self.graphics.interface.focused(item.code)
+
+        button = georec(item.x, item.y, item.width, item.height)
+
+        button_color = rcl.PACMAN_YELLOW
+        focus_color = rcl.scale_rgb(rcl.BASE_BR_PURPLE, rgb_factor)
+        halo_color = rcl.mix_rgba(rcl.BASE_BR_PURPLE, button_color,
+                                  rgb_factor / 2)
+        arrow_color = focus_color if button_active else button_color
+        arrow_color = rcl.GREY if item.disabled else arrow_color
+        arrow_hgt = sround(item.height / 2)
+        arrow_wdt = min(sround(item.height / 4), sround(item.width / 2))
+        arrow_half_wdt = sround(arrow_wdt / 2)
+        arrow_half_hgt = sround(arrow_hgt / 2)
+        curve = geo.point_on_circle(
+            geo.point(button.x, button.y + button.wdt), button.wdt, 315.0)
+        max_rad = min(button.rad, int(math.hypot(button.c1ct.x - curve.x,
+                                                 button.c1ct.y - curve.y)))
+        border_thick = rg(4)
+        rect_hgt = item.height - item.width
+
+        if item.kind == "scroll_rightbtn_up":
+            if button_active:
+                draw.circle_sector(button.x, button.y + button.wdt,
+                                   button.wdt, 270.0, 360.0,
+                                   cl=button_color, filled=True)
+                if rect_hgt > 0:
+                    draw.rectangle(button.x, button.y + button.wdt,
+                                   button.wdt, rect_hgt,
+                                   cl=button_color, filled=True)
+                draw.circle_gradient(button.c1ct.x, button.c1ct.y, max_rad,
+                                     cl1=halo_color, cl2=button_color)
+            else:
+                draw.rectangle(button.x, button.y + button.hgt - border_thick,
+                               button.wdt, border_thick, cl=button_color,
+                               filled=True)
+            draw.triangle(button.ct.x, button.ct.y - arrow_half_hgt,
+                          button.ct.x - arrow_half_wdt, button.ct.y,
+                          button.ct.x + arrow_half_wdt, button.ct.y,
+                          cl=arrow_color, filled=True)
+            draw.rectangle(button.ct.x - sround(arrow_half_wdt / 2),
+                           button.ct.y, arrow_half_wdt, arrow_half_hgt,
+                           cl=arrow_color, filled=True)
+
+        elif item.kind == "scroll_rightbtn_down":
+            if button_active:
+                draw.circle_sector(button.x, button.bct.y - button.wdt,
+                                   button.wdt, 0.0, 90.0,
+                                   cl=button_color, filled=True)
+                if rect_hgt > 0:
+                    draw.rectangle(button.x, button.y, button.wdt,
+                                   rect_hgt, cl=button_color, filled=True)
+                draw.circle_gradient(button.c1ct.x, button.c1ct.y, max_rad,
+                                     cl1=halo_color, cl2=button_color)
+            else:
+                draw.rectangle(button.x, button.y, button.wdt,
+                               border_thick, cl=button_color, filled=True)
+            draw.triangle(button.ct.x, button.ct.y + arrow_half_hgt,
+                          button.ct.x - arrow_half_wdt, button.ct.y,
+                          button.ct.x + arrow_half_wdt, button.ct.y,
+                          cl=arrow_color, filled=True)
+            draw.rectangle(button.ct.x - sround(arrow_half_wdt / 2),
+                           button.ct.y - arrow_half_hgt, arrow_half_wdt,
+                           arrow_half_hgt, cl=arrow_color, filled=True)
+
+    def display_scroll_bar(self, index: int, rgb_factor: float, length: int,
+                           view: int, progress: float) -> None:
+        sround = self.utils.sym_round
+        draw = self.shapes
+        georec = self.geometry.rectangle_geometry
+
+        if self.game.step == 3:
+            ui_items = self.main_menu_help.ui_items
+        item = ui_items[index]
+        if item.kind != "scroll_rightbar":
+            return
+
+        bar_active = self.graphics.interface.focused(item.code)
+        area = georec(item.x, item.y, item.width, item.height)
+        thumb_color = rcl.PACMAN_YELLOW
+        focus_color = rcl.scale_rgb(rcl.BASE_BR_PURPLE, rgb_factor)
+        view_ratio = view / length
+        thumb_hgt = sround(area.hgt * view_ratio)
+        offset = sround((area.hgt - thumb_hgt) * progress)
+        thumb = georec(area.x, area.y + offset, area.wdt, thumb_hgt)
+        if bar_active:
+            draw.rectangle_round_gradient(thumb.x, thumb.y, thumb.wdt,
+                                          thumb.hgt, thumb.wdt,
+                                          cl1=thumb_color, cl2=focus_color)
+        else:
+            draw.rectangle(thumb.x, thumb.y, thumb.wdt, thumb.hgt,
+                           cl=thumb_color, filled=True)
 
     def display_r_checkbox(self, index: int, rgb_factor: float,
                            lbl_size: int, check: bool = False) -> None:

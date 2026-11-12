@@ -94,7 +94,7 @@ class Tetris:
         self.collapse_duration: float = 0.25
         self.collapse_offsets: list[int] = []
         self.collapsing: bool = False
-        self.held_slide_mode: bool = False
+        self.held_slide_mode: bool = True
         self.held_slide_last_event: float = -1.0
         self.held_slide_disarm_duration: float = 0.1
 
@@ -138,7 +138,7 @@ class Tetris:
         self.collapse_start_time = 0.0
         self.collapse_offsets = []
         self.collapsing = False
-        self.held_slide_mode = False
+        self.held_slide_mode = True
         self.held_slide_last_event = -1.0
         self.held_slide_disarm_duration = 0.1
 
@@ -154,7 +154,7 @@ class Tetris:
         self.queue_initialized = False
         self.placed_count = 0
         self.completed_rows = 0
-        self.held_slide_mode = False
+        self.held_slide_mode = True
         self.held_slide_last_event = -1.0
 
     def set_board_geometry(self) -> None:

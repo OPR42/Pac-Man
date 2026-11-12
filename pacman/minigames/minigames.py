@@ -56,6 +56,7 @@ class MiniGames:
         self.intro_ui_items: list[InterfaceItem] = []
         self.offer_ui_items: list[InterfaceItem] = []
         self.input_armed: bool = False
+        self.generic_intro_shown: bool = False
         self.snake = Snake(core)
         self.breaker = Breaker(core)
         self.tetris = Tetris(core)
@@ -76,6 +77,7 @@ class MiniGames:
         self.intro_panel_built = False
         self.score_before = 0
         self.input_armed = False
+        self.generic_intro_shown = False
         self.snake.reset()
         self.breaker.reset()
         self.tetris.reset()
@@ -141,7 +143,10 @@ class MiniGames:
         if self.endgame or not self.acknowledge:
             if cmd == "enter":
                 cmd = self.graphics.interface.focus or ""
-            if cmd == "acknowledge":
+            if cmd == "generic_acknowledge":
+                self.generic_intro_shown = True
+                self.intro_panel_built = False
+            elif cmd == "acknowledge":
                 self.acknowledge = True
                 for i, item in enumerate(self.intro_ui_items):
                     if item.kind == "button" and item.code == "pause_menu":
@@ -290,7 +295,24 @@ class MiniGames:
                 gamemenus.gamehuds.display_hud_buttons(i, rgb_factor)
 
         intro_texts = ["SNK_Htp", "BRK_Htp", "TRS_Htp", "NVD_Htp"]
-        text = lex(intro_texts[index])
+        if not self.generic_intro_shown:
+            text = lex("MGO_Gnr")
+        else:
+            text = lex(intro_texts[index])
+
+        esc_key = (lex("MGO_EscKeyFR") if self.core.azerty_layout
+                   else lex("MGO_EscKeyUS"))
+        space_key = (lex("MGO_SpaceKeyFR") if self.core.azerty_layout
+                     else lex("MGO_SpaceKeyUS"))
+        a_key = (lex("MGO_AKeyFR") if self.core.azerty_layout
+                 else lex("MGO_AKeyUS"))
+        w_key = (lex("MGO_WKeyFR") if self.core.azerty_layout
+                 else lex("MGO_WKeyUS"))
+        text = text.replace("$ESC$", esc_key)
+        text = text.replace("$SPACE$", space_key)
+        text = text.replace("$A$", a_key)
+        text = text.replace("$W$", w_key)
+
         cl_title = rcl.PACMAN_YELLOW
         cl_text = rcl.SAND
         cl_key_body = rcl.LIGHT_BEIGE
@@ -310,13 +332,17 @@ class MiniGames:
         item_height = sround(min((avp.hgt / 8) * 0.7,
                                  ((avp.wdt / 4) * 0.8) / 4))
         self.intro_ui_items = []
+        self.core.azerty_layout = self.core.is_layout_azerty()
 
         for item in gamemenus.gamehuds.ui_items:
             self.intro_ui_items.append(item)
         button_y = avp.bct.y - sround(item_height * 1.2)
+        label = "MGO_Ack" if self.generic_intro_shown else "MGO_Gnb"
+        code = ("acknowledge" if self.generic_intro_shown
+                else "generic_acknowledge")
         self.intro_ui_items.append(InterfaceItem(
             avp.x + avp.wdt // 3, button_y, avp.wdt // 3, item_height,
-            "MGO_Ack", "acknowledge", "button", rel_to_center=False))
+            label, code, "button", rel_to_center=False))
         radius = self.geometry.rectangle_round_radius(avp.wdt, avp.hgt, 0.25)
         point = self.geometry.point_on_circle(Point(0, 0), radius, 45.0)
         margin = radius - point.x
@@ -332,13 +358,14 @@ class MiniGames:
     def rule_tokenize(self, line: str) -> list[str]:
         """Split a line while keeping consecutive key tags together."""
         pattern = re.compile(
-            r"(?:<(?:key|pad)=[^>]+>(?:\s*<(?:key|pad)=[^>]+>)*[^\s<]*)"
+            r"(?:<(?:key|pad|mouse)=[^>]+>"
+            r"(?:\s*<(?:key|pad|mouse)=[^>]+>)*[^\s<]*)"
             r"|[^\s<]+")
         return pattern.findall(line)
 
     def rule_measure(self, text: str, size: int) -> float:
         """Measure a line containing text and key tags."""
-        pattern = re.compile(r"<(key|pad)=([^>]+)>")
+        pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         width = 0.0
         cursor = 0
 
@@ -347,8 +374,11 @@ class MiniGames:
             if before:
                 text_width, _ = self.geometry.measure_text(before, size)
                 width += text_width
-            _, label = match.groups()
-            width += self.rule_key_width(label, size)
+            kind, label = match.groups()
+            if kind == "mouse":
+                width += size
+            else:
+                width += self.rule_key_width(label, size)
             cursor = match.end()
 
         after = text[cursor:]
@@ -373,7 +403,7 @@ class MiniGames:
         sround = self.utils.sym_round
         ivp = self.ivp
         max_width = ivp.wdt
-        pattern = re.compile(r"<(key|pad)=([^>]+)>")
+        pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         source_lines = text.split("\n")
         title_index = next(
             (i for i, line in enumerate(source_lines) if line.strip()), -1)
@@ -416,7 +446,9 @@ class MiniGames:
                                                       fragment_width))
                         line_width += fragment_width
                     kind, label = match.groups()
-                    fragment_width = self.rule_key_width(label, size)
+                    fragment_width = (
+                        size if kind == "mouse"
+                        else self.rule_key_width(label, size))
                     fragments.append(RuleFragment(label, kind, fragment_width))
                     line_width += fragment_width
                     cursor = match.end()
@@ -463,6 +495,12 @@ class MiniGames:
                     draw.text(x, center_y - sround(font_size / 2),
                               fragment.text, font, font_size,
                               cl_title if is_title else cl_text)
+                elif fragment.kind == "mouse":
+                    draw.mouse(x + sround(fragment.width / 2), center_y,
+                               font_size, fragment.text,
+                               cl_active=cl_key_text,
+                               cl_body=cl_key_body,
+                               cl_frame=cl_key_frame)
                 else:
                     draw.key(x + sround(fragment.width / 2), center_y,
                              fragment.text, font_size, cl=cl_key_text,

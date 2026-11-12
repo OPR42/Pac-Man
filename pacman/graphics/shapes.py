@@ -1942,9 +1942,9 @@ class Shapes:
                       cl=cl, filled=True)
 
     def key(self, center_x: int, center_y: int, text: str, size: int,
-            cl: Color = rcl.BASE_WHITE, cl_back: Color = rcl.BLANK,
-            cl_body: Color = rcl.BLANK, cl_frame: Color = rcl.BASE_BR_WHITE,
-            kind: str = "key") -> int:
+            cl: Color = rcl.BASE_BLACK, cl_back: Color = rcl.BLANK,
+            cl_body: Color = rcl.LIGHT_BEIGE,
+            cl_frame: Color = rcl.HOURGLASS_WOOD, kind: str = "key") -> int:
         """ Draws a keyboard or gamepad key, and returns its width """
         if size <= 0 or not text:
             return 0
@@ -1964,7 +1964,7 @@ class Shapes:
         glyph_thick = max(2, sround(key_size / 24))
         if kind == "key":
             self.rectangle(center_x - key_half_size - sround(add_width / 2),
-                           center_y - key_half_size, key_size + add_width,
+                           center_y - key_half_size, key_size + add_width + 1,
                            key_size, roundness=0.15, cl=cl_body, filled=True)
             self.rectangle(center_x - key_half_size - sround(add_width / 2),
                            center_y - key_half_size, key_size + add_width,
@@ -1978,7 +1978,7 @@ class Shapes:
                                key_half_size, 270, 450,
                                cl=cl_body, filled=True)
             self.rectangle(center_x - sround(add_width / 2),
-                           center_y - key_half_size, add_width, key_size,
+                           center_y - key_half_size, add_width + 1, key_size,
                            cl=cl_body, filled=True)
             self.arc(center_x - sround(add_width / 2), center_y, key_half_size,
                      90, 270, cl=cl_frame, thick=border_thick)
@@ -1995,7 +1995,7 @@ class Shapes:
 
         t10 = sround(text_size / 10)
         t3 = sround(text_size / 3)
-        if text in ("←", "→", "↔", "↑", "↓", "↕", "⊙"):
+        if text in ("←", "→", "↔", "↑", "↓", "↕", "⊙", "-", "+"):
             m = 1 if text == "⊙" else 2
             if text in ("←", "→", "↔", "⊙"):
                 self.line(center_x - t3, center_y, center_x + t3, center_y,
@@ -2033,8 +2033,246 @@ class Shapes:
                               cl=cl, edge_shortsharp=True)
             if text == "⊙":
                 self.circle(center_x, center_y, t10, cl=cl, filled=True)
+            if text in ("-", "+"):
+                self.line(center_x - t3, center_y, center_x + t3, center_y,
+                          thick=glyph_thick, cl=cl, edge_shortsharp=True)
+                if text == "+":
+                    self.line(center_x, center_y - t3, center_x, center_y + t3,
+                              thick=glyph_thick, cl=cl, edge_shortsharp=True)
         else:
             self.stick_text(center_x, center_y, text, text_size,
                             thick=text_thick, cl=cl)
 
         return half_size * 2 + add_width
+
+    def mouse(self, center_x: int, center_y: int, size: int, active: str,
+              cl_active: Color = rcl.BASE_WHITE, cl_back: Color = rcl.BLANK,
+              cl_body: Color = rcl.BLANK,
+              cl_frame: Color = rcl.BASE_BR_WHITE) -> int:
+        if size <= 0:
+            return 0
+        sround = self.utils.sym_round
+        size = (size // 2) * 2
+        half_size = sround(size / 2)
+        self.rectangle(center_x - half_size, center_y - half_size,
+                       half_size * 2, half_size * 2, cl=cl_back, filled=True)
+        arrow_size = sround(size * 0.10)
+        button_size = sround(size * 0.30)
+        border_thick = max(1, sround(size * 0.02))
+        body_width, body_height = sround(size * 0.70), sround(size * 0.40)
+        mouse_left = center_x - sround(body_width / 2)
+        mouse_right = center_x + sround(body_width / 2)
+        mouse_med = center_y - sround(size * 0.05)
+        mouse_top = mouse_med - button_size
+        wheel_left = mouse_left + button_size
+        wheel_right = mouse_right - button_size
+        wheel_width = wheel_right - wheel_left + 1
+        actives = active.split("&")
+        self.rectangle(mouse_left, mouse_med, mouse_right - mouse_left,
+                       body_height, cl=cl_body, filled=True)
+        cl_leftbtn = cl_active if "leftclick" in actives else cl_body
+        self.circle_sector(wheel_left, mouse_med, button_size,
+                           180.0, 270.0, cl=cl_leftbtn, filled=True)
+        cl_rightbtn = cl_active if "rightclick" in actives else cl_body
+        self.circle_sector(wheel_right, mouse_med, button_size,
+                           270.0, 360.0, cl=cl_rightbtn, filled=True)
+        cl_wheel = cl_active if "wheel" in actives else cl_body
+        self.rectangle(wheel_left, mouse_top, wheel_width, button_size,
+                       cl=cl_wheel, filled=True)
+        if "left" in actives:
+            x, y = center_x - half_size, center_y
+            self.triangle(x, y, x + arrow_size, sround(y - arrow_size * 1.5),
+                          x + arrow_size, sround(y + arrow_size * 1.5),
+                          cl=cl_body, filled=True)
+        if "right" in actives:
+            x, y = center_x + half_size, center_y
+            self.triangle(x, y, x - arrow_size, sround(y - arrow_size * 1.5),
+                          x - arrow_size, sround(y + arrow_size * 1.5),
+                          cl=cl_body, filled=True)
+        if "up" in actives:
+            x, y = center_x, center_y - half_size
+            self.triangle(x, y, sround(x - arrow_size * 1.5), y + arrow_size,
+                          sround(x + arrow_size * 1.5), y + arrow_size,
+                          cl=cl_body, filled=True)
+        if "down" in actives:
+            x, y = center_x, center_y + half_size
+            self.triangle(x, y, sround(x - arrow_size * 1.5), y - arrow_size,
+                          sround(x + arrow_size * 1.5), y - arrow_size,
+                          cl=cl_body, filled=True)
+        self.rectangle(mouse_left, mouse_med, mouse_right - mouse_left,
+                       body_height, cl=cl_frame, thick=border_thick,
+                       filled=False)
+        self.circle_sector(wheel_left, mouse_med, button_size, 180.0, 270.0,
+                           cl=cl_frame, thick=border_thick, filled=False)
+        self.circle_sector(wheel_right, mouse_med, button_size, 270.0, 360.0,
+                           cl=cl_frame, thick=border_thick, filled=False)
+        self.line(wheel_left, mouse_top, wheel_right, mouse_top,
+                  thick=border_thick, cl=cl_frame)
+        return size
+
+    def school42(self, center_x: int, center_y: int, size: int,
+                 cl: Color = rcl.BASE_BLUE) -> None:
+        if size <= 0:
+            return
+        sround = self.utils.sym_round
+        parts = [
+            "  ◢◤ ◤█ ",
+            " ◢◤  ◢◤ ",
+            " ███ █◢ ",
+            "   █    ",
+            ]
+        height = len(parts)
+        width = len(parts[0])
+        brick_size = sround(size / (max(height, width) / 2))
+        startx = 0 if width >= height else (height - width) // 2
+        starty = 0
+        for j, line in enumerate(parts):
+            for i, char in enumerate(line):
+                x = sround(center_x + (i + startx - (width / 2)) * brick_size)
+                y = sround(center_y + (j + starty - (height / 2)) * brick_size)
+                if char == "█":
+                    self.rectangle(x, y, sround(brick_size),
+                                   sround(brick_size), cl=cl, filled=True)
+                elif char == "◢":
+                    self.triangle(x + brick_size, y, x, y + brick_size,
+                                  x + brick_size, y + brick_size,
+                                  cl=cl, filled=True)
+                elif char == "◤":
+                    self.triangle(x, y, x, y + brick_size, x + brick_size, y,
+                                  cl=cl, filled=True)
+
+    def labeled_gamepad(self, center_x: int, center_y: int, size: int,
+                        cl_body: Color = rcl.GREY,
+                        cl_keytext: Color = rcl.BASE_BLACK,
+                        cl_keyback: Color = rcl.BLANK,
+                        cl_keybody: Color = rcl.LIGHT_BEIGE,
+                        cl_keyframe: Color = rcl.HOURGLASS_WOOD) -> None:
+        if size <= 0:
+            return
+
+        def draw_key(center_x: int, center_y: int, text: str,
+                     size: int) -> None:
+            self.key(center_x, center_y, text, size,
+                     cl=cl_keytext, cl_body=cl_keybody,
+                     cl_frame=cl_keyframe, kind="pad")
+
+        sround = self.utils.sym_round
+        thick_contour = max(1, sround(size * 0.01))
+        key_size = sround(size * 0.1)
+        cl_contour = rcl.scale_rgb(cl_body, 0.5)
+        cl_cross = rcl.scale_rgb(cl_body, 0.25)
+        body = self.geometry.rectangle_geometry(
+            center_x - sround(size * 0.6), center_y - sround(size * 0.3),
+            sround(size * 1.2), sround(sround(size * 0.6)))
+        self.rectangle(body.x, body.y, body.wdt, body.hgt,
+                       cl=cl_body, filled=True)
+        self.rectangle(body.x, body.y, body.wdt, body.hgt,
+                       thick=thick_contour, cl=cl_contour, filled=False)
+        self.rectangle(body.lct.x - key_size, sround(body.ct.y - size * 0.61),
+                       key_size * 2, size, cl=cl_contour, filled=True)
+        self.ellipse(body.ct.x, body.ct.y, sround(key_size * 1.5), key_size,
+                     cl=cl_contour, filled=True)
+        self.triangle(body.lct.x - key_size, sround(body.ct.y - size * 0.61),
+                      body.lct.x - key_size, body.ct.y,
+                      body.lct.x - key_size * 2, body.ct.y,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.lct.x + key_size, sround(body.ct.y - size * 0.61),
+                      body.lct.x + key_size, body.ct.y,
+                      body.lct.x + key_size * 2, body.ct.y,
+                      cl=cl_contour, filled=True)
+        self.rectangle(body.rct.x - key_size, sround(body.ct.y - size * 0.61),
+                       key_size * 2, size, cl=cl_contour, filled=True)
+        self.triangle(body.rct.x - key_size, sround(body.ct.y - size * 0.61),
+                      body.rct.x - key_size, body.ct.y,
+                      body.rct.x - key_size * 2, body.ct.y,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.rct.x + key_size, sround(body.ct.y - size * 0.61),
+                      body.rct.x + key_size, body.ct.y,
+                      body.rct.x + key_size * 2, body.ct.y,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.q1ct.x, body.bct.y, body.lct.x, body.lct.y,
+                      body.lct.x, body.bct.y + key_size * 4,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.lct.x - key_size * 4, body.bct.y + key_size * 4,
+                      body.lct.x, body.lct.y - sround(body.hgt / 1.5),
+                      body.lct.x, body.bct.y + key_size * 4,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.lct.x - key_size * 4, body.bct.y + key_size * 4,
+                      body.lct.x - key_size * 2, body.bct.y + key_size * 5,
+                      body.lct.x, body.bct.y + key_size * 4,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.q3ct.x, body.bct.y, body.rct.x, body.lct.y,
+                      body.rct.x, body.bct.y + key_size * 4,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.rct.x + key_size * 4, body.bct.y + key_size * 4,
+                      body.rct.x, body.lct.y - sround(body.hgt / 1.5),
+                      body.rct.x, body.bct.y + key_size * 4,
+                      cl=cl_contour, filled=True)
+        self.triangle(body.rct.x + key_size * 4, body.bct.y + key_size * 4,
+                      body.rct.x + key_size * 2, body.bct.y + key_size * 5,
+                      body.rct.x, body.bct.y + key_size * 4,
+                      cl=cl_contour, filled=True)
+        self.circle(body.lct.x, body.lct.y, sround(body.hgt / 1.5),
+                    cl=cl_body, filled=True)
+        self.circle(body.lct.x, body.lct.y, sround(body.hgt / 1.75),
+                    cl=cl_contour, filled=True)
+        self.circle(body.lct.x, body.lct.y, sround(body.hgt / 1.5),
+                    thick=thick_contour, cl=cl_contour, filled=False)
+        self.rectangle(body.lct.x - body.hgt // 2, body.lct.y - key_size,
+                       (body.hgt // 2) * 2, key_size * 2, roundness=0.75,
+                       cl=cl_cross, filled=True)
+        self.rectangle(body.lct.x - key_size, body.lct.y - body.hgt // 2,
+                       key_size * 2, (body.hgt // 2) * 2, roundness=0.75,
+                       cl=cl_cross, filled=True)
+        draw_key(
+            body.lct.x, sround(body.lct.y - body.hgt / 1.5 - key_size * 0.5),
+            "LT1", key_size)
+        draw_key(
+            body.lct.x, sround(body.lct.y - body.hgt / 1.5 - key_size * 1.5),
+            "LT2", key_size)
+        draw_key(body.lct.x, body.lct.y - sround(body.hgt / 3.5),
+                 "LBU", key_size)
+        draw_key(body.lct.x - sround(body.hgt / 3.5), body.lct.y,
+                 "LBL", key_size)
+        draw_key(body.lct.x + sround(body.hgt / 3.5), body.lct.y,
+                 "LBR", key_size)
+        draw_key(body.lct.x, body.lct.y + sround(body.hgt / 3.5),
+                 "LBD", key_size)
+        self.circle(body.rct.x, body.rct.y, sround(body.hgt / 1.5),
+                    cl=cl_body, filled=True)
+        self.circle(body.rct.x, body.rct.y, sround(body.hgt / 1.75),
+                    cl=cl_contour, filled=True)
+        self.circle(body.rct.x, body.rct.y, sround(body.hgt / 1.5),
+                    thick=thick_contour, cl=cl_contour, filled=False)
+        draw_key(
+            body.rct.x, sround(body.rct.y - body.hgt / 1.5 - key_size * 0.5),
+            "RT1", key_size)
+        draw_key(
+            body.rct.x, sround(body.rct.y - body.hgt / 1.5 - key_size * 1.5),
+            "RT2", key_size)
+        draw_key(body.rct.x, body.rct.y - sround(body.hgt / 3.5),
+                 "Y", key_size * 2)
+        draw_key(body.rct.x - sround(body.hgt / 3.5), body.rct.y,
+                 "X", key_size * 2)
+        draw_key(body.rct.x + sround(body.hgt / 3.5), body.rct.y,
+                 "B", key_size * 2)
+        draw_key(body.rct.x, body.rct.y + sround(body.hgt / 3.5),
+                 "A", key_size * 2)
+        self.circle(body.q1ct.x, body.bct.y, sround(body.hgt / 3),
+                    cl=cl_body, filled=True)
+        self.circle(body.q1ct.x, body.bct.y, sround(body.hgt / 3.5),
+                    cl=cl_contour, filled=True)
+        self.circle(body.q1ct.x, body.bct.y, sround(body.hgt / 3),
+                    thick=thick_contour, cl=cl_contour, filled=False)
+        draw_key(body.q1ct.x, body.bct.y, "⊙", key_size * 3)
+        self.circle(body.q3ct.x, body.bct.y, sround(body.hgt / 3),
+                    cl=cl_body, filled=True)
+        self.circle(body.q3ct.x, body.bct.y, sround(body.hgt / 3.5),
+                    cl=cl_contour, filled=True)
+        self.circle(body.q3ct.x, body.bct.y, sround(body.hgt / 3),
+                    thick=thick_contour, cl=cl_contour, filled=False)
+        draw_key(body.q3ct.x, body.bct.y, "⊙", key_size * 3)
+        mb_y = sround(body.y + (body.c1ct.y - body.y) / 4)
+        mb_x = sround((body.ct.x - body.q1ct.x) / 2)
+        draw_key(body.ct.x - mb_x, mb_y, "MBL", key_size)
+        draw_key(body.ct.x + mb_x, mb_y, "MBR", key_size)

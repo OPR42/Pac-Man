@@ -286,6 +286,8 @@ class Controls:
                 or pr.is_key_down(keys.KEY_RIGHT_CONTROL))
         shift = (pr.is_key_down(keys.KEY_LEFT_SHIFT)
                  or pr.is_key_down(keys.KEY_RIGHT_SHIFT))
+        alt = (pr.is_key_down(keys.KEY_LEFT_ALT)
+               or pr.is_key_down(keys.KEY_RIGHT_ALT))
 
         if shift and ctrl:
             if pr.is_key_pressed(keys.KEY_B):
@@ -307,22 +309,22 @@ class Controls:
             else:
                 self.graphics.show_hints = True
 
-        if pr.is_key_pressed(keys.KEY_PAGE_UP):
-            if shift:
-                self.dashboard.receive_key("up")
-            elif ctrl:
+        if pr.is_key_pressed(keys.KEY_PAGE_UP) and (shift or ctrl or alt):
+            if alt:
                 self.dashboard.receive_key("top")
-            else:
+            elif ctrl:
                 self.dashboard.receive_key("pgup")
+            elif shift:
+                self.dashboard.receive_key("up")
             return None
 
-        if pr.is_key_pressed(keys.KEY_PAGE_DOWN):
-            if shift:
-                self.dashboard.receive_key("down")
-            elif ctrl:
+        if pr.is_key_pressed(keys.KEY_PAGE_DOWN) and (shift or ctrl or alt):
+            if alt:
                 self.dashboard.receive_key("bottom")
-            else:
+            elif ctrl:
                 self.dashboard.receive_key("pgdown")
+            elif shift:
+                self.dashboard.receive_key("down")
             return None
 
         if pr.is_key_pressed(keys.KEY_KP_MULTIPLY):
@@ -346,7 +348,7 @@ class Controls:
                 return "volsound-"
             return "vol-"
 
-        if self.game.step in (1, 3):
+        if self.game.step == 1:
             if (pr.is_key_pressed(keys.KEY_UP)
                or pr.is_key_pressed(keys.KEY_W)
                or pr.is_key_pressed(keys.KEY_LEFT)
@@ -362,10 +364,47 @@ class Controls:
             if (pr.is_key_pressed(keys.KEY_ENTER)
                or pr.is_key_pressed(keys.KEY_KP_ENTER)
                or pr.is_key_pressed(keys.KEY_SPACE)):
-                if self.game.step in (1,) and (shift or ctrl):
+                if shift or ctrl:
                     return "inv_enter"
                 else:
                     return "enter"
+
+        if self.game.step == 3:
+            if (pr.is_key_pressed(keys.KEY_LEFT)
+               or pr.is_key_pressed(keys.KEY_A)
+               or (shift and pr.is_key_pressed(keys.KEY_TAB))):
+                return "prev"
+            if (pr.is_key_pressed(keys.KEY_RIGHT)
+               or pr.is_key_pressed(keys.KEY_D)
+               or (not shift and pr.is_key_pressed(keys.KEY_TAB))):
+                return "next"
+            if (pr.is_key_pressed(keys.KEY_DOWN)
+               or pr.is_key_pressed(keys.KEY_S)
+               or pr.is_key_down(keys.KEY_DOWN)
+               or pr.is_key_down(keys.KEY_S)):
+                return "scroll_down"
+            if (pr.is_key_pressed(keys.KEY_UP)
+               or pr.is_key_pressed(keys.KEY_W)
+               or pr.is_key_down(keys.KEY_UP)
+               or pr.is_key_down(keys.KEY_W)):
+                return "scroll_up"
+            if (pr.is_key_pressed(keys.KEY_PAGE_DOWN)
+               or pr.is_key_down(keys.KEY_PAGE_DOWN)):
+                return "scroll_pgdown"
+            if (pr.is_key_pressed(keys.KEY_PAGE_UP)
+               or pr.is_key_down(keys.KEY_PAGE_UP)):
+                return "scroll_pgup"
+            if pr.is_key_pressed(keys.KEY_HOME):
+                return "scroll_top"
+            if pr.is_key_pressed(keys.KEY_END):
+                return "scroll_bottom"
+            if (pr.is_key_pressed(keys.KEY_ENTER)
+               or pr.is_key_pressed(keys.KEY_KP_ENTER)
+               or pr.is_key_pressed(keys.KEY_SPACE)
+               or pr.is_key_down(keys.KEY_ENTER)
+               or pr.is_key_down(keys.KEY_KP_ENTER)
+               or pr.is_key_down(keys.KEY_SPACE)):
+                return "enter"
 
         if self.game.step in (1, 3, 4, 15, 16):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
@@ -499,6 +538,11 @@ class Controls:
                 code = self.graphics.interface.clicked_code(numbars_only=True)
                 if code is not None:
                     return ("leftclick", code)
+            elif self.game.step == 3:
+                code = self.graphics.interface.clicked_code(
+                        scrollitems_only=True)
+                if code is not None:
+                    return ("leftclick", code)
         elif pr.is_mouse_button_released(pr.MouseButton.MOUSE_BUTTON_LEFT):
             self.maze_drag = False
         elif pr.is_mouse_button_pressed(pr.MouseButton.MOUSE_BUTTON_RIGHT):
@@ -627,9 +671,15 @@ class Controls:
                 if r_direction != 0.0:
                     self.right_stick_armed = False
                 if direction < 0.0:
-                    return ("pad", "prev")
+                    if self.game.step != 3:
+                        return ("pad", "prev")
+                    else:
+                        return ("pad", "scroll_up")
                 if direction > 0.0:
-                    return ("pad", "next")
+                    if self.game.step != 3:
+                        return ("pad", "next")
+                    else:
+                        return ("pad", "scroll_down")
 
         if self.game.step in (3, 4, 15, 16):
             if pad_btn(RBL) or pad_btn(MBL):

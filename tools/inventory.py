@@ -53,7 +53,9 @@ class InventoryStats:
         self.definitions: int = 0
         self.lines: int = 0
         self.characters: int = 0
-
+        self.language_files: int = 0
+        self.text_lines: int = 0
+        self.text_characters: int = 0
 
 def collect_stats(root: Path) -> InventoryStats:
     stats = InventoryStats()
@@ -83,6 +85,19 @@ def collect_stats(root: Path) -> InventoryStats:
             elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
                 stats.definitions += 1
     stats.directories = len(directories)
+    languages_dir = root / "pacman" / "assets" / "languages"
+
+    if languages_dir.is_dir():
+        for path in languages_dir.glob("*.json"):
+            if not path.is_file():
+                continue
+            try:
+                source = path.read_text(encoding="utf-8")
+            except (OSError, UnicodeDecodeError):
+                continue
+            stats.language_files += 1
+            stats.text_lines += len(source.splitlines())
+            stats.text_characters += len(source)
     return stats
 
 
@@ -164,7 +179,8 @@ def print_directory(directory: Path, prefix: str = "") -> None:
 
 
 def print_summary(stats: InventoryStats) -> None:
-    print(f"\n {BR_PURPLE}{BOLD}─── 📊 Project summary 📊 ───{RESET}\n")
+    print(f"\n {BR_PURPLE}{BOLD}🗂️  ───── Project summary ───── 🗂️{RESET}")
+    print(f" {BROWN}│{RESET}")
     print(f" {BROWN}├── {BR_CYAN}Python directories : "
           f"{BR_GREEN}{BOLD}{stats.directories:,}{RESET}")
     print(f" {BROWN}├── {BR_CYAN}Python files       : "
@@ -173,10 +189,16 @@ def print_summary(stats: InventoryStats) -> None:
           f"{BR_GREEN}{BOLD}{stats.classes:,}{RESET}")
     print(f" {BROWN}├── {BR_CYAN}Functions / methods: "
           f"{BR_GREEN}{BOLD}{stats.definitions:,}{RESET}")
-    print(f" {BROWN}├── {BR_CYAN}Lines              : "
+    print(f" {BROWN}├── {BR_CYAN}Python lines       : "
           f"{BR_GREEN}{BOLD}{stats.lines:,}{RESET}")
-    print(f" {BROWN}└── {BR_CYAN}Characters         : "
+    print(f" {BROWN}├── {BR_CYAN}Python characters  : "
           f"{BR_GREEN}{BOLD}{stats.characters:,}{RESET}")
+    print(f" {BROWN}├── {BR_CYAN}Language files     : "
+          f"{BR_BROWN}{BOLD}{stats.language_files:,}{RESET}")
+    print(f" {BROWN}├── {BR_CYAN}Text lines         : "
+          f"{BR_BROWN}{BOLD}{stats.text_lines:,}{RESET}")
+    print(f" {BROWN}└── {BR_CYAN}Text characters    : "
+          f"{BR_BROWN}{BOLD}{stats.text_characters:,}{RESET}")
 
 
 def main() -> None:

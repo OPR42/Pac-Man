@@ -320,33 +320,6 @@ class Geometry:
 
         return result
 
-    # def wrap_text(self, text: str, max_width: int,
-    #               font_size: int,
-    #               preserve_spacing: bool = False) -> list[str]:
-    #     """Wrap text to fit a maximum pixel width."""
-    #     if preserve_spacing:
-    #         return text.split("\n")
-
-    #     result: list[str] = []
-    #     for original_line in text.split("\n"):
-    #         if not original_line:
-    #             result.append("")
-    #             continue
-    #         words = original_line.split()
-    #         current = ""
-    #         for word in words:
-    #             candidate = word if not current else f"{current} {word}"
-    #             width, _ = self.measure_text(candidate, font_size)
-    #             if width <= max_width:
-    #                 current = candidate
-    #             else:
-    #                 if current:
-    #                     result.append(current)
-    #                 current = word
-    #         if current:
-    #             result.append(current)
-    #     return result
-
     def fit_wrapped_text(
             self, text: str, max_width: int, max_height: int, max_size: int,
             min_size: int = 1,
