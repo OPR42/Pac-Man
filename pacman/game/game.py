@@ -239,7 +239,10 @@ class Game:
                         if self.graphics.main_menu.quick_access_menu:
                             main_menu.quick_access_menu = False
                     elif cmd.startswith("jump_to_L"):
-                        self.one_level_only = True
+                        defaults = self.core.defaults
+                        self.one_level_only = (
+                            False if defaults.allow_continue_on_quickaccess
+                            else True)
                         main_menu = self.graphics.main_menu
                         if main_menu.quick_access_menu:
                             main_menu.quick_access_menu = False

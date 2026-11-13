@@ -893,7 +893,8 @@ class Breaker:
         elif kind == "triple_pac":
             self.triple_pac()
         elif kind == "safety_net":
-            self.activate_effect(kind, 20.0)
+            safety_net_duration = 20.0 * (0.9 ** self.board_count)
+            self.activate_effect(kind, safety_net_duration)
         elif kind == "large_paddle":
             self.activate_effect(kind, 20.0)
         elif kind == "tiny_paddle":

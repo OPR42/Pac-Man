@@ -92,12 +92,13 @@ class BannerAnim:
         right_mouth_close = self.update_banner_animation(self.right_mouth_anim,
                                                          0.25, 0.50, 0.25)
         variant = ""
-        if self.core.gm_state.skin == 1:
-            variant = "ms.pacman"
-        elif self.core.gm_state.skin == 2:
-            variant = "packy_pake"
-        elif self.core.gm_state.skin == 3:
-            variant = "slimer"
+        if self.core.gm_state.level >= 0:
+            if self.core.gm_state.skin == 1:
+                variant = "ms.pacman"
+            elif self.core.gm_state.skin == 2:
+                variant = "packy_pake"
+            elif self.core.gm_state.skin == 3:
+                variant = "slimer"
         draw.pacman(left_face_x, left_face_y, rg(60), 0,
                     mouth_opening=1.0 - left_mouth_close,
                     eye_opening=1.0 - left_eye_blink, variant=variant)
