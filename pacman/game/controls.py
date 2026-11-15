@@ -156,6 +156,17 @@ class Controls:
             x, y = mouse_pos.x, mouse_pos.y
         return (x, y, pressed, released)
 
+    def mouse_click_in_rectangle(self, x1: int, y1: int,
+                                 x2: int, y2: int) -> tuple[int, int]:
+        mouse_pos = pr.get_mouse_position()
+        if not (x1 <= mouse_pos.x <= x2 and y1 <= mouse_pos.y <= y2):
+            return (-1, -1)
+        if not (pr.is_mouse_button_pressed(pr.MouseButton.MOUSE_BUTTON_LEFT)
+                or pr.is_mouse_button_pressed(
+                    pr.MouseButton.MOUSE_BUTTON_RIGHT)):
+            return (-1, -1)
+        return (round(mouse_pos.x), round(mouse_pos.y))
+
     def get_enter(self) -> bool:
         keys = pr.KeyboardKey
         if (pr.is_key_pressed(keys.KEY_ENTER)
@@ -633,13 +644,24 @@ class Controls:
                 return ("pad", "prev")
             elif pad_btn(LBR) or pad_btn(LBD):
                 return ("pad", "next")
-            elif pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR):
+            elif pad_btn(RBD):
                 if pad_dwn(LT1) or pad_dwn(LT2):
                     return ("pad", "inv_enter")
                 else:
                     return ("pad", "enter")
+            elif pad_btn(MBL):
+                if self.game.step == 1:
+                    return ("pad", "scores")
+                elif self.game.step == 3:
+                    return ("pad", "back")
             elif pad_btn(MBR):
-                return ("pad", "scores")
+                if self.game.step == 1:
+                    if pad_dwn(LT1) or pad_dwn(LT2):
+                        return ("pad", "quick_access")
+                    else:
+                        return ("pad", "play")
+                elif self.game.step == 3:
+                    return ("pad", "back")
             left_x, left_y = self._gamepad_stick(LAX, LAY)
             l_direction = 0.0
             magnitude = max(abs(left_x), abs(left_y))
@@ -747,7 +769,7 @@ class Controls:
                 return ("pad", "left")
             elif pad_btn(LBR) or x_direction > 0.0:
                 return ("pad", "right")
-            elif pad_btn(RBD) or pad_btn(TBL) or pad_btn(TBR):
+            elif pad_btn(RBD):
                 if pad_dwn(LT1) or pad_dwn(LT2):
                     return ("pad", "inv_enter")
                 else:
@@ -758,12 +780,12 @@ class Controls:
                 if pad_dwn(LT1) or pad_dwn(LT2):
                     return ("pad", "clear")
                 else:
-                    return ("pad", "backspace")
+                    return ("pad", "delete")
             if pad_btn(MBL):
                 if pad_dwn(LT1) or pad_dwn(LT2):
                     return ("pad", "clear")
                 else:
-                    return ("pad", "delete")
+                    return ("pad", "backspace")
 
         return ("", "")
 

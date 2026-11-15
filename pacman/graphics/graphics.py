@@ -363,6 +363,8 @@ class Graphics:
             else:
                 self.game.minigames.draw_minigames_board()
 
+        self.gameboard.write_board_texts()
+
         if (self.show_hints
             and (now - self.interface.hint_wait
                  >= self.core.config.hints_delay)):

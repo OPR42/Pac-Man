@@ -716,7 +716,7 @@ class Shapes:
                eye_opening: float = 1.0, face_color: Color = rcl.PACMAN_YELLOW,
                eye_color: Color = rcl.BASE_BLACK, opacity: float = 1.0,
                contour: bool = True, variant: str = "",
-               last_hor_dir: str = "") -> None:
+               last_hor_dir: str = "") -> tuple[int, int, int]:
         sround = self.utils.sym_round
         mouth_opening = max(0.0, mouth_opening)
         eye_opening = max(0.0, min(1.0, eye_opening))
@@ -727,10 +727,10 @@ class Shapes:
         if variant == "slimer":
             color = ((-1, -1, -1, -1) if face_color == rcl.PACMAN_YELLOW
                      else face_color)
-            self.slimer(center_x, center_y, radius, body_angle, mouth_angle,
-                        eye_opening, last_hor_dir, face_color=color,
-                        opacity=opacity)
-            return
+            x_eye, y_eye, rad_eye = self.slimer(
+                center_x, center_y, radius, body_angle, mouth_angle,
+                eye_opening, last_hor_dir, face_color=color, opacity=opacity)
+            return (x_eye, y_eye, rad_eye)
 
         if scale_x < 0.0:
             body_angle += 180
@@ -925,6 +925,8 @@ class Shapes:
             self.stick_text(sround(tattoo_x), sround(tattoo_y), txt,
                             size=size, angle=txt_angle, align="left",
                             thick=thick, cl=tattoo_color)
+
+        return (sround(eye_x), sround(eye_y), sround(eye_radius))
 
     def ghost(self, center_x: int, center_y: int, radius: int,
               angle: float = 0.0, body_color: Color = rcl.BASE_BR_PURPLE,
@@ -1233,6 +1235,7 @@ class Shapes:
             "ç": (3526, 2627, 2738, 3575, 3878, 7586, 7887, 6849),
             "ù": (2527, 2738, 3878, 7887, 8785, 3374),
             "É": (2228, 2282, 2888, 2555, 3271),
+            "ï": (3878, 5558, 4344, 6364, 5545),
         }
 
         if not text or size <= 0:
@@ -1534,7 +1537,7 @@ class Shapes:
     def slimer(self, center_x: int, center_y: int, radius: int,
                angle: int, mouth_angle: float, eye_opening: float,
                last_hor_dir: str = "", opacity: float = 1.0,
-               face_color: Color = (-1, -1, -1, -1)) -> None:
+               face_color: Color = (-1, -1, -1, -1)) -> tuple[int, int, int]:
         sround = self.utils.sym_round
         rad = math.radians(angle)
         fx, fy = math.cos(rad), math.sin(rad)
@@ -1616,6 +1619,7 @@ class Shapes:
         shine_y = center_y - fy * radius * 0.30 - sy * radius * 0.42
         self.ellipse(sround(shine_x), sround(shine_y), sround(radius * .28),
                      sround(radius * 0.15), angle=angle, cl=light, filled=True)
+        return (sround(eye_x), sround(eye_y), eye_rx)
 
     def ghostbuster(self, center_x: int, center_y: int, radius: int,
                     angle: float, eye_opening: float, wave: float,
@@ -2052,11 +2056,10 @@ class Shapes:
         if size <= 0:
             return 0
         sround = self.utils.sym_round
-        size = (size // 2) * 2
         half_size = sround(size / 2)
         self.rectangle(center_x - half_size, center_y - half_size,
                        half_size * 2, half_size * 2, cl=cl_back, filled=True)
-        arrow_size = sround(size * 0.10)
+        arrow_size = (math.ceil(size * 0.10) // 2) * 2
         button_size = sround(size * 0.30)
         border_thick = max(1, sround(size * 0.02))
         body_width, body_height = sround(size * 0.70), sround(size * 0.40)
@@ -2066,7 +2069,7 @@ class Shapes:
         mouse_top = mouse_med - button_size
         wheel_left = mouse_left + button_size
         wheel_right = mouse_right - button_size
-        wheel_width = wheel_right - wheel_left + 1
+        wheel_width = wheel_right - wheel_left
         actives = active.split("&")
         self.rectangle(mouse_left, mouse_med, mouse_right - mouse_left,
                        body_height, cl=cl_body, filled=True)
@@ -2079,25 +2082,26 @@ class Shapes:
         cl_wheel = cl_active if "wheel" in actives else cl_body
         self.rectangle(wheel_left, mouse_top, wheel_width, button_size,
                        cl=cl_wheel, filled=True)
+        arrow_spread = arrow_size * 1.25
         if "left" in actives:
             x, y = center_x - half_size, center_y
-            self.triangle(x, y, x + arrow_size, sround(y - arrow_size * 1.5),
-                          x + arrow_size, sround(y + arrow_size * 1.5),
+            self.triangle(x, y, x + arrow_size, sround(y - arrow_spread),
+                          x + arrow_size, sround(y + arrow_spread),
                           cl=cl_body, filled=True)
         if "right" in actives:
             x, y = center_x + half_size, center_y
-            self.triangle(x, y, x - arrow_size, sround(y - arrow_size * 1.5),
-                          x - arrow_size, sround(y + arrow_size * 1.5),
+            self.triangle(x, y, x - arrow_size, sround(y - arrow_spread),
+                          x - arrow_size, sround(y + arrow_spread),
                           cl=cl_body, filled=True)
         if "up" in actives:
             x, y = center_x, center_y - half_size
-            self.triangle(x, y, sround(x - arrow_size * 1.5), y + arrow_size,
-                          sround(x + arrow_size * 1.5), y + arrow_size,
+            self.triangle(x, y, sround(x - arrow_spread), y + arrow_size,
+                          sround(x + arrow_spread), y + arrow_size,
                           cl=cl_body, filled=True)
         if "down" in actives:
             x, y = center_x, center_y + half_size
-            self.triangle(x, y, sround(x - arrow_size * 1.5), y - arrow_size,
-                          sround(x + arrow_size * 1.5), y - arrow_size,
+            self.triangle(x, y, sround(x - arrow_spread), y - arrow_size,
+                          sround(x + arrow_spread), y - arrow_size,
                           cl=cl_body, filled=True)
         self.rectangle(mouse_left, mouse_med, mouse_right - mouse_left,
                        body_height, cl=cl_frame, thick=border_thick,
@@ -2226,18 +2230,18 @@ class Shapes:
                        cl=cl_cross, filled=True)
         draw_key(
             body.lct.x, sround(body.lct.y - body.hgt / 1.5 - key_size * 0.5),
-            "LT1", key_size)
+            "L1", key_size)
         draw_key(
             body.lct.x, sround(body.lct.y - body.hgt / 1.5 - key_size * 1.5),
-            "LT2", key_size)
+            "L2", key_size)
         draw_key(body.lct.x, body.lct.y - sround(body.hgt / 3.5),
-                 "LBU", key_size)
+                 "DU", key_size)
         draw_key(body.lct.x - sround(body.hgt / 3.5), body.lct.y,
-                 "LBL", key_size)
+                 "DL", key_size)
         draw_key(body.lct.x + sround(body.hgt / 3.5), body.lct.y,
-                 "LBR", key_size)
+                 "DR", key_size)
         draw_key(body.lct.x, body.lct.y + sround(body.hgt / 3.5),
-                 "LBD", key_size)
+                 "DD", key_size)
         self.circle(body.rct.x, body.rct.y, sround(body.hgt / 1.5),
                     cl=cl_body, filled=True)
         self.circle(body.rct.x, body.rct.y, sround(body.hgt / 1.75),
@@ -2246,18 +2250,18 @@ class Shapes:
                     thick=thick_contour, cl=cl_contour, filled=False)
         draw_key(
             body.rct.x, sround(body.rct.y - body.hgt / 1.5 - key_size * 0.5),
-            "RT1", key_size)
+            "R1", key_size)
         draw_key(
             body.rct.x, sround(body.rct.y - body.hgt / 1.5 - key_size * 1.5),
-            "RT2", key_size)
+            "R2", key_size)
         draw_key(body.rct.x, body.rct.y - sround(body.hgt / 3.5),
-                 "Y", key_size * 2)
+                 "N", key_size * 2)
         draw_key(body.rct.x - sround(body.hgt / 3.5), body.rct.y,
-                 "X", key_size * 2)
+                 "W", key_size * 2)
         draw_key(body.rct.x + sround(body.hgt / 3.5), body.rct.y,
-                 "B", key_size * 2)
+                 "E", key_size * 2)
         draw_key(body.rct.x, body.rct.y + sround(body.hgt / 3.5),
-                 "A", key_size * 2)
+                 "S", key_size * 2)
         self.circle(body.q1ct.x, body.bct.y, sround(body.hgt / 3),
                     cl=cl_body, filled=True)
         self.circle(body.q1ct.x, body.bct.y, sround(body.hgt / 3.5),
@@ -2274,5 +2278,5 @@ class Shapes:
         draw_key(body.q3ct.x, body.bct.y, "⊙", key_size * 3)
         mb_y = sround(body.y + (body.c1ct.y - body.y) / 4)
         mb_x = sround((body.ct.x - body.q1ct.x) / 2)
-        draw_key(body.ct.x - mb_x, mb_y, "MBL", key_size)
-        draw_key(body.ct.x + mb_x, mb_y, "MBR", key_size)
+        draw_key(body.ct.x - mb_x, mb_y, "Back", sround(key_size * 0.8))
+        draw_key(body.ct.x + mb_x, mb_y, "Play", sround(key_size * 0.8))

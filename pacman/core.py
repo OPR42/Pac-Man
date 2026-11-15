@@ -214,9 +214,17 @@ class Core:
         if not isinstance(data, dict):
             return None
 
-        if not all(isinstance(key, str) and isinstance(value, str)
-                   for key, value in data.items()):
-            return None
+        for key, value in data.items():
+            if not isinstance(key, str):
+                return None
+
+            if isinstance(value, list):
+                if not all(isinstance(item, str) for item in value):
+                    return None
+                data[key] = "".join(value)
+
+            elif not isinstance(value, str):
+                return None
 
         for key in list(data):
             if key.startswith("__") and key.endswith("__"):

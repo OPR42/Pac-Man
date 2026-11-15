@@ -258,8 +258,6 @@ class MiniGames:
         if self.endgame:
             self.play_again_offer()
 
-        gameboard.write_board_texts()
-
     def display_rules(self) -> None:
         gamemenus = self.gameboard.gamehuds.gamemenus
 

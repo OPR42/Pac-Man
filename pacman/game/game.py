@@ -193,7 +193,8 @@ class Game:
                     if cmd == "scores":
                         self.graphics.main_menu.start_highscores_flip()
                 elif ((src in ("key", "pad") and cmd in ("enter", "inv_enter",
-                                                         "back"))
+                                                         "back", "play",
+                                                         "quick_access"))
                       or (src in ("leftclick", "rightclick")
                           and (cmd in ("exit", "help", "settings", "play",
                                        "quick_access", "credits")

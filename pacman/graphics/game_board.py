@@ -138,8 +138,15 @@ class GameBoard:
                        size: float, duration: float,
                        slide_up: float = 0.0, outlined: bool = False) -> None:
         rg = self.graphics.rg
-        rel_x = (x - self.mvp.ct.x) / rg(100)
-        rel_y = (y - self.mvp.ct.y) / rg(100)
+        if self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
+            rel_x = (x - self.mvp.ct.x) / rg(100)
+            rel_y = (y - self.mvp.ct.y) / rg(100)
+        else:
+            base_rect = self.graphics.viewport_rectangle
+            center_x = base_rect[0] + base_rect[2] // 2
+            center_y = base_rect[1] + base_rect[3] // 2
+            rel_x = (x - center_x) / rg(100)
+            rel_y = (y - center_y) / rg(100)
         rel_size = size / rg(100)
         self.inboard_texts.append((rel_x, rel_y, txt, cl, rel_size,
                                    time.perf_counter(), duration, slide_up,
@@ -160,8 +167,15 @@ class GameBoard:
             progress = (now - starttime) / duration
             size = sround(rel_size * rg(100))
             slide = sround(slide_up * progress * size)
-            x = sround(rel_x * rg(100)) + self.mvp.ct.x
-            y = sround(rel_y * rg(100)) + self.mvp.ct.y - slide
+            if self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
+                x = sround(rel_x * rg(100)) + self.mvp.ct.x
+                y = sround(rel_y * rg(100)) + self.mvp.ct.y - slide
+            else:
+                base_rect = self.graphics.viewport_rectangle
+                center_x = base_rect[0] + base_rect[2] // 2
+                center_y = base_rect[1] + base_rect[3] // 2
+                x = sround(rel_x * rg(100)) + center_x
+                y = sround(rel_y * rg(100)) + center_y - slide
             cl = rcl.scale_rgb(cl, 1.5)
             cl_text = rcl.scale_alpha(cl, 1.0 - progress)
             cl_outline = (rcl.scale_alpha(rcl.BASE_BLACK, 1.0 - progress)
@@ -283,7 +297,6 @@ class GameBoard:
             self.blast_bomb()
         self.draw_crates()
         self.draw_characters()
-        self.write_board_texts()
         if self.game.player.state.status == 0:
             if self.game.player.state.activity != 5:
                 if self.death_anim():

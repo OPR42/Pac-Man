@@ -48,6 +48,10 @@ class HelpLine:
     font_size: int = 0
     width: int = 0
     height: int = 0
+    cells: list[tuple[int, int, "HelpLine"]] = field(default_factory=list)
+    strokes: list[tuple[int, int, int, int, str, int]] = field(
+        default_factory=list)
+    frame_rect: tuple[int, int, int, int, str, int] | None = None
 
 
 @dataclass
@@ -106,14 +110,15 @@ class MainMenuHelp:
             if now <= self.last_command_time + self.command_aim_delay:
                 return
             self.last_command_time = now
+        page_ratio = (self.svp.hgt / self.height) * 0.75
         if cmd == "scroll_up":
             self.scroll_to(self.scroll_target - 0.01)
         elif cmd == "scroll_down":
             self.scroll_to(self.scroll_target + 0.01)
         elif cmd == "scroll_pgup":
-            self.scroll_to(self.scroll_target - 0.10)
+            self.scroll_to(max(0.0, self.scroll_target - page_ratio))
         elif cmd == "scroll_pgdown":
-            self.scroll_to(self.scroll_target + 0.10)
+            self.scroll_to(min(1.0, self.scroll_target + page_ratio))
         elif cmd == "scroll_top":
             self.scroll_to(0.0)
         elif cmd == "scroll_bottom":
@@ -215,6 +220,7 @@ class MainMenuHelp:
         max_height = self.svp.hgt
         best_sections: list[list[HelpLine]] | None = None
         best_size = 1
+        height_exceptions = ["HLP_Controls",]
 
         for base_size in range(initial_size, 0, -1):
             prepared_sections: list[list[HelpLine]] = []
@@ -223,7 +229,8 @@ class MainMenuHelp:
                 lines = self.prepare_help_section(section, base_size)
                 prepared_sections.append(lines)
                 total_height = sum(line.height for line in lines)
-                if total_height > max_height:
+                if (section.key not in height_exceptions
+                        and total_height > max_height):
                     fits = False
                     break
                 if any(line.width > self.width * 0.95 for line in lines):
@@ -265,18 +272,7 @@ class MainMenuHelp:
             r"(?:\s*<(?:key|pad|mouse)=[^>]+>)*[^\s<]*)"
             r"|[^\s<]+")
 
-        matches = list(pattern.finditer(line))
-        words: list[str] = []
-
-        for index, match in enumerate(matches):
-            word = match.group()
-            if index > 0:
-                previous = matches[index - 1]
-                spacing = line[previous.end():match.start()]
-                word = spacing[1:] + word if spacing else word
-            words.append(word)
-
-        return words
+        return [match.group() for match in pattern.finditer(line)]
 
     def help_measure(self, text: str, size: int) -> float:
         pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
@@ -305,6 +301,223 @@ class MainMenuHelp:
 
     def prepare_help_section(self, section: HelpSection,
                              base_size: int) -> list[HelpLine]:
+        prepared: list[HelpLine] = []
+        index = 0
+        while index < len(section.lines):
+            source = section.lines[index]
+            if (not source.text.startswith("<|>")
+                    and not source.text.startswith(
+                        ("<|=left>", "<|=right>", "<|=->", "<|=_>"))):
+                prepared.extend(self.prepare_help_plain_line(
+                    HelpSection(section.key, [source]), base_size))
+                index += 1
+                continue
+            rows: list[HelpLine] = []
+            while (index < len(section.lines)
+                    and section.lines[index].text.startswith(
+                        ("<|>", "<|=left>", "<|=right>", "<|=->", "<|=_>"))):
+                rows.append(section.lines[index])
+                index += 1
+            prepared.extend(self.prepare_help_table(rows, base_size))
+        return prepared
+
+    def prepare_help_table(self, sources: list[HelpLine],
+                           base_size: int) -> list[HelpLine]:
+        # A frame directive is only valid as the first row of a table.
+        framed = False
+        frame_color = "sand"
+
+        if sources and sources[0].text.startswith("<|=->"):
+            directive = sources[0].text[len("<|=->"):]
+            match = re.fullmatch(r"<\|color=(yellow|sand|darksand|red)>",
+                                 directive)
+            if match:
+                framed = True
+                frame_color = match.group(1)
+                sources = sources[1:]
+
+        parsed: list[tuple[HelpLine, list[tuple[str, str]] | None]] = []
+        count = 0
+        delimiter = re.compile(r"<\|(?:=(left|right))?>")
+
+        for source in sources:
+            if source.text == "<|=->":
+                parsed.append((source, None))
+                continue
+            if source.text.startswith("<|=_>"):
+                parsed.append((source, [
+                    (source.text[len("<|=_>"):], "merged")]))
+                continue
+            matches = list(delimiter.finditer(source.text))
+            cells: list[tuple[str, str]] = []
+            for i, match in enumerate(matches):
+                finish = (matches[i + 1].start() if i + 1 < len(matches)
+                          else len(source.text))
+                content = source.text[match.end():finish]
+                if i == len(matches) - 1 and not content:
+                    continue
+                cells.append((content, match.group(1) or "center"))
+            count = max(count, len(cells))
+            parsed.append((source, cells))
+        if not count:
+            return []
+
+        sround = self.utils.sym_round
+        max_width = max(1, int(self.width * 0.95))
+        sizes = [max(1, round(base_size * source.style.size))
+                 for source, _ in parsed]
+        pad = max(1, sround(base_size * 0.30))
+        gap = max(1, sround(base_size * 0.40))
+        available = max(1, max_width - count * 2 * pad
+                        - (count - 1) * (0 if framed else gap)
+                        - (2 if framed else 0))
+        ideals = [0] * count
+        minima = [0] * count
+
+        for (source, row_cells), size in zip(parsed, sizes):
+            if not row_cells or row_cells[0][1] == "merged":
+                continue
+            for i, (content, _) in enumerate(row_cells):
+                ideals[i] = max(ideals[i], math.ceil(
+                    self.help_measure(content, size)))
+                tokens = self.help_tokenize(content)
+                minimum = max((math.ceil(self.help_measure(
+                    token.strip(), size)) for token in tokens), default=0)
+                minima[i] = max(minima[i], minimum)
+        widths = ideals[:]
+
+        while sum(widths) > available:
+            candidates = [i for i in range(count) if widths[i] > minima[i]]
+            if not candidates:
+                break
+            widest = max(candidates, key=lambda i: widths[i])
+            widths[widest] -= 1
+
+        table_width = sum(widths) + count * 2 * pad
+
+        if not framed:
+            table_width += (count - 1) * gap
+        else:
+            table_width += 2
+
+        left = (self.width - table_width) // 2
+        thickness = max(1, math.ceil(base_size / 20))
+        x_edges: list[int] = [left]
+        positions: list[int] = []
+        x = left + (1 if framed else 0)
+
+        for i, width in enumerate(widths):
+            positions.append(x + pad)
+            x += width + 2 * pad
+            if i < count - 1:
+                if not framed:
+                    x += gap
+                x_edges.append(x)
+        x_edges.append(left + table_width)
+
+        result: list[HelpLine] = []
+        half = max(1, sround(base_size * 0.5))
+
+        if framed:
+            result.append(HelpLine(
+                "", sources[0].style if sources else HelpStyle(), height=half))
+
+        for (source, row_cells), size in zip(parsed, sizes):
+            if row_cells is None:
+                if framed:
+                    result.append(HelpLine(
+                        "", source.style,
+                        height=max(1, thickness),
+                        strokes=[
+                            (left, 0, left + table_width, 0,
+                             frame_color, thickness)]))
+                continue
+            if row_cells[0][1] == "merged":
+                content = row_cells[0][0]
+                inner_width = table_width - 2 * pad - (2 if framed else 0)
+                wrapped = self.geometry.wrap_text(
+                    content, max(1, inner_width), size,
+                    measure=self.help_measure,
+                    tokenize=self.help_tokenize) if content else [""]
+                cell_lines: list[HelpLine] = []
+                for part in wrapped:
+                    cell_lines.extend(self.prepare_help_plain_line(
+                        HelpSection("", [HelpLine(part, source.style)]),
+                        base_size))
+                row_height = max(sum(line.height for line in cell_lines),
+                                 sround(size * 1.35))
+                placements: list[tuple[int, int, HelpLine]] = []
+                offset = (row_height - sum(
+                    line.height for line in cell_lines)) // 2
+                for line in cell_lines:
+                    x = left + (table_width - line.width) // 2
+                    placements.append((x, offset, line))
+                    offset += line.height
+                result.append(HelpLine(
+                    "", source.style,
+                    width=table_width,
+                    height=row_height,
+                    cells=placements))
+                continue
+
+            row_contents: list[list[HelpLine]] = []
+            row_height = 0
+
+            for i in range(count):
+                content = row_cells[i][0] if i < len(row_cells) else ""
+                wrap_width = max(1, widths[i])
+                wrapped = self.geometry.wrap_text(
+                    content, wrap_width, size, measure=self.help_measure,
+                    tokenize=self.help_tokenize) if content else [""]
+                cell_lines = []
+                for part in wrapped:
+                    cell_lines.extend(self.prepare_help_plain_line(
+                        HelpSection("", [HelpLine(part, source.style)]),
+                        base_size))
+                row_contents.append(cell_lines)
+                row_height = max(row_height,
+                                 sum(line.height for line in cell_lines))
+
+            row_height = max(row_height, sround(size * 1.35))
+            placements = []
+
+            for i, lines in enumerate(row_contents):
+                content_height = sum(line.height for line in lines)
+                offset = (row_height - content_height) // 2
+                align = row_cells[i][1] if i < len(row_cells) else "center"
+                for line in lines:
+                    if align == "left":
+                        dx = 0
+                    elif align == "right":
+                        dx = widths[i] - line.width
+                    else:
+                        dx = (widths[i] - line.width) // 2
+                    placements.append((positions[i] + dx, offset, line))
+                    offset += line.height
+
+            strokes: list[tuple[int, int, int, int, str, int]] = []
+
+            if framed:
+                strokes = [(edge, 0, edge, row_height, frame_color,
+                            thickness) for edge in x_edges[1:-1]]
+            result.append(HelpLine("", source.style, width=table_width,
+                                   height=row_height, cells=placements,
+                                   strokes=strokes))
+
+        if framed:
+            result.append(HelpLine(
+                "", sources[-1].style if sources else HelpStyle(),
+                height=half))
+            total_height = sum(line.height for line in result)
+            result[-1].frame_rect = (
+                left, half - 1 - (total_height - half),
+                table_width, total_height - 2 * half + 1,
+                frame_color, thickness)
+
+        return result
+
+    def prepare_help_plain_line(self, section: HelpSection,
+                                base_size: int) -> list[HelpLine]:
         pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         prepared: list[HelpLine] = []
         sround = self.utils.sym_round
@@ -362,46 +575,63 @@ class MainMenuHelp:
 
         return prepared
 
-    def draw_help_section(self, section: HelpSection, y: int) -> int:
+    def draw_help_fragments(self, line: HelpLine, x: int, y: int) -> None:
         draw = self.graphics.shapes
         sround = self.utils.sym_round
         fonts = {"regular": self.graphics.font_regular,
                  "bold": self.graphics.font_bold,
                  "italic": self.graphics.font_italic}
         colors = {"yellow": rcl.PACMAN_YELLOW,
-                  "sand": rcl.SAND,
-                  "darksand": rcl.DARK_SAND,
+                  "sand": rcl.SAND, "darksand": rcl.DARK_SAND,
                   "red": rcl.BLINKY_RED}
-        cl_key_body = rcl.LIGHT_BEIGE
-        cl_key_frame = rcl.HOURGLASS_WOOD
-        cl_key_text = rcl.BASE_BLACK
+        font = fonts[line.style.font]
+        color = colors[line.style.color]
+        center_y = y + sround(line.height / 2)
+        for fragment in line.fragments:
+            if fragment.kind == "text":
+                draw.text(x, center_y - sround(line.font_size / 2),
+                          fragment.text, font, line.font_size, color)
+            elif fragment.kind == "mouse":
+                draw.mouse(x + sround(fragment.width / 2), center_y,
+                           line.font_size, fragment.text,
+                           cl_active=rcl.BASE_BLACK, cl_body=rcl.LIGHT_BEIGE,
+                           cl_frame=rcl.HOURGLASS_WOOD)
+            else:
+                draw.key(x + sround(fragment.width / 2), center_y,
+                         fragment.text, line.font_size, cl=rcl.BASE_BLACK,
+                         cl_body=rcl.LIGHT_BEIGE, cl_frame=rcl.HOURGLASS_WOOD,
+                         kind=fragment.kind)
+            x += fragment.width
+
+    def draw_help_section(self, section: HelpSection, y: int) -> int:
+        draw = self.graphics.shapes
+        sround = self.utils.sym_round
+        colors = {"yellow": rcl.PACMAN_YELLOW,
+                  "sand": rcl.SAND, "darksand": rcl.DARK_SAND,
+                  "red": rcl.BLINKY_RED}
+        margin = sround(self.width * 0.025)
 
         for line in section.lines:
-            font = fonts[line.style.font]
-            color = colors[line.style.color]
-            margin = sround(self.width * 0.025)
-            if line.style.justify == "left":
-                x = margin
-            elif line.style.justify == "right":
-                x = self.width - margin - line.width
+            if line.cells or line.strokes or line.frame_rect is not None:
+                for x, offset, cell_line in line.cells:
+                    self.draw_help_fragments(cell_line, x, y + offset)
+                for x1, y1, x2, y2, color, thick in line.strokes:
+                    if x1 == x2:
+                        y1 -= thick // 2
+                    draw.line(x1, y + y1, x2, y + y2,
+                              thick=thick, cl=colors[color])
+                if line.frame_rect is not None:
+                    rx, ry, rw, rh, color, thick = line.frame_rect
+                    draw.rectangle(rx, y + ry, rw, rh, thick=thick,
+                                   cl=colors[color], filled=False)
             else:
-                x = (self.width - line.width) // 2
-            center_y = y + sround(line.height / 2)
-            for fragment in line.fragments:
-                if fragment.kind == "text":
-                    draw.text(x, center_y - sround(line.font_size / 2),
-                              fragment.text, font, line.font_size, color)
-                elif fragment.kind == "mouse":
-                    draw.mouse(x + sround(fragment.width / 2), center_y,
-                               line.font_size, fragment.text,
-                               cl_active=cl_key_text, cl_body=cl_key_body,
-                               cl_frame=cl_key_frame)
+                if line.style.justify == "left":
+                    x = margin
+                elif line.style.justify == "right":
+                    x = self.width - margin - line.width
                 else:
-                    draw.key(x + sround(fragment.width / 2), center_y,
-                             fragment.text, line.font_size,
-                             cl=cl_key_text, cl_body=cl_key_body,
-                             cl_frame=cl_key_frame, kind=fragment.kind)
-                x += fragment.width
+                    x = (self.width - line.width) // 2
+                self.draw_help_fragments(line, x, y)
             y += line.height
 
         return y
@@ -411,9 +641,9 @@ class MainMenuHelp:
 
     def prepare_help_texts(self) -> None:
         keys = ("HLP_Title", "HLP_Intro", "HLP_Principles", "HLP_Interface",
-                "HLP_Gamepad", "HLP_Menus", "HLP_Settings", "HLP_Play",
-                "HLP_Bonus", "HLP_Minigames", "HLP_Score", "HLP_Lastword",
-                "HLP_Credits")
+                "HLP_Gamepad", "HLP_Controls", "HLP_Menus", "HLP_Settings",
+                "HLP_Play", "HLP_Bonus", "HLP_Minigames", "HLP_Score",
+                "HLP_Lastword", "HLP_Credits")
         self.sections = [self.parse_help_text(key) for key in keys]
 
     def help_panel_layouts(self) -> tuple[HelpPanelLayout, ...]:
@@ -436,32 +666,41 @@ class MainMenuHelp:
              3, 2, ()),
             (("HLP_Interface",),
              ((2, "clyde", 180, 1.00, 1),
-              (3, "suppacgum", 0, 0.00, 1),
-              (4, "pacgum", 0, 0.00, 1),
-              (5, "pacgum", 0, 0.00, 1),
+              (3, "suppacgum", 0, 0.00, 2),
+              (4, "pacgum", 0, 0.00, 2),
+              (5, "pacgum", 0, 0.00, 2),
               (6, "pacman", 180, 1.00, 1),),
              3, 2, ()),
             (("HLP_Gamepad",),
-             ((2, "suppacgum", 0, 0.00, 1),
-              (3, "pacgum", 0, 0.00, 1),
-              (4, "suppacgum", 0, 0.00, 1),
-              (5, "suppacgum", 0, 0.00, 1),
-              (6, "pacgum", 0, 0.00, 1),),
+             ((3, "mspacman", 200, 0.75, 1),
+              (4, "crate_bowtie", 0, 0.00, 1),
+              (5, "pacman", 170, 0.20, 1),),
              3, 2, ()),
             ((),
              ((4, "gamepad", 0, 0.00, 12),),
              8, 9, ()),
+            (("HLP_Controls",),
+             ((2, "suppacgum", 0, 0.00, 2),
+              (3, "pacgum", 0, 0.00, 2),
+              (4, "suppacgum", 0, 0.00, 2),
+              (5, "suppacgum", 0, 0.00, 2),
+              (6, "pacgum", 0, 0.00, 2),),
+             3, 2, ()),
             (("HLP_Menus",),
              ((3, "blinky", 30, 1.00, 1),
               (4, "pinky", 270, 1.00, 1),
               (5, "inky", 150, 1.00, 1),),
              3, 2, ()),
             (("HLP_Settings",),
-             ((4, "crate_bomb", 0, 0.00, 1),),
+             ((2, "slime", 0, 0.00, 1),
+              (3, "slime", 0, 0.00, 2),
+              (4, "slimer", 10, 1.00, 1),
+              (5, "slime", 0, 0.00, 2),
+              (6, "slime", 0, 0.00, 1),),
              3, 2, ()),
             (("HLP_Play",),
              ((2, "pacman", 15, 0.25, 1),
-              (3, "suppacgum", 0, 0.00, 1),
+              (3, "suppacgum", 0, 0.00, 2),
               (5, "inky", 210, 0.50, 1),
               (6, "clyde", 20, 1.00, 1),),
              3, 2, ()),
@@ -484,14 +723,14 @@ class MainMenuHelp:
               (7, "pacman", 75, 1.00, 1),),
              3, 2, ()),
             (("HLP_Score",),
-             ((2, "pacman", 340, 0.50, 1),
+             ((3, "packy_pake", 340, 0.50, 1),
               (4, "crate_life", 0, 0.0, 1),
-              (6, "pacman", 200, 0.50, 1),),
+              (5, "packy_pake", 200, 0.50, 1),),
              3, 2, ()),
             (("HLP_Lastword",),
-             ((1, "portal_blue", 0, 0.0, 2),
+             ((2, "portal_blue", 0, 0.0, 2),
               (4, "pacman", 0, 0.25, 2),
-              (7, "portal_orange", 0, 0.0, 2)),
+              (6, "portal_orange", 0, 0.0, 2)),
              4, 3, ()),
             (("HLP_Credits",),
              ((4, "school42", 0, 0.0, 4),),
@@ -522,11 +761,11 @@ class MainMenuHelp:
                          "$BACKSPACE$": lex(
                             "HLP_BackspaceKeyFR" if self.core.azerty_layout
                             else "HLP_BackspaceKeyUS"),
+                         "$DELETE$": lex(
+                            "HLP_DeleteKeyFR" if self.core.azerty_layout
+                            else "HLP_DeleteKeyUS"),
                          "$A$": lex("HLP_AKeyFR" if self.core.azerty_layout
                                     else "HLP_AKeyUS"),
-                         "$ADDSPACE$": lex(
-                            "HLP_AddSpaceFR" if self.core.azerty_layout
-                            else "HLP_AddSpaceUS"),
                          "$W$": lex("HLP_WKeyFR" if self.core.azerty_layout
                                     else "HLP_WKeyUS"),
                          "$TIMEOUTCONSEQUENCES$": consequences[
@@ -546,9 +785,14 @@ class MainMenuHelp:
         section = HelpSection(key=key)
         style = HelpStyle()
         pattern = re.compile(r"^<(size|font|color|justify)=([^>]+)>")
+        table_prefix = re.compile(r"^(<\|(?:=(?:left|right|_|-))?>)")
 
         for raw_line in text.split("\n"):
             line = raw_line
+            table_match = table_prefix.match(line)
+            prefix = table_match.group(1) if table_match else ""
+            if prefix:
+                line = line[len(prefix):]
             while True:
                 match = pattern.match(line)
                 if match is None:
@@ -571,6 +815,7 @@ class MainMenuHelp:
                     if value in ("left", "right", "center"):
                         style.justify = value
                 line = line[match.end():]
+            line = prefix + line
             section.lines.append(HelpLine(text=line, style=HelpStyle(
                     size=style.size, font=style.font,
                     color=style.color, justify=style.justify)))
@@ -592,6 +837,18 @@ class MainMenuHelp:
         size = round(base_size * scale)
         if actor_type == "pacman":
             draw.pacman(x, y, size, round(angle), mouth_opening=cycle)
+        elif actor_type == "mspacman":
+            draw.pacman(x, y, size, round(angle), mouth_opening=cycle,
+                        variant="ms.pacman")
+        elif actor_type == "packy_pake":
+            draw.pacman(x, y, size, round(angle), mouth_opening=cycle,
+                        variant="packy_pake")
+        elif actor_type == "slimer":
+            draw.pacman(x, y, size, round(angle), mouth_opening=cycle,
+                        variant="slimer")
+        elif actor_type == "slime":
+            tex.draw("item_slime", x - size // 2, y - size // 2,
+                     size, size, angle=0)
         elif actor_type in ("blinky", "pinky", "inky", "clyde", "scared",
                             "dead", "disgusted"):
             draw.ghost(x, y, size, angle, wave=cycle, name=actor_type,
@@ -651,6 +908,10 @@ class MainMenuHelp:
         sections = {section.key: section for section in self.sections}
         self.panel_heights = []
         self.game.inventory._create_inventory_textures(base)
+        self.game.inventory._create_bowtie_texture(round((base / 2) * 3),
+                                                   world=True)
+        self.game.inventory._create_stetson_texture(round((base / 2) * 6.6),
+                                                    world=True)
 
         for index, layout in enumerate(self.help_panel_layouts()):
             keys, scene, top_margin, scene_bottom, gaps = layout
