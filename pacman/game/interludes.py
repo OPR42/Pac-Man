@@ -36,7 +36,7 @@ class Interludes:
         self.special_level_was_running: bool = False
 
     def set_interlude(self, index: int) -> None:
-        if index not in (0, 1, 10102, 10203, 10304, 10405, 10506, 10607,
+        if index not in (0, 1, 999, 10102, 10203, 10304, 10405, 10506, 10607,
                          10708, 10809, 10910, 11011, 11112,
                          90001, 90002, 90003, 90004):
             self.index = -1
@@ -49,7 +49,7 @@ class Interludes:
             self.discoveries_diary_text = ""
             return
         self.special_level_was_running = self.game.special_level_running
-        if index == 0 and not self.active:
+        if index in (0, 999) and not self.active:
             self.game.audio.sound_play("transition_0")
         if index in (10102, 10203, 10304, 10405, 10506, 10607, 10708, 10809,
                      10910, 11011, 11112):
@@ -123,7 +123,7 @@ class Interludes:
             self.draw_interlude(rcl.PAPER_OLD, body, True, reference, scribe)
         elif self.index == 1:
             years, months, days = self.elapsed_since_namco_release()
-            txt = lex("INT_051")
+            txt = lex("INT_10001")
             txt = txt.replace("$YEARS$", f"{years:,}")
             txt = txt.replace("$MONTHS$", f"{months:,}")
             txt = txt.replace("$DAYS$", f"{days:,}")
@@ -134,6 +134,12 @@ class Interludes:
             txt = txt.replace("$MPLURAL$", mplural)
             txt = txt.replace("$DPLURAL$", dplural)
             self.draw_interlude(rcl.PAPER, txt, True)
+        if self.index == 999:
+            body = "\n".join(lex(f"INT_{index:03d}") for index in range(31,
+                                                                        42))
+            reference = lex("INT_051")
+            scribe = lex("INT_056")
+            self.draw_interlude(rcl.PAPER_OLD, body, True, reference, scribe)
         elif self.index in (10102, 10304, 10405, 10506, 10607, 10708, 10809,
                             10910, 11011, 11112):
             txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
@@ -180,6 +186,10 @@ class Interludes:
             self.set_interlude(-1)
             self.graphics.gameboard.launch()
             self.game._start_transition(6, 7, 4)
+        elif action == "end_win_game":
+            self.set_interlude(-1)
+            self.game.victory.cutscene_running = True
+            self.game._start_transition(6, 7, 2)
         elif action in ("01to02", "02to03", "03to04", "04to05", "05to06",
                         "06to07", "07to08", "08to09", "09to10", "10to11",
                         "11to12"):
@@ -208,6 +218,9 @@ class Interludes:
             self.game._start_transition(6, 7, 1)
         elif self.index == 1:
             self.transition_action = "launch_game"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 999:
+            self.transition_action = "end_win_game"
             self.game._start_transition(6, 7, 3)
         elif self.index == 10102:
             self.transition_action = "01to02"

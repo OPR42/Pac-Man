@@ -245,6 +245,10 @@ class GameBoard:
             self.game.interludes.play_interlude()
             return
 
+        if self.game.step == 17:
+            self.game.victory.play_cutscene()
+            return
+
         self.draw_maze()
 
         if self.status == "init":
@@ -265,7 +269,7 @@ class GameBoard:
                 self.warp_signal = False
                 if self.game.one_level_only:
                     self.game._start_transition(7, 1, 1)
-                else:
+                elif self.core.gm_state.level < len(self.core.config.levels):
                     self.game._start_transition(7, 7, 1)
             if self.warp_anim(out=True):
                 self.anim_start = -1.0

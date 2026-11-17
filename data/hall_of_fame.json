@@ -17,6 +17,11 @@
         },
         {
             "name": "OPR 42 OPR",
+            "score": 451839,
+            "corrupted": false
+        },
+        {
+            "name": "OPR 42 OPR",
             "score": 236609,
             "corrupted": false
         },
@@ -43,16 +48,6 @@
         {
             "name": "SOLE SURVR",
             "score": 98420,
-            "corrupted": false
-        },
-        {
-            "name": "Furiosa42",
-            "score": 87310,
-            "corrupted": false
-        },
-        {
-            "name": "Complete01",
-            "score": 1880,
             "corrupted": false
         },
         {
@@ -99,7 +94,12 @@
             "name": "0",
             "score": 0,
             "corrupted": false
+        },
+        {
+            "name": "Num",
+            "score": 0,
+            "corrupted": false
         }
     ],
-    "signature": "7ffccc8babf8362b93da67ac8cde1953df71dcd0b22717d5816436b97b807d159b4e599775fd83da707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860dfd9cc85287f231157040ba8f13537c30b353774c281b073e855ca79264810eaf10f0fd8ebaec21dedd109b57a71bed3d0ff63111fc93f83104f99d163c8f5f2991fd4d9943fb70496170c7901271e6db3e96bc241a1069642"
+    "signature": "7ffccc8babf8362b93da67ac8cde1953df71dcd0b22717d50862969391363bcf816436b97b807d159b4e599775fd83da707ece77556c6011fc04ea74b5400e45d20eb07afd5f513479f6a84bb92860df353774c281b073e855ca79264810eaf10f0fd8ebaec21dedd109b57a71bed3d0ff63111fc93f83104f99d163c8f5f2991fd4d9943fb70496170c7901271e6db3e96bc241a10696422c7ee84dda9d66fe"
 }

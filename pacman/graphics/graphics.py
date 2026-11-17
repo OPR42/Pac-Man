@@ -357,7 +357,7 @@ class Graphics:
         elif self.game.step in (1, 3, 4, 5, 16):
             self.main_menu.draw_main_menu()
 
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17):
             if self.core.gm_state.level >= 0:
                 self.gameboard.draw_gameboard()
             else:
@@ -474,14 +474,6 @@ class Graphics:
 
     def check_window_resized(self) -> None:
         if pr.is_window_resized():
-            # width = pr.get_screen_width()
-            # height = pr.get_screen_height()
-            # if height > width:
-            #     self.notmax_width = width
-            #     self.notmax_height = width
-            #     self.reposition_and_resize()
-            # else:
-            #     self.resize()
             self.resize()
         elif self.last_resize_time > -1.0:
             if time.perf_counter() - self.last_resize_time >= 0.5:
@@ -527,7 +519,7 @@ class Graphics:
         self.interface.rebuild()
         if self.game.step in (1, 3, 4, 5, 16):
             self.main_menu.resize()
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17):
             self.gameboard.resize()
 
     def reload_fonts(self) -> None:

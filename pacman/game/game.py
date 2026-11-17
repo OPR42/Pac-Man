@@ -64,6 +64,7 @@ class Game:
         14. Victory
         15. Ingame Settings
         16. Credits
+        17. Victory Credits
         """
 
     def launch(self) -> None:
@@ -98,6 +99,8 @@ class Game:
         from pacman.minigames.minigames import MiniGames
         self.minigames = MiniGames(self.core)
         self.minigames.launch()
+        from pacman.graphics.game_victory import GameVictory
+        self.victory = GameVictory(self.core)
         self.set_step(1)
         self._play_transition(0, 1)
 
@@ -173,7 +176,7 @@ class Game:
                 elif cmd == "toggle_frame_and_banner":
                     self.graphics.toggle_frame_and_banner()
 
-            if self.step in (1, 3, 16):
+            if self.step in (1, 3):
                 if src in ("key", "pad") and cmd in ("next", "prev"):
                     if cmd == "next":
                         self.graphics.interface.focus_next()
@@ -222,6 +225,7 @@ class Game:
                         self.graphics.main_menu.main_menu_credits.enter()
                         self._play_transition(1, 16, 2)
                     elif cmd == "play":
+                        self.gamerun_starttime = now
                         self.one_level_only = False
                         self._play_transition(1, 6, 1)
                         self.start_new_level(1)
@@ -248,6 +252,7 @@ class Game:
                         if main_menu.quick_access_menu:
                             main_menu.quick_access_menu = False
                         dest = cmd[-2:]
+                        self.gamerun_starttime = now
                         self._play_transition(1, 7, 1)
                         if not self.graphics.gameboard.launched:
                             self.graphics.gameboard.launch()
@@ -469,7 +474,7 @@ class Game:
                 gamehuds = self.graphics.gameboard.gamehuds
                 scoremenu = gamehuds.gamemenus.gamescoremenu
                 if scoremenu.score_is_done:
-                    if scoremenu.before_score_gamestep in (9, 13, 14):
+                    if scoremenu.before_score_gamestep in (9, 13):
                         self._play_transition(9, 1, 1)
                         self.graphics.gameboard.reset()
                         self.graphics.main_menu.enter()
@@ -479,6 +484,11 @@ class Game:
                         self._play_transition(10, 2, 1)
                         self.set_step(2)
                         break
+                    elif scoremenu.before_score_gamestep == 14:
+                        self._play_transition(1, 7, 1)
+                        self.set_step(17)
+                        self.victory.run()
+
                 if ((src in ("key", "pad") and cmd in ("up", "down", "left",
                                                        "right", "tab",
                                                        "backtab"))
@@ -550,12 +560,16 @@ class Game:
                             gmmenu.gamescoremenu.before_score_gamestep = (
                                 self.step)
                             self.set_step(11)
-                        if self.step in (13, 14):
+                        if self.step == 13:
                             self._play_transition(9, 1, 1)
                             self.graphics.gameboard.reset()
                             self.graphics.main_menu.enter()
                             self.set_step(1)
                             self._play_transition(9, 1, 2)
+                        elif self.step == 14:
+                            self._play_transition(1, 7, 1)
+                            self.set_step(17)
+                            self.victory.run()
 
             elif self.step == 15:
                 gamemenu = self.graphics.gameboard.gamehuds.gamemenus
@@ -605,11 +619,28 @@ class Game:
                     elif cmd == "scroll_normal":
                         credits.set_scroll_direction(0)
 
+            elif self.step == 17:
+                if (src in ("key", "pad", "leftclick", "rightclick")
+                        and cmd in ("back", "up_held", "down_held",
+                                    "scroll_normal")):
+                    if cmd == "back":
+                        self._play_transition(16, 1, 1)
+                        self.graphics.interface.focus = None
+                        self.set_step(1)
+                        self.graphics.main_menu.enter()
+                        self._play_transition(16, 1, 2)
+                    elif cmd == "up_held":
+                        self.victory.set_scroll_direction(-1)
+                    elif cmd == "down_held":
+                        self.victory.set_scroll_direction(1)
+                    elif cmd == "scroll_normal":
+                        self.victory.set_scroll_direction(0)
+
             self.graphics.draw_window()
             self.dashboard.update_dashboard()
 
     def set_step(self, step: int) -> None:
-        if not 0 <= step <= 16:
+        if not 0 <= step <= 17:
             return
 
         self.old_step = self.step
@@ -735,6 +766,13 @@ class Game:
             self.core._emit(
                 LogEvent(source="  game  ", type="finish",
                          message=" Entering Game Credits ",
+                         duration=(time.perf_counter()
+                                   - self.core.gm_state.starttime)))
+
+        elif step == 17:
+            self.core._emit(
+                LogEvent(source="  game  ", type="finish",
+                         message=" Playing Victory Cutscene ",
                          duration=(time.perf_counter()
                                    - self.core.gm_state.starttime)))
 

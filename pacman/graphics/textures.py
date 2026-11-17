@@ -259,7 +259,7 @@ class Textures:
         if name in self.images:
             return True
         allowed = ["old_paper", "brushed_metal", "gunmetal", "lightwood",
-                   "wood", "darkerwood", "granular"]
+                   "wood", "darkerwood", "granular", "stars"]
         brush_colors = {
             "brushed_metal": self.core.defaults.texture_brushed_metal_rgb,
             "gunmetal": self.core.defaults.texture_gunmetal_rgb,
@@ -279,6 +279,9 @@ class Textures:
 
         if name == "granular":
             self.images[name] = self._generate_granular_texture()
+
+        if name == "stars":
+            self.images[name] = self._generate_stars_texture()
 
         if name in brush_colors:
             self.images[name] = self._generate_brushed_texture(
@@ -666,3 +669,136 @@ class Textures:
             self.replace_from_image(name, image)
         finally:
             pr.unload_image(image)
+
+    def _generate_stars_texture(self) -> RaylibObject:
+        """Generate a deep-blue procedural starfield texture."""
+        size = self.core.defaults.texture_generate_size * 2
+        rng = random.Random(self.core.defaults.texture_generate_seed)
+        target = pr.load_render_texture(size, size)
+        draw = self.shapes
+
+        def background_grain() -> None:
+            """Add subtle variations to the dark background."""
+            for _ in range(size * size // 12):
+                x = rng.randrange(size)
+                y = rng.randrange(size)
+                blue = rng.randint(15, 55)
+                alpha = rng.randint(3, 12)
+                draw.pixel(
+                    x, y,
+                    (blue // 5, blue // 3, blue, alpha))
+
+        def nebulae() -> None:
+            """Draw irregular translucent blue nebulae."""
+            clouds = max(12, size // 32)
+
+            for _ in range(clouds):
+                center_x = rng.randint(-size // 4, size * 5 // 4)
+
+                # Broad diagonal distribution.
+                center_y = (
+                    size * 0.55
+                    - (center_x - size / 2) * 0.25
+                    + rng.randint(-size // 4, size // 4)
+                )
+
+                radius_x = rng.randint(
+                    max(12, size // 16),
+                    max(24, size // 5))
+                radius_y = rng.randint(
+                    max(8, size // 32),
+                    max(16, size // 10))
+
+                angle = rng.uniform(-30, 30)
+
+                red = rng.randint(8, 28)
+                green = rng.randint(35, 95)
+                blue = rng.randint(90, 190)
+
+                layers = 12
+
+                for layer in range(layers, 0, -1):
+                    ratio = layer / layers
+
+                    draw.ellipse(
+                        round(center_x),
+                        round(center_y),
+                        max(1, round(radius_x * ratio)),
+                        max(1, round(radius_y * ratio)),
+                        angle,
+                        filled=True,
+                        cl=(red, green, blue, rng.randint(2, 5)))
+
+        def star_dust() -> None:
+            """Draw thousands of faint distant stars."""
+            count = size * size // 110
+
+            for _ in range(count):
+                x = rng.randrange(size)
+                y = rng.randrange(size)
+
+                luminosity = rng.randint(65, 175)
+                alpha = rng.randint(45, 180)
+
+                draw.pixel(
+                    x, y,
+                    (luminosity * 3 // 4,
+                     luminosity * 4 // 5,
+                     luminosity,
+                     alpha))
+
+        def bright_stars() -> None:
+            """Draw sparse stars with different brightness levels."""
+            count = max(20, size * size // 4500)
+
+            for _ in range(count):
+                x = rng.randrange(size)
+                y = rng.randrange(size)
+
+                luminosity = rng.randint(170, 255)
+                radius = rng.choices(
+                    (1, 2, 3),
+                    weights=(80, 18, 2))[0]
+
+                red = min(255, luminosity)
+                green = min(255, luminosity + rng.randint(0, 15))
+                blue = 255
+
+                if radius > 1:
+                    draw.circle(
+                        x, y, radius * 3,
+                        filled=True,
+                        cl=(40, 100, 255, 12))
+
+                    draw.circle(
+                        x, y, radius * 2,
+                        filled=True,
+                        cl=(100, 170, 255, 22))
+
+                draw.circle(
+                    x, y, radius,
+                    filled=True,
+                    cl=(red, green, blue, 255))
+
+        pr.begin_texture_mode(target)
+        try:
+            pr.clear_background((2, 5, 17, 255))
+            background_grain()
+            nebulae()
+            star_dust()
+            bright_stars()
+        finally:
+            pr.end_texture_mode()
+
+        image = pr.load_image_from_texture(target.texture)
+        pr.image_flip_vertical(image)
+
+        texture = pr.load_texture_from_image(image)
+        pr.set_texture_filter(
+            texture,
+            pr.TextureFilter.TEXTURE_FILTER_BILINEAR)
+
+        pr.unload_image(image)
+        pr.unload_render_texture(target)
+
+        return texture

@@ -2,7 +2,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Defaults(BaseModel):
-    allow_continue_on_quickaccess: bool = False
+    allow_continue_on_quickaccess: bool = True
     allow_raylib_shapes: bool = True
     allow_terminal_display: bool = True
 
@@ -236,7 +236,7 @@ class CharacterState(BaseModel):
 
 
 class CheatsTable(BaseModel):
-    unlocked: bool = False
+    unlocked: bool = True
     invulnerable: bool = False
     sprinter: bool = False
     outatime: bool = False

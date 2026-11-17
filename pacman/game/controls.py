@@ -276,7 +276,7 @@ class Controls:
         if mouse != ("", ""):
             return mouse
 
-        if self.game.step == 16:
+        if self.game.step in (16, 17):
             return self.credits_scroll_control()
 
         if self.game.step == 11:
@@ -417,7 +417,7 @@ class Controls:
                or pr.is_key_down(keys.KEY_SPACE)):
                 return "enter"
 
-        if self.game.step in (1, 3, 4, 15, 16):
+        if self.game.step in (1, 3, 4, 15, 16, 17):
             if (pr.is_key_pressed(keys.KEY_BACKSPACE)
                or pr.is_key_pressed(keys.KEY_ESCAPE)):
                 return "back"
@@ -446,7 +446,7 @@ class Controls:
             if pr.is_key_pressed(keys.KEY_GRAVE):
                 return "cheat_menu"
 
-        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 15):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14):
             if (pr.is_key_pressed(keys.KEY_ESCAPE)
                     or pr.is_key_pressed(keys.KEY_P)
                     or pr.is_key_pressed(keys.KEY_BACKSPACE)):
@@ -707,7 +707,7 @@ class Controls:
             if pad_btn(RBL) or pad_btn(MBL):
                 return ("pad", "back")
 
-        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 15):
+        if self.game.step in (6, 7, 8, 9, 10, 12, 13, 14, 17):
             if pad_btn(MBR) or pad_btn(RBL):
                 return ("pad", "pause_menu")
 
