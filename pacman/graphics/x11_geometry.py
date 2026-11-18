@@ -4,6 +4,7 @@ from typing import NamedTuple
 
 
 class WorkArea(NamedTuple):
+    """Represent the usable desktop area in screen coordinates."""
     x: int
     y: int
     width: int
@@ -11,6 +12,7 @@ class WorkArea(NamedTuple):
 
 
 class FrameExtents(NamedTuple):
+    """Represent the decoration margins surrounding a window."""
     left: int
     right: int
     top: int
@@ -18,11 +20,13 @@ class FrameExtents(NamedTuple):
 
 
 class WindowInfo(NamedTuple):
+    """Store a window identifier and its desktop work area."""
     window_id: int
     workarea: WorkArea
 
 
 def _run_command(command: list[str]) -> str | None:
+    """Execute a system command and return its output on success."""
     try:
         result = subprocess.run(command, capture_output=True,
                                 text=True, check=True)
@@ -32,6 +36,7 @@ def _run_command(command: list[str]) -> str | None:
 
 
 def _get_window_id(title: str) -> int | None:
+    """Find an X11 window identifier by its title."""
     output = _run_command(["xwininfo", "-name", title])
     if output is None:
         return None
@@ -42,6 +47,7 @@ def _get_window_id(title: str) -> int | None:
 
 
 def _get_current_desktop() -> int:
+    """Return the index of the currently active virtual desktop."""
     output = _run_command(["xprop", "-root", "_NET_CURRENT_DESKTOP"])
     if output is None:
         return 0
@@ -52,6 +58,7 @@ def _get_current_desktop() -> int:
 
 
 def _get_workarea() -> WorkArea | None:
+    """Retrieve the usable desktop area for the active virtual desktop."""
     output = _run_command(["xprop", "-root", "_NET_WORKAREA"])
     if output is None:
         return None
@@ -67,6 +74,7 @@ def _get_workarea() -> WorkArea | None:
 
 
 def get_window_info(title: str) -> WindowInfo | None:
+    """Return the X11 window identifier and current desktop work area."""
     window_id = _get_window_id(title)
     if window_id is None:
         return None
@@ -77,10 +85,12 @@ def get_window_info(title: str) -> WindowInfo | None:
 
 
 def get_workarea() -> WorkArea | None:
+    """Return the usable desktop area, if available."""
     return _get_workarea()
 
 
 def get_frame_extents(window_id: int) -> FrameExtents | None:
+    """Retrieve the decoration margins of an X11 window."""
     output = _run_command(["xprop", "-id", hex(window_id),
                            "_NET_FRAME_EXTENTS"])
     if output is None or "not found" in output:

@@ -1,4 +1,5 @@
 import json
+import math
 import shutil
 
 from pathlib import Path
@@ -23,12 +24,15 @@ POINT_KEYS = (
 
 
 class ConfigManager:
+    """Load, validate, repair and save game configuration files."""
     def __init__(self, core: Core, filename: str) -> None:
+        """Initialize the configuration manager and default settings."""
         self.core = core
         self.path = Path(filename)
         self.defaults = Config()
 
     def load(self) -> Config:
+        """Load and validate the configuration, repairing it when necessary."""
         if not self.path.exists():
             self._warning(f"Configuration file '{self.path}' not found — "
                           "creating defaults")
@@ -67,10 +71,10 @@ class ConfigManager:
         return config
 
     def save(self, config: Config, invalid: bool = False) -> bool:
+        """Save the configuration to disk and optionally create a backup."""
         try:
             self.path.parent.mkdir(parents=True, exist_ok=True)
-            if not invalid:
-                self._backup(invalid)
+            self._backup(invalid)
             with self.path.open("w", encoding="utf-8") as file:
                 json.dump(config.model_dump(), file, indent=4,
                           ensure_ascii=False)
@@ -85,6 +89,7 @@ class ConfigManager:
         return True
 
     def _backup(self, invalid: bool = False) -> None:
+        """Create a backup of the current configuration file."""
         if not self.path.exists():
             return
 
@@ -100,14 +105,12 @@ class ConfigManager:
                           f"{error}")
 
     def _info(self, message: str) -> None:
+        """Emit an informational configuration log event."""
         self.core._emit(LogEvent(source=" config ", type="info",
                                  message=message))
 
-    def _missing_value(
-        self,
-        key: str,
-        default: Any,
-    ) -> None:
+    def _missing_value(self, key: str, default: Any) -> None:
+        """Log a warning about a missing configuration value."""
         if key == "levels":
             self._warning("Missing 'levels' — using default levels")
             return
@@ -115,6 +118,7 @@ class ConfigManager:
         self._warning(f"Missing '{key}' — using default {default!r}")
 
     def _read_json_with_comments(self) -> dict[str, Any]:
+        """Read a JSON configuration file while ignoring comment lines."""
         content = self.path.read_text(encoding="utf-8")
         stripped = "\n".join(line for line in content.splitlines()
                              if not line.lstrip().startswith("#"))
@@ -128,12 +132,14 @@ class ConfigManager:
 
     def _replace_with_default(self, data: dict[str, Any], key: str,
                               invalid_value: Any, default: Any) -> None:
+        """Replace an invalid configuration value with its default."""
         self._warning(f"Invalid '{key}': {invalid_value!r} — "
                       f"using default {default!r}")
         data[key] = default
 
     def _sanitize(self,
                   raw_data: dict[str, Any]) -> tuple[dict[str, Any], bool]:
+        """Validate configuration fields and replace invalid values."""
         defaults = self.defaults.model_dump()
         data = defaults.copy()
         repaired = False
@@ -174,7 +180,8 @@ class ConfigManager:
         repaired |= self._sanitize_string(data, "language",
                                           allow=("english", "français",
                                                  "froggies", "brezhoneg",
-                                                 "elsassisch", "pirate"))
+                                                 "elsassisch", "pirate",
+                                                 "deutsch"))
         repaired |= self._sanitize_bool(data, "hints")
         repaired |= self._sanitize_float(data, "hints_delay", minimum=0.0)
         repaired |= self._sanitize_bool(data, "disable_transitions")
@@ -197,6 +204,7 @@ class ConfigManager:
         return data, repaired
 
     def _sanitize_bool(self, data: dict[str, Any], key: str) -> bool:
+        """Validate a boolean configuration value."""
         default = getattr(self.defaults, key)
         value = data.get(key)
 
@@ -209,6 +217,7 @@ class ConfigManager:
     def _sanitize_int(self, data: dict[str, Any], key: str,
                       minimum: int | None = None,
                       maximum: int | None = None) -> bool:
+        """Validate an integer configuration value and its bounds."""
         default = getattr(self.defaults, key)
         value = data.get(key)
 
@@ -229,6 +238,7 @@ class ConfigManager:
     def _sanitize_float(self, data: dict[str, Any], key: str,
                         minimum: float | None = None,
                         maximum: float | None = None) -> bool:
+        """Validate a floating-point configuration value and its bounds."""
         default = getattr(self.defaults, key)
         value = data.get(key)
 
@@ -238,6 +248,11 @@ class ConfigManager:
             return True
 
         value = float(value)
+
+        if not math.isfinite(value):
+            self._replace_with_default(data, key, value, default)
+            return True
+
         data[key] = value
 
         if minimum is not None and value < minimum:
@@ -251,6 +266,7 @@ class ConfigManager:
         return False
 
     def _sanitize_levels(self, data: dict[str, Any]) -> bool:
+        """Validate and repair the configured maze dimensions."""
         raw_levels = data.get("levels")
         default_levels = self.defaults.levels
 
@@ -315,6 +331,7 @@ class ConfigManager:
         return repaired
 
     def _sanitize_points(self, data: dict[str, Any]) -> bool:
+        """Validate point values and enforce their ascending order."""
         repaired = False
         previous = 0
 
@@ -339,6 +356,7 @@ class ConfigManager:
 
     def _sanitize_string(self, data: dict[str, Any], key: str,
                          allow: tuple[str, ...] = ()) -> bool:
+        """Validate a string configuration value and its allowed values."""
         default = getattr(self.defaults, key)
         value = data.get(key)
 
@@ -353,5 +371,6 @@ class ConfigManager:
         return False
 
     def _warning(self, message: str) -> None:
+        """Emit a configuration warning log event."""
         self.core._emit(LogEvent(source=" config ", type="warning",
                                  message=message))

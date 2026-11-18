@@ -31,7 +31,9 @@ RAY = pr.GamepadAxis.GAMEPAD_AXIS_RIGHT_Y
 
 
 class Controls:
+    """Manage keyboard, mouse and gamepad input."""
     def __init__(self, core: Core) -> None:
+        """Initialize input devices and control state."""
         self.core = core
         self.dashboard = core.dashboard
         self.game = core.game
@@ -47,6 +49,7 @@ class Controls:
         self.previous_mouse_pos: tuple[float, float] = -1.0, -1.0
 
     def idle(self) -> bool:
+        """Check whether all input devices are inactive."""
         if pr.get_key_pressed() != 0:
             return False
 
@@ -85,11 +88,13 @@ class Controls:
         return True
 
     def direction_held(self, direction: str) -> bool:
+        """Check whether a movement direction is currently held."""
         x, y = self.player_key_pad_move()
         return {"up": y < 0.0, "down": y > 0.0, "left": x < 0.0,
                 "right": x > 0.0}.get(direction, False)
 
     def player_key_pad_move(self) -> tuple[float, float]:
+        """Return the combined keyboard and gamepad movement vector."""
         keys = pr.KeyboardKey
         if self.gamepad < 0 or not pr.is_gamepad_available(self.gamepad):
             self.gamepad = -1
@@ -99,6 +104,7 @@ class Controls:
                     break
 
         def normalize_pair(x: float, y: float) -> tuple[float, float]:
+            """Limit a two-dimensional vector to unit length."""
             magnitude = math.hypot(x, y)
             if magnitude > 1.0:
                 x /= magnitude
@@ -136,6 +142,7 @@ class Controls:
 
     def player_mouse_move(self, left: int, top: int, right: int,
                           bottom: int) -> tuple[float, float, bool, bool]:
+        """Return mouse movement and button events within a rectangle."""
         mouse_pos = pr.get_mouse_position()
         pressed = (pr.is_mouse_button_pressed(
                        pr.MouseButton.MOUSE_BUTTON_LEFT)
@@ -158,6 +165,7 @@ class Controls:
 
     def mouse_click_in_rectangle(self, x1: int, y1: int,
                                  x2: int, y2: int) -> tuple[int, int]:
+        """Return the position of a mouse click inside a rectangle."""
         mouse_pos = pr.get_mouse_position()
         if not (x1 <= mouse_pos.x <= x2 and y1 <= mouse_pos.y <= y2):
             return (-1, -1)
@@ -168,6 +176,7 @@ class Controls:
         return (round(mouse_pos.x), round(mouse_pos.y))
 
     def get_enter(self) -> bool:
+        """Check whether a confirmation input was pressed."""
         keys = pr.KeyboardKey
         if (pr.is_key_pressed(keys.KEY_ENTER)
            or pr.is_key_pressed(keys.KEY_KP_ENTER)
@@ -191,6 +200,7 @@ class Controls:
         return False
 
     def enter_is_down(self) -> bool:
+        """Check whether a confirmation input is currently held."""
         keys = pr.KeyboardKey
         mouse = pr.MouseButton
 
@@ -209,6 +219,7 @@ class Controls:
         return False
 
     def check_konami_code(self, last_command: str) -> bool:
+        """Check whether recent commands match the Konami sequence."""
         self.last_commands.append(last_command)
         while len(self.last_commands) > len(self.konami_code):
             del self.last_commands[0]
@@ -220,6 +231,7 @@ class Controls:
         return True
 
     def credits_scroll_control(self) -> tuple[str, str]:
+        """Return the requested credits scrolling direction."""
         keys = pr.KeyboardKey
         mouse = pr.MouseButton
 
@@ -258,6 +270,7 @@ class Controls:
         return ("key", "scroll_normal")
 
     def control(self, core_step: int) -> tuple[str, str]:
+        """Collect and prioritize input commands for the current game step."""
         key = self.key_control()
         if key:
             if self.game.step == 8 and not self.core.cht_table.unlocked:
@@ -292,6 +305,7 @@ class Controls:
         return ("", "")
 
     def key_control(self) -> None | str:
+        """Translate keyboard input into game commands."""
         keys = pr.KeyboardKey
         ctrl = (pr.is_key_down(keys.KEY_LEFT_CONTROL)
                 or pr.is_key_down(keys.KEY_RIGHT_CONTROL))
@@ -508,6 +522,7 @@ class Controls:
         return None
 
     def mouse_control(self, core_step: int) -> tuple[str, str]:
+        """Translate mouse input into game commands."""
         if not self.graphics.mouse_inside_window():
             return ("", "")
 
@@ -564,6 +579,7 @@ class Controls:
         return ("", "")
 
     def set_mouse_cursor(self, type: str) -> None:
+        """Set the mouse cursor according to the requested style."""
         if not type:
             return
 
@@ -573,12 +589,15 @@ class Controls:
             pr.set_mouse_cursor(pr.MouseCursor.MOUSE_CURSOR_POINTING_HAND)
 
     def _is_gamepad_button_pressed(self, button: RaylibObject) -> bool:
+        """Check whether a gamepad button was pressed."""
         return pr.is_gamepad_button_pressed(self.gamepad, button)
 
     def _is_gamepad_button_down(self, button: RaylibObject) -> bool:
+        """Check whether a gamepad button is currently held."""
         return pr.is_gamepad_button_down(self.gamepad, button)
 
     def _gamepad_axis(self, axis: RaylibObject) -> float:
+        """Return the current movement value of a gamepad axis."""
         value = pr.get_gamepad_axis_movement(self.gamepad, axis)
 
         if abs(value) < self.gamepad_deadzone:
@@ -588,10 +607,12 @@ class Controls:
 
     def _gamepad_stick(self, axis_x: RaylibObject,
                        axis_y: RaylibObject) -> tuple[float, float]:
+        """Translate gamepad stick movement into directional commands."""
         return (pr.get_gamepad_axis_movement(self.gamepad, axis_x),
                 pr.get_gamepad_axis_movement(self.gamepad, axis_y))
 
     def gamepad_control(self, core_step: int) -> tuple[str, str]:
+        """Translate gamepad input into game commands."""
         if self.gamepad < 0 or not pr.is_gamepad_available(self.gamepad):
             self.gamepad = -1
             for testpad in range(8):
@@ -790,6 +811,7 @@ class Controls:
         return ("", "")
 
     def exit_requested(self) -> bool:
+        """Check whether the user requested to close the game."""
         ctrl = pr.is_key_down(pr.KeyboardKey.KEY_LEFT_CONTROL)
 
         return (pr.is_key_pressed(pr.KeyboardKey.KEY_SCROLL_LOCK)

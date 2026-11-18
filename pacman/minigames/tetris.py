@@ -17,6 +17,7 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 @dataclass
 class ActivePiece:
+    """Store the logical and visual state of an active Tetris piece."""
     kind: str
     orientation: int
     x: int
@@ -28,7 +29,9 @@ class ActivePiece:
 
 
 class Tetris:
+    """Manage Tetris gameplay, piece movement and animations."""
     def __init__(self, core: Core) -> None:
+        """Initialize Tetris gameplay state and dependencies."""
         self.core = core
         self.game = core.game
         self.controls = core.game.controls
@@ -99,9 +102,11 @@ class Tetris:
         self.held_slide_disarm_duration: float = 0.1
 
     def launch(self) -> None:
+        """Connect Tetris to the minigame coordinator."""
         self.minigames = self.core.game.minigames
 
     def reset(self) -> None:
+        """Restore the initial Tetris state."""
         self.over = False
         self.cell_size = 0
         self.brick_size = 0
@@ -143,6 +148,7 @@ class Tetris:
         self.held_slide_disarm_duration = 0.1
 
     def initialize(self) -> None:
+        """Prepare an empty Tetris board for a new session."""
         self.over = False
         self.game.set_step(7)
         self.gameboard.status = "play"
@@ -158,6 +164,7 @@ class Tetris:
         self.held_slide_last_event = -1.0
 
     def set_board_geometry(self) -> None:
+        """Configure the Tetris board and graphical resources."""
         sround = self.utils.sym_round
         gmstate = self.core.gm_state
         rg = self.graphics.rg
@@ -240,6 +247,7 @@ class Tetris:
         self.last_update = time.perf_counter()
 
     def create_righthud_texture(self) -> None:
+        """Generate the graphical resources for the right HUD."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -252,6 +260,7 @@ class Tetris:
 
         def add_box(x: int, y: int, width: int, height: int,
                     left: bool = False) -> RectangleGeometry:
+            """Add a labeled box to the right HUD layout."""
             box = geo.rectangle_geometry(x, y, width, height)
             cl_back = rcl.BASE_BLACK
             cl_light = rcl.BASE_DARKER_GREY
@@ -323,6 +332,7 @@ class Tetris:
         self.graphics.textures.end()
 
     def command(self, cmd: str) -> None:
+        """Handle Tetris movement, rotation and hold commands."""
         if self.over:
             return
 
@@ -370,6 +380,7 @@ class Tetris:
                         active.x += 1
 
     def update(self) -> None:
+        """Advance falling pieces and gameplay animations."""
         if self.over:
             return
 
@@ -434,8 +445,6 @@ class Tetris:
                 self.clear_rows = self.find_complete_rows()
                 if self.clear_rows:
                     self.clear_start_time = now
-                else:
-                    self.active_piece = None
                 self.hold_used = False
                 self.active_piece = None
                 self.fall_progress = 0.0
@@ -447,6 +456,7 @@ class Tetris:
             piece.visual_y = float(piece.y)
 
     def update_clear_animation(self, now: float) -> None:
+        """Complete the current row-clearing animation."""
         if not self.clear_rows:
             return
 
@@ -470,10 +480,12 @@ class Tetris:
         self.last_visual_update = now
 
     def find_complete_rows(self) -> list[int]:
+        """Return the indices of all completed rows."""
         return [y for y, row in enumerate(self.grid)
                 if all(cell != 0 for cell in row)]
 
     def clear_complete_rows(self) -> int:
+        """Remove completed rows and record collapse offsets."""
         complete_rows = self.find_complete_rows()
 
         if not complete_rows:
@@ -502,6 +514,7 @@ class Tetris:
         return count
 
     def cleared_row_value(self, row: int) -> tuple[int, Color]:
+        """Calculate the score and dominant color of a completed row."""
         bricks = ("I", "T", "O", "L", "J", "Z", "S")
         values = {"I": 10, "O": 20, "T": 30, "L": 40, "J": 40,
                   "Z": 50, "S": 50}
@@ -524,6 +537,7 @@ class Tetris:
         return score, color
 
     def award_cleared_rows(self, rows: list[int]) -> None:
+        """Award points for the completed rows."""
         if not rows:
             return
 
@@ -558,6 +572,7 @@ class Tetris:
         self.game._add_points_to_score(earned)
 
     def group_complete_rows(self) -> list[tuple[int, int]]:
+        """Group adjacent completed rows for animation."""
         if not self.clear_rows:
             return []
 
@@ -576,6 +591,7 @@ class Tetris:
         return groups
 
     def clear_alpha(self, now: float) -> float:
+        """Calculate the opacity of the row-clearing animation."""
         elapsed = max(0.0, now - self.clear_start_time)
         t = min(1.0, elapsed / self.clear_flash_start)
         phase = 2.0 * math.pi * (2.0 * t + 6.0 * t * t)
@@ -583,6 +599,7 @@ class Tetris:
         return 1.0 - amplitude * (0.5 + 0.5 * math.sin(phase))
 
     def draw_clear_flash(self, now: float) -> None:
+        """Render the flashing effect of completed rows."""
         if not self.clear_rows:
             return
 
@@ -610,6 +627,7 @@ class Tetris:
                 cl_cyan, cl_white, vertical=True, dual=True)
 
     def collapse_progress(self, now: float) -> float:
+        """Return the progress of the row-collapse animation."""
         if not self.collapsing:
             return 1.0
 
@@ -619,6 +637,7 @@ class Tetris:
         return 1.0 - (1.0 - t) ** 3
 
     def current_fall_interval(self) -> float:
+        """Calculate the current automatic falling interval."""
         defaults = self.core.defaults
         threshold = max(1, defaults.minigame_pactris_completed_threshold)
         multiplier = defaults.minigame_pactris_speed_multiplier
@@ -626,11 +645,13 @@ class Tetris:
         return self.fall_interval / multiplier ** stages
 
     def piece_above_board(self, piece: ActivePiece) -> bool:
+        """Check whether a piece extends above the playfield."""
         return any(piece.y + dy < 0
                    for _, dy in self.occupied_cells(piece.kind,
                                                     piece.orientation))
 
     def feed_waiting_queue(self) -> None:
+        """Populate the queue of upcoming pieces."""
         block_names = ["I", "T", "O", "L", "J", "Z", "S"]
         while len(self.next_pieces) < 10:
             weights = [5 if kind == self.last_generated_piece else 10
@@ -640,6 +661,7 @@ class Tetris:
             self.last_generated_piece = piece
 
     def update_queue_animation(self, dt: float) -> None:
+        """Advance the upcoming-piece queue animation."""
         speed = 8.0
         factor = 1.0 - math.exp(-speed * dt)
         self.queue_visual_offset *= 1.0 - factor
@@ -647,10 +669,12 @@ class Tetris:
             self.queue_visual_offset = 0.0
 
     def queue_piece_height(self, kind: str) -> int:
+        """Return the display height of a queued piece."""
         return (len(self.blocks[kind][0]) * self.righthud_cell_size
                 + self.utils.sym_round(self.righthud_brick_size / 2))
 
     def start_hold(self) -> None:
+        """Begin an animated exchange with the held piece."""
         active = self.active_piece
 
         if active is None or self.hold_used or self.hold_transition:
@@ -685,6 +709,7 @@ class Tetris:
         self.game.audio.sound_play("eat_superpacgum")
 
     def perform_hold_swap(self) -> None:
+        """Exchange the active piece with the held piece."""
         active = self.active_piece
 
         if active is None:
@@ -702,6 +727,7 @@ class Tetris:
                                             outgoing))
 
     def hold_piece_positions(self, kind: str) -> list[tuple[float, float]]:
+        """Calculate the visual positions used during a hold exchange."""
         cells = self.occupied_cells(kind, 0)
         min_x = min(x for x, _ in cells)
         max_x = max(x for x, _ in cells)
@@ -716,6 +742,7 @@ class Tetris:
                  origin_y + (y - min_y) * size) for x, y in cells]
 
     def update_hold_transition(self, now: float) -> None:
+        """Advance the held-piece exchange animation."""
         if not self.hold_transition:
             return
 
@@ -734,6 +761,7 @@ class Tetris:
             self.last_visual_update = now
 
     def spawn_piece(self, kind: str | None = None) -> None:
+        """Create the next active piece from the waiting queue."""
         if self.active_piece is not None:
             return
 
@@ -765,6 +793,7 @@ class Tetris:
         self.fall_progress = 0.0
 
     def update_visual_position(self, dt: float) -> None:
+        """Smoothly update the active piece's visual position."""
         active = self.active_piece
         if active is None:
             return
@@ -785,6 +814,7 @@ class Tetris:
                                    in zip(active.visual_cells, targets)]
 
     def rotate_piece(self) -> None:
+        """Rotate the active piece when its new position is valid."""
         active = self.active_piece
         if active is None:
             return
@@ -825,6 +855,7 @@ class Tetris:
 
     def piece_center(self, kind: str,
                      orientation: int) -> tuple[float, float]:
+        """Calculate the geometric center of a piece."""
         shape = self.blocks[kind][orientation]
         cells = [(x + 0.5, y + 0.5) for y, row in enumerate(shape)
                  for x, occupied in enumerate(row) if occupied]
@@ -833,6 +864,7 @@ class Tetris:
 
     def occupied_cells(self, kind: str,
                        orientation: int) -> list[tuple[int, int]]:
+        """Return the occupied cells of a piece."""
         shape = self.blocks[kind][orientation]
         return [(x, y) for y, row in enumerate(shape)
                 for x, occupied in enumerate(row) if occupied]
@@ -841,7 +873,7 @@ class Tetris:
                              targets: list[tuple[int, int]],
                              force_movement: bool = False
                              ) -> list[tuple[int, int]]:
-
+        """Match visual cells to target positions during rotation."""
         assignments = list(permutations(targets))
 
         if force_movement:
@@ -859,6 +891,7 @@ class Tetris:
 
     def can_place(self, kind: str, orientation: int,
                   x: int, y: int) -> bool:
+        """Check whether a piece can occupy a requested position."""
         turned = self.blocks[kind][orientation]
 
         for dy, line in enumerate(turned):
@@ -878,6 +911,7 @@ class Tetris:
 
     def place_block(self, kind: str, orientation: int,
                     x: int, y: int) -> bool:
+        """Transfer a piece's occupied cells into the board grid."""
         if kind not in self.blocks or not 0 <= orientation <= 3:
             return False
 
@@ -896,6 +930,7 @@ class Tetris:
         return True
 
     def draw_hold_halos(self, now: float) -> None:
+        """Render the visual effects of the held-piece exchange."""
         if not self.hold_transition:
             return
 
@@ -923,6 +958,7 @@ class Tetris:
                                          rcl.BASE_BR_WHITE, rcl.BASE_CYAN)
 
     def draw_board(self) -> None:
+        """Render the Tetris board, pieces and HUD."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg

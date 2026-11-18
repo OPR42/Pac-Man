@@ -3,7 +3,9 @@ from pacman.core import Core
 
 
 class Cheats:
+    """Manage gameplay cheats and their effects."""
     def __init__(self, core: Core) -> None:
+        """Initialize cheat handlers and game state references."""
         self.core = core
         self.game = core.game
         self.cht_table = core.cht_table
@@ -11,7 +13,8 @@ class Cheats:
         self.outatime_reftime: float = -1.0
 
     def receive_command(self, cmd: str = "") -> None:
-        if not cmd or cmd == "" or self.game.step <= 6:
+        """Execute the cheat associated with a command."""
+        if not cmd or self.game.step <= 6:
             return
         if cmd == "add_10_lives":
             self._trigger_add_10_lives()
@@ -55,37 +58,44 @@ class Cheats:
             self._toggle_gluttonous()
 
     def disable_persistent_cheats(self) -> None:
+        """Disable all persistent cheats."""
         self.core.cht_table.invulnerable = False
         self.core.cht_table.sprinter = False
         self.core.cht_table.outatime = False
+        self.outatime_reftime = -1.0
         self.core.cht_table.walldenier = False
         self.core.cht_table.jackhammer = False
         self.core.cht_table.gumcharmer = False
         self.core.cht_table.gluttonous = False
 
     def _trigger_add_10_lives(self) -> None:
+        """Add ten lives to the player."""
         self.game._add_life(10)
         self.core._emit(LogEvent(
             source=" cheats ", type="info", message="Added 10 lives"))
 
     def _trigger_rem_10_lives(self) -> None:
+        """Remove ten lives from the player."""
         self.game._add_life(-10)
         self.core._emit(LogEvent(
             source=" cheats ", type="info", message="Removed 10 lives"))
 
     def _trigger_add_10k_score(self) -> None:
+        """Add ten thousand points to the score."""
         self.game._add_points_to_score(10000)
         self.core._emit(LogEvent(
             source=" cheats ", type="info",
             message="Added 10,000 points to score "))
 
     def _trigger_rem_10k_score(self) -> None:
+        """Remove ten thousand points from the score."""
         self.game._add_points_to_score(-10000)
         self.core._emit(LogEvent(
             source=" cheats ", type="info",
             message="Removed 10,000 points from score"))
 
     def _trigger_init_time(self) -> None:
+        """Restore the level's initial time limit."""
         self.gm_state.time_cur = self.gm_state.time_init
         self.core._emit(LogEvent(
             source=" cheats ", type="info",
@@ -93,12 +103,14 @@ class Cheats:
                     " seconds"))
 
     def _trigger_empty_time(self) -> None:
+        """Set the remaining time to ten seconds."""
         self.gm_state.time_cur = 10.0
         self.core._emit(LogEvent(
             source=" cheats ", type="info",
             message="Remaining time set to 10.0 seconds"))
 
     def _trigger_reset_level(self) -> None:
+        """Restart the current level."""
         self.game.toggle_pause()
         self.game.set_step(6)
         self.core._emit(LogEvent(
@@ -107,17 +119,20 @@ class Cheats:
         self.game.start_new_level(self.gm_state.level)
 
     def _trigger_phase_out_ghosts(self) -> None:
+        """Send all ghosts back to their home positions."""
         for ghost in self.game.ghosts.states:
             ghost.status = 3
             ghost.activity = 5
             ghost.reverse_pending = True
 
     def _trigger_phase_in_ghosts(self) -> None:
+        """Restore all ghosts to their normal state."""
         for ghost in self.game.ghosts.states:
             ghost.status = 2
             ghost.activity = 2
 
     def _trigger_next_level(self) -> None:
+        """Start the next level if available."""
         if self.core.gm_state.level < len(self.core.config.levels):
             self.game.toggle_pause()
             self.game.set_step(6)
@@ -127,6 +142,7 @@ class Cheats:
             self.game.start_new_level(self.core.gm_state.level + 1)
 
     def _trigger_prev_level(self) -> None:
+        """Start the previous level if available."""
         if self.core.gm_state.level > 1:
             self.game.toggle_pause()
             self.game.set_step(6)
@@ -136,6 +152,7 @@ class Cheats:
             self.game.start_new_level(self.core.gm_state.level - 1)
 
     def _trigger_fill_inventory(self) -> None:
+        """Add items to every inventory slot."""
         self.game.inventory.change_count(0, 10)
         self.game.inventory.change_count(1, 10)
         self.game.inventory.change_count(2, 10)
@@ -144,6 +161,7 @@ class Cheats:
         self.game.inventory.change_count(5, 1)
 
     def _trigger_flush_inventory(self) -> None:
+        """Remove all items from the inventory."""
         inv = self.game.inventory
         nb = inv.get_count(0)
         if nb:
@@ -165,18 +183,15 @@ class Cheats:
             inv.change_count(5, -nb)
 
     def _toggle_invulnerable(self) -> None:
-        if self.core.cht_table.invulnerable:
-            self.core.cht_table.invulnerable = False
-        else:
-            self.core.cht_table.invulnerable = True
+        """Toggle player invulnerability."""
+        self.core.cht_table.invulnerable = not self.core.cht_table.invulnerable
 
     def _toggle_sprinter(self) -> None:
-        if self.core.cht_table.sprinter:
-            self.core.cht_table.sprinter = False
-        else:
-            self.core.cht_table.sprinter = True
+        """Toggle increased player movement speed."""
+        self.core.cht_table.sprinter = not self.core.cht_table.sprinter
 
     def _toggle_outatime(self) -> None:
+        """Toggle time freezing and update its reference time."""
         if self.core.cht_table.outatime:
             self.core.cht_table.outatime = False
             self.outatime_reftime = -1.0
@@ -185,25 +200,17 @@ class Cheats:
             self.outatime_reftime = self.core.gm_state.time_cur
 
     def _toggle_walldenier(self) -> None:
-        if self.core.cht_table.walldenier:
-            self.core.cht_table.walldenier = False
-        else:
-            self.core.cht_table.walldenier = True
+        """Toggle movement through walls."""
+        self.core.cht_table.walldenier = not self.core.cht_table.walldenier
 
     def _toggle_jackhammer(self) -> None:
-        if self.core.cht_table.jackhammer:
-            self.core.cht_table.jackhammer = False
-        else:
-            self.core.cht_table.jackhammer = True
+        """Toggle the ability to destroy walls."""
+        self.core.cht_table.jackhammer = not self.core.cht_table.jackhammer
 
     def _toggle_gumcharmer(self) -> None:
-        if self.core.cht_table.gumcharmer:
-            self.core.cht_table.gumcharmer = False
-        else:
-            self.core.cht_table.gumcharmer = True
+        """Toggle pacgum attraction."""
+        self.core.cht_table.gumcharmer = not self.core.cht_table.gumcharmer
 
     def _toggle_gluttonous(self) -> None:
-        if self.core.cht_table.gluttonous:
-            self.core.cht_table.gluttonous = False
-        else:
-            self.core.cht_table.gluttonous = True
+        """Toggle permanent ghost vulnerability."""
+        self.core.cht_table.gluttonous = not self.core.cht_table.gluttonous

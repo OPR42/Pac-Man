@@ -11,7 +11,9 @@ from .game_menus import GameMenus
 
 
 class GameScoreMenu:
+    """Manage high-score name entry and its animated interface."""
     def __init__(self, core: Core) -> None:
+        """Initialize the score entry keyboard and animation state."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -75,9 +77,11 @@ class GameScoreMenu:
         self.invalid_name_effect_starttime: float = -1.0
 
     def launch(self) -> None:
+        """Initialize the high-score menu geometry."""
         self.build_score_geometry()
 
     def reset(self) -> None:
+        """Reset player name entry and score menu animations."""
         self.score_ui_items = []
         self.before_score_gamestep = -1
         self.key_base_dimension = 0.0
@@ -104,9 +108,11 @@ class GameScoreMenu:
         self.invalid_name_effect_starttime = -1.0
 
     def resize(self) -> None:
+        """Rebuild the score menu layout after resizing."""
         self.build_score_geometry()
 
     def handle_input(self, input_key: str) -> None:
+        """Process character entry and editing commands."""
         if not input_key or not self.player_name_input_ready:
             return
         if input_key[:4] == "txt=":
@@ -115,6 +121,7 @@ class GameScoreMenu:
             self.graphics.interface.highlight_key(input_key)
         cursor = self.player_name_cursor
         if input_key == "validate":
+            self.game.audio.sound_play("click")
             self.graphics.interface.highlight_key(input_key)
             self.validate_input()
         elif input_key == "delete":
@@ -130,13 +137,17 @@ class GameScoreMenu:
             self.graphics.interface.highlight_key(input_key)
             self.player_name = "_" * self.player_name_maxlen
             self.player_name_cursor = 0
-        elif len(input_key) == 1 and (input_key.isalnum() or input_key == " "):
+        elif len(input_key) == 1 and (
+                input_key in "abcdefghijklmnopqrstuvwxyz"
+                             "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                             "0123456789 "):
             self.player_name = (self.player_name[:cursor] + input_key
                                 + self.player_name[cursor + 1:])
             self.player_name_cursor = min(self.player_name_maxlen - 1,
                                           self.player_name_cursor + 1)
 
     def handle_move(self, move: str) -> None:
+        """Move the name cursor or virtual keyboard focus."""
         if not move or not self.player_name_input_ready:
             return
         if move in ("tab", "forward"):
@@ -153,6 +164,7 @@ class GameScoreMenu:
             self.graphics.interface.focus_key(move)
 
     def validate_input(self) -> None:
+        """Validate and save the entered player name and score."""
         name = self.player_name.strip(" _")
         if not name:
             self.player_name_cursor = 0
@@ -173,6 +185,7 @@ class GameScoreMenu:
         self.outro_anim_ready = True
 
     def build_score_geometry(self) -> None:
+        """Build the score menu panels and virtual keyboard layout."""
         sround = self.utils.sym_round
         geo = self.geometry
         geo_rect = self.geometry.rectangle_geometry
@@ -241,6 +254,7 @@ class GameScoreMenu:
                 label=code, code=code, kind="zone", rel_to_center=False))
 
     def draw_score_menu(self) -> None:
+        """Render the score menu and advance its animations."""
         elapsed = time.perf_counter() - self.gamemenus.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
         draw = self.graphics.shapes
@@ -273,6 +287,7 @@ class GameScoreMenu:
             self.score_is_done = True
 
     def _anim_intro(self) -> None:
+        """Animate Pac-Man entering the score registration screen."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -332,6 +347,7 @@ class GameScoreMenu:
                 self.player_name_input_ready = True
 
     def _anim_outro(self) -> None:
+        """Animate Pac-Man leaving after score registration."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -395,6 +411,7 @@ class GameScoreMenu:
                 self.outro_anim_done = True
 
     def _draw_header(self) -> None:
+        """Render the score registration heading and ranking information."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         lex = self.core.lexicon
@@ -435,6 +452,7 @@ class GameScoreMenu:
                                 self.graphics.font_bold, cl, justify="center")
 
     def _draw_nickname_grid(self) -> None:
+        """Render the editable player name and its animated characters."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -498,6 +516,7 @@ class GameScoreMenu:
                           cl=cl_cursor, edge_sharp=True)
 
     def _invalid_name_effect_active(self) -> bool:
+        """Return whether the invalid-name warning animation is active."""
         if self.invalid_name_effect_starttime == -1.0:
             return False
         if time.perf_counter() - self.invalid_name_effect_starttime < 0.50:
@@ -506,6 +525,7 @@ class GameScoreMenu:
         return False
 
     def _draw_nickname_frame(self) -> None:
+        """Draw the player name entry frame and character separators."""
         if self.outro_anim_ph1_done:
             return
         draw = self.graphics.shapes
@@ -525,6 +545,7 @@ class GameScoreMenu:
                       thick=rg(2), cl=cl)
 
     def _draw_pacman_keyboard(self) -> None:
+        """Render the Pac-Man-shaped virtual keyboard."""
         if not self.pacman_keyboard_display:
             return
         sround = self.utils.sym_round
@@ -600,6 +621,7 @@ class GameScoreMenu:
                                 cl=cl)
 
     def _press_enter_to_quit(self) -> None:
+        """Display the animated prompt to leave the score menu."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         lex = self.core.lexicon

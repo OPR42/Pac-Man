@@ -10,6 +10,7 @@ from pacman.graphics.colors import RenderColors as rcl
 
 @dataclass
 class BannerAnimValues:
+    """Store timing and repetition state for a banner animation."""
     next_time: float = 0.0
     start_time: float = 0.0
     duration: float = 0.0
@@ -20,7 +21,9 @@ class BannerAnimValues:
 
 
 class BannerAnim:
+    """Animate the Pac-Man faces displayed in the game banner."""
     def __init__(self, core: Core) -> None:
+        """Initialize independent eye and mouth animations."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -46,6 +49,7 @@ class BannerAnim:
     def update_banner_animation(self, anim: BannerAnimValues,
                                 min_duration: float, max_duration: float,
                                 double_chance: float = 0.20) -> float:
+        """Update an animation and return its current intensity."""
         now = time.perf_counter()
 
         if not anim.active:
@@ -77,6 +81,7 @@ class BannerAnim:
         return math.sin(progress * math.pi)
 
     def draw_banner_pacmen(self) -> None:
+        """Draw both banner characters with animated eyes and mouths."""
         draw = self.shapes
         rx, rg = self.graphics.rx, self.graphics.rg
         margin = self.graphics.base_margin
@@ -113,6 +118,7 @@ class BannerAnim:
 
     def eye_scratch(self, left_x: int, left_y: int, left_rad: int,
                     right_x: int, right_y: int, right_rad: int) -> None:
+        """React to mouse clicks on the banner characters' eyes."""
         mouse_x, mouse_y = self.game.controls.mouse_click_in_rectangle(
             left_x - left_rad, left_y - left_rad,
             left_x + left_rad, left_y + left_rad)
@@ -144,6 +150,7 @@ class BannerAnim:
 
     def eye_scratch_message(self, x: int, y: int, size: int,
                             alt_x: int, alt_y: int) -> None:
+        """Display a random reaction to an eye click."""
         odd = random.random()
         if odd <= 0.90:
             pain = self.core.lexicon("MM_Pain").split("|")

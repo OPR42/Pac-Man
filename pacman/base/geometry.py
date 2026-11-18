@@ -8,16 +8,19 @@ from pacman.core import Core
 
 
 class Point(NamedTuple):
+    """Represent a point with integer coordinates."""
     x: int
     y: int
 
 
 class FloatPoint(NamedTuple):
+    """Represent a point with floating-point coordinates."""
     x: float
     y: float
 
 
 class RectangleGeometry(NamedTuple):
+    """Store rectangle dimensions and derived geometric reference points."""
     # Top-Left Coords
     x: int
     y: int
@@ -77,12 +80,15 @@ class RectangleGeometry(NamedTuple):
 
 
 class Geometry:
+    """Provide geometric calculations and text layout utilities."""
     def __init__(self, core: Core) -> None:
+        """Initialize geometry utilities and access to shared settings."""
         self.core = core
         self.utils = Utils()
 
     def center_text_in_rect(self, text: str, font_size: int, rect_wdt: int,
                             rect_hgt: int) -> tuple[int, int]:
+        """Return offsets to center text within a rectangle."""
         text_wdt, text_hgt = self.measure_text(text, font_size)
         text_x_offset = (rect_wdt - text_wdt) // 2
         text_y_offset = (rect_hgt - text_hgt) // 2
@@ -114,6 +120,7 @@ class Geometry:
     def fit_text_size(self, text: str, max_width: int,
                       max_size: int, min_size: int = 1,
                       spacing: float = 0.0) -> int:
+        """Find the largest font size that fits within a given width."""
         low = min_size
         high = max_size
         best = min_size
@@ -131,16 +138,19 @@ class Geometry:
 
     def floatpoint_on_circle(self, center: FloatPoint, radius: float,
                              angle: float) -> FloatPoint:
+        """Return a floating-point position on a circle at a given angle."""
         return FloatPoint(
             center.x + radius * math.cos(math.radians(angle)),
             center.y + radius * math.sin(math.radians(angle)),
         )
 
     def floatpoint_to_point(self, float_point: FloatPoint) -> Point:
+        """Convert a floating-point position to integer coordinates."""
         sround = self.utils.sym_round
         return Point(sround(float_point.x), sround(float_point.y))
 
     def distance_between(self, x1: int, y1: int, x2: int, y2: int) -> float:
+        """Return the Euclidean distance between two points."""
         if y1 == y2 and x1 == x2:
             return 0.0
         elif y1 == y2:
@@ -152,6 +162,7 @@ class Geometry:
 
     def measure_text(self, text: str, font_size: int,
                      spacing: float = 0.0) -> tuple[float, float]:
+        """Estimate the dimensions of monospaced text."""
         if not text or font_size <= 0:
             return (0.0, 0.0)
 
@@ -167,10 +178,12 @@ class Geometry:
         return (round(width), round(height))
 
     def point(self, x: int, y: int) -> Point:
+        """Create a point with integer coordinates."""
         return Point(x, y)
 
     def point_on_circle(self, center: Point, radius: int,
                         angle: float) -> Point:
+        """Return an integer position on a circle at a given angle."""
         float_point = self.floatpoint_on_circle(FloatPoint(float(center.x),
                                                            float(center.y)),
                                                 float(radius), angle)
@@ -178,18 +191,22 @@ class Geometry:
 
     def point_in_rectangle(self, point: Point,
                            rect: RectangleGeometry) -> bool:
-        return (rect.x <= point.x <= rect.tr.x
-                and rect.y <= point.y <= rect.bl.y)
+        """Check whether a point lies within a rectangle."""
+        return (rect.x <= point.x < rect.tr.x
+                and rect.y <= point.y < rect.bl.y)
 
     def rectangle_geometry(self, x: int, y: int, wdt: int,
                            hgt: int) -> RectangleGeometry:
+        """Build a rectangle with its derived centers, corners"""
+        """and circle points."""
         def circle_point(center: FloatPoint, angle: float) -> Point:
+            """Return an integer point on an inner circle."""
             return self.floatpoint_to_point(
                 self.floatpoint_on_circle(center, rad, angle))
 
         sround = self.utils.sym_round
         if wdt < 0 or hgt < 0:
-            raise ValueError("Rectangle dimensions must be positive")
+            raise ValueError("Rectangle dimensions must be non-negative")
         right = x + wdt
         bottom = y + hgt
         vert = wdt < hgt

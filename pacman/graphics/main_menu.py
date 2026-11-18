@@ -22,7 +22,10 @@ RaylibObject: TypeAlias = Any
 
 
 class MainMenu:
+    """Manage the main menu, interactive controls and high-score displays."""
     def __init__(self, core: Core) -> None:
+        """Initialize menu controls, animation states and"""
+        """rendering dependencies."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -62,6 +65,7 @@ class MainMenu:
         self.qvp_cleaned: bool = True
 
     def launch(self) -> None:
+        """Initialize the main menu panels and enter the menu."""
         self.core._emit(
             LogEvent(source="mainmenu", type="info",
                      message="Main Menu launched"))
@@ -72,11 +76,13 @@ class MainMenu:
         self.enter()
 
     def enter(self) -> None:
+        """Activate the main menu and start its background music."""
         if self.game.audio.jukebox_load("mainmenu"):
             self.game.audio.jukebox_play()
         self.game.main_menu_focus = -1
 
     def resize(self) -> None:
+        """Invalidate and resize the menu's graphical components."""
         self.highscores_texture_dirty = True
         self.main_menu_settings.resize()
         self.main_menu_help.resize()
@@ -85,6 +91,7 @@ class MainMenu:
         self.qvp_ready = False
 
     def draw_main_menu(self) -> None:
+        """Render the active main menu panel and animated background."""
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
         self.game.audio.jukebox_update()
@@ -122,6 +129,7 @@ class MainMenu:
             self.main_menu_credits.draw_credits()
 
     def draw_quick_access_menu(self, rgb_factor: float) -> None:
+        """Render the quick-access dropdown and its entries."""
         draw = self.shapes
         rg = self.graphics.rg
         qvp = self.qvp
@@ -134,6 +142,7 @@ class MainMenu:
                 self.display_dropdown_button(i, rgb_factor)
 
     def clean_quick_access_ui_items(self) -> None:
+        """Remove dynamically created quick-access controls."""
         if not self.qvp_cleaned:
             for item in self.ui_items[:]:
                 if (item.kind == "dropdown"
@@ -143,11 +152,13 @@ class MainMenu:
             self.graphics.interface.rebuild()
 
     def build_quick_access_geometry(self) -> None:
+        """Build the quick-access dropdown geometry and controls."""
         rg = self.graphics.rg
         geo = self.geometry
 
         self.clean_quick_access_ui_items()
 
+        ref_button = None
         for item in self.ui_items:
             if item.inv_code == "quick_access":
                 vp_x, vp_y, vp_width, vp_height = (
@@ -157,7 +168,7 @@ class MainMenu:
                     vp.ct.x + rg(item.x), vp.ct.y + rg(item.y),
                     rg(item.width), rg(item.height))
                 break
-        if not ref_button:
+        if ref_button is None:
             return
 
         row_hgt = round(ref_button.hgt / 5.5)
@@ -190,6 +201,7 @@ class MainMenu:
         self.graphics.interface.rebuild()
 
     def display_dropdown_button(self, index: int, rgb_factor: float) -> None:
+        """Render a quick-access dropdown entry."""
         draw = self.shapes
         lex = self.core.lexicon
         sround = self.utils.sym_round
@@ -270,6 +282,7 @@ class MainMenu:
                       self.graphics.font_regular, label_size, cl=cl)
 
     def main_menu_button(self, index: int, rgb_factor: float) -> None:
+        """Render an interactive menu button and register its obstacles."""
         draw = self.shapes
         rg = self.graphics.rg
         geo = self.geometry
@@ -318,6 +331,7 @@ class MainMenu:
         label_y_margin = round((button_height - label_height) // 2)
 
         def draw_button_content() -> None:
+            """Render the central content of the current menu button."""
             draw.rectangle(button.c2ct.x, button.c1tl.y,
                            button.c2mr.x - button.c2ct.x,
                            button.c1bl.y - button.c1tl.y,
@@ -430,6 +444,7 @@ class MainMenu:
                 f"{item.code}_button_right_pacman")
 
     def display_scroll_button(self, index: int, rgb_factor: float) -> None:
+        """Render a help panel scrolling button."""
         sround = self.utils.sym_round
         draw = self.shapes
         rg = self.graphics.rg
@@ -509,6 +524,7 @@ class MainMenu:
 
     def display_scroll_bar(self, index: int, rgb_factor: float, length: int,
                            view: int, progress: float) -> None:
+        """Render the help panel scrollbar."""
         sround = self.utils.sym_round
         draw = self.shapes
         georec = self.geometry.rectangle_geometry
@@ -537,6 +553,7 @@ class MainMenu:
 
     def display_r_checkbox(self, index: int, rgb_factor: float,
                            lbl_size: int, check: bool = False) -> None:
+        """Render a settings checkbox control."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -578,6 +595,7 @@ class MainMenu:
                         thick=thick, cl=line_color, filled=False)
 
     def display_clickable_label(self, index: int, lbl_size: int) -> None:
+        """Render a clickable settings label."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -611,6 +629,7 @@ class MainMenu:
 
     def display_btn_prev(self, index: int, btn_size: int,
                          max_size: int) -> None:
+        """Render a previous-value selection button."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -644,6 +663,7 @@ class MainMenu:
 
     def display_list_next(self, index: int, txt_size: int,
                           btn_size: int, listitem: str) -> None:
+        """Render the current list value and its next-value control."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -685,6 +705,7 @@ class MainMenu:
 
     def display_numbar(self, index: int, low: int, high: int, step: int,
                        value: int, unit: str, max_size: int) -> None:
+        """Render an interactive numeric settings bar."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         draw = self.graphics.shapes
@@ -739,6 +760,7 @@ class MainMenu:
                                    height: int, name_center_x: int,
                                    score_center_x: int, label_size: int,
                                    top_margin: int, index: int = 0) -> None:
+        """Generate a texture containing a high-score ranking."""
         textures = self.graphics.textures
         textures.begin(texture_name, width, height)
 
@@ -787,6 +809,7 @@ class MainMenu:
     def _create_highscores_title_texture(self, texture_name: str, label: str,
                                          width: int, height: int,
                                          label_size: int) -> None:
+        """Generate a texture for a high-score panel title."""
         textures = self.graphics.textures
         textures.begin(texture_name, width, height)
 
@@ -805,6 +828,7 @@ class MainMenu:
             textures.end()
 
     def _highscores_title_font_size(self, title: RectangleGeometry) -> int:
+        """Calculate a font size that fits both high-score titles."""
         rg = self.graphics.rg
         lex = self.core.lexicon
         font_size = int(title.hgt * 1.0)
@@ -820,6 +844,7 @@ class MainMenu:
         return font_size
 
     def rebuild_highscores_textures(self) -> None:
+        """Regenerate the high-score rankings and title textures."""
         rg = self.graphics.rg
         geo = self.geometry
         lex = self.core.lexicon
@@ -851,6 +876,7 @@ class MainMenu:
         self.highscores_texture_dirty = False
 
     def start_highscores_flip(self) -> None:
+        """Start the animation switching between high-score rankings."""
         if self.highscores_flip_active:
             return
 
@@ -861,6 +887,7 @@ class MainMenu:
 
     def _draw_highscores_texture(self, tab: RectangleGeometry,
                                  kind: int = 0) -> None:
+        """Render the selected high-score ranking with its flip animation."""
         if self.highscores_texture_dirty:
             self.rebuild_highscores_textures()
 
@@ -914,6 +941,7 @@ class MainMenu:
 
     def _draw_title_face(self, texture_name: str, title: RectangleGeometry,
                          center_y: float, scale_y: float) -> None:
+        """Render a vertically scaled high-score title texture."""
         height = max(1, round(title.hgt * scale_y))
         with self.graphics.clip(title.x, title.y, title.wdt, title.hgt):
             self.graphics.textures.draw(texture_name, title.x,
@@ -921,6 +949,7 @@ class MainMenu:
                                         title.wdt, height)
 
     def _highscores_flip_progress(self) -> float:
+        """Return the normalized progress of the high-score flip animation."""
         if not self.highscores_flip_active:
             return 0.0
 
@@ -929,6 +958,7 @@ class MainMenu:
 
     def _draw_highscores_title(self, title: RectangleGeometry,
                                kind: int = 0) -> None:
+        """Render the animated title of the current high-score ranking."""
         textures = self.graphics.textures
 
         if (not textures.exists("mainmenu_highscores_hall_title")
@@ -961,6 +991,8 @@ class MainMenu:
         self._draw_title_face(new_texture_name, title, new_y, new_scale_y)
 
     def _obstacle_needs_registration(self, identifier: str) -> bool:
+        """Check whether an obstacle needs registering for"""
+        """the current generation."""
         generation = self.core.physics.generation
 
         if self.obstacle_generations.get(identifier) == generation:
@@ -971,12 +1003,14 @@ class MainMenu:
         return True
 
     def _remove_registered_obstacle(self, identifier: str) -> None:
+        """Remove a registered menu obstacle and its generation record."""
         self.core.physics.remove_obstacle(self.background.obstacles,
                                           identifier)
         self.obstacle_generations.pop(identifier, None)
 
     def highscores_tab(self, rgb_factor: float, x_to_ct: int = 125,
                        y_to_ct: int = -290, kind: int = 0) -> None:
+        """Render a high-score panel and register its physical obstacles."""
         draw = self.shapes
         rg = self.graphics.rg
         geo = self.geometry

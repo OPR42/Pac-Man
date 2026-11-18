@@ -19,7 +19,9 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 
 class GameBoard:
+    """Manage maze rendering, gameplay animations and board effects."""
     def __init__(self, core: Core) -> None:
+        """Initialize game board state and rendering dependencies."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -58,6 +60,7 @@ class GameBoard:
         self.launched: bool = False
 
     def launch(self) -> None:
+        """Initialize the game board, HUDs and in-game audio."""
         self.core._emit(
             LogEvent(source="  game  ", type="info",
                      message="Game Board launched"))
@@ -76,6 +79,7 @@ class GameBoard:
         self.launched = True
 
     def reset(self) -> None:
+        """Reset board state, animations and gameplay effects."""
         self.obstacles = []
         self.build_done = False
         self.anim_start = -1.0
@@ -101,6 +105,7 @@ class GameBoard:
         self.game.minigames.reset()
 
     def resize(self) -> None:
+        """Update board geometry and dependent elements after resizing."""
         self.build_done = False
         old_mvp = self.mvp
         self.clear_stick_char_cache()
@@ -115,6 +120,7 @@ class GameBoard:
         self.convert_coords_on_resize(old_mvp)
 
     def convert_coords_on_resize(self, old_mvp: RectangleGeometry) -> None:
+        """Scale character and Pacgum positions to the resized maze."""
         sround = self.utils.sym_round
         if old_mvp.wdt <= 0 or old_mvp.hgt <= 0:
             return
@@ -137,6 +143,7 @@ class GameBoard:
     def add_board_text(self, x: int, y: int, txt: str, cl: Color,
                        size: float, duration: float,
                        slide_up: float = 0.0, outlined: bool = False) -> None:
+        """Queue temporary animated text for display on the game board."""
         rg = self.graphics.rg
         if self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
             rel_x = (x - self.mvp.ct.x) / rg(100)
@@ -153,6 +160,7 @@ class GameBoard:
                                    outlined))
 
     def write_board_texts(self) -> None:
+        """Render active board messages and remove expired ones."""
         if len(self.inboard_texts) <= 0:
             return
         rg = self.graphics.rg
@@ -185,6 +193,7 @@ class GameBoard:
 
     def get_stick_char_texture(self, char: str, size: int,
                                thick: int) -> str:
+        """Retrieve or generate a cached texture for a stick character."""
         sround = self.utils.sym_round
         key = (size, thick, char)
 
@@ -204,6 +213,7 @@ class GameBoard:
     def draw_cached_stick_text(self, x: int, y: int, txt: str,
                                size: int, thick: int, cl: Color,
                                cl_outline: Color | None = None) -> None:
+        """Draw multiline stick text using cached character textures."""
         if not txt or size <= 0:
             return
 
@@ -234,12 +244,14 @@ class GameBoard:
                 textures.draw(texture_name, char_x, char_y, tint=cl)
 
     def clear_stick_char_cache(self) -> None:
+        """Unload all cached stick character textures."""
         textures = self.graphics.textures
         for texture_name in self.stick_char_cache.values():
             textures.unload(texture_name)
         self.stick_char_cache.clear()
 
     def draw_gameboard(self) -> None:
+        """Render the game board and update its visual animations."""
         self.game.audio.ingame_update()
         if self.game.interludes.active:
             self.game.interludes.play_interlude()
@@ -321,6 +333,7 @@ class GameBoard:
         self.gamehuds.draw_huds()
 
     def death_anim(self) -> bool:
+        """Render Pac-Man's death animation and report its completion."""
         if self.pacman_deathtime == -1.0:
             return True
 
@@ -359,6 +372,7 @@ class GameBoard:
         return False
 
     def spawn_anim(self) -> bool:
+        """Render the Pac-Man respawn effect and report its completion."""
         if self.pacman_spawntime == -1.0:
             return True
 
@@ -383,7 +397,9 @@ class GameBoard:
         return False
 
     def warp_anim(self, out: bool = False) -> bool:
+        """Animate the entrance or exit portal and report its completion."""
         def pulse(elapsed: float, start: float, duration: float) -> float:
+            """Return the intensity of a time-limited sinusoidal pulse."""
             if duration <= 0.0:
                 return 0.0
             progress = (elapsed - start) / duration
@@ -479,6 +495,7 @@ class GameBoard:
         return False
 
     def _draw_warp_lightnings(self) -> None:
+        """Render active portal lightning effects."""
         now = time.perf_counter()
         self.warp_lightnings = [lightning for lightning in self.warp_lightnings
                                 if lightning[1] > now]
@@ -491,6 +508,7 @@ class GameBoard:
 
     def _spawn_warp_lightning(self, center_x: int, center_y: int,
                               cell_size: int) -> None:
+        """Generate a short-lived lightning bolt around the portal."""
         sround = self.utils.sym_round
         angle = self.game.random.uniform(0.0, math.tau)
         start_radius = cell_size * self.game.random.uniform(0.05, 0.15)
@@ -523,6 +541,7 @@ class GameBoard:
                                      color))
 
     def set_maze_coords(self) -> None:
+        """Calculate maze and HUD viewport geometry."""
         gmstate = self.core.gm_state
         if gmstate.level < 0:
             self.game.minigames.set_board_geometry(gmstate.level)
@@ -547,6 +566,7 @@ class GameBoard:
             vp_y + (vp_height - huds_height) // 2, rg(300), huds_height)
 
     def draw_maze(self) -> None:
+        """Render the maze, Pacgums and wall debris."""
         sround = self.utils.sym_round
         gmstate = self.core.gm_state
         maze_cell_size = self.maze_cell_size
@@ -613,6 +633,7 @@ class GameBoard:
         self.draw_wall_debris()
 
     def draw_wall_debris(self) -> None:
+        """Animate debris from recently destroyed maze walls."""
         if not self.wall_debris:
             return
 
@@ -674,17 +695,20 @@ class GameBoard:
         self.wall_debris = active_debris
 
     def cell_center_coords(self, cell_x: int, cell_y: int) -> tuple[int, int]:
+        """Return the screen coordinates of a maze cell center."""
         sround = self.utils.sym_round
         x = self.mvp.x + sround(self.maze_cell_size * (cell_x + 0.5))
         y = self.mvp.y + sround(self.maze_cell_size * (cell_y + 0.5))
         return (x, y)
 
     def coords_to_maze_cell(self, pos_x: int, pos_y: int) -> tuple[int, int]:
+        """Convert screen coordinates to maze cell indices."""
         cell_x = (pos_x - self.mvp.x) // self.maze_cell_size
         cell_y = (pos_y - self.mvp.y) // self.maze_cell_size
         return (cell_x, cell_y)
 
     def draw_crates(self) -> None:
+        """Render collectible crates on the game board."""
         inventory = self.game.inventory
         if len(inventory.crates) <= 0:
             return
@@ -693,6 +717,7 @@ class GameBoard:
                                     crate.item_name)
 
     def draw_characters(self) -> None:
+        """Render Pac-Man and ghosts with their current animations."""
         sround = self.utils.sym_round
         now = time.perf_counter()
         draw = self.shapes
@@ -760,6 +785,7 @@ class GameBoard:
                            actor_name=actor.name)
 
     def draw_obstacles(self) -> None:
+        """Display physical obstacles for debugging purposes."""
         sround = self.utils.sym_round
         draw = self.shapes
 
@@ -780,6 +806,7 @@ class GameBoard:
                                   thick=1, cl=rcl.BASE_RED, filled=False)
 
     def draw_detection_rectangle(self) -> None:
+        """Display Pac-Man's mouth detection area for debugging."""
         sround = self.utils.sym_round
         gmstate = self.core.gm_state
         length = gmstate.cell_size
@@ -798,9 +825,11 @@ class GameBoard:
 
     def display_maze_texture(self, x: int, y: int,
                              width: int, height: int) -> None:
+        """Draw the cached maze texture at the specified position."""
         self.graphics.textures.draw("gameboard_maze", x, y, width, height)
 
     def maze_edge_color(self) -> Color:
+        """Return the wall edge color for the current maze skin."""
         skin = self.core.gm_state.skin
         if skin == 1:
             return rcl.EDGE_SKIN_1
@@ -812,6 +841,7 @@ class GameBoard:
 
     def build_maze_texture(self, width: int, height: int, cell_size: int,
                            wall_thick: int, edge_thick: int) -> None:
+        """Generate the maze texture for the current skin."""
         texture_width = width * cell_size
         texture_height = height * cell_size
         if self.core.gm_state.skin == 1:
@@ -855,6 +885,7 @@ class GameBoard:
             edge_thick: int, wall_color: RaylibObject,
             edge_color: RaylibObject, grad_c_color: RaylibObject,
             grad_b_color: RaylibObject, ground_color: RaylibObject) -> None:
+        """Draw maze cells, walls and decorative gradients into a texture."""
         sround = self.utils.sym_round
         draw = self.shapes
         rg = self.graphics.rg
@@ -1165,6 +1196,7 @@ class GameBoard:
     def build_maze_obstacles(self, width: int, height: int,
                              cell_size: int, wall_thick: int,
                              maze_x: int, maze_y: int) -> None:
+        """Build physical collision obstacles from maze walls."""
         sround = self.utils.sym_round
         self.obstacles.clear()
         physics = self.physics
@@ -1173,6 +1205,7 @@ class GameBoard:
 
         def vertex_walls(grid_x: int,
                          grid_y: int) -> tuple[bool, bool, bool, bool]:
+            """Return the wall connections surrounding a maze vertex."""
             wall_left = (grid_x > 0 and horizontal[grid_y][grid_x - 1])
             wall_right = (grid_x < width and horizontal[grid_y][grid_x])
             wall_up = (grid_y > 0 and vertical[grid_y - 1][grid_x])
@@ -1180,6 +1213,7 @@ class GameBoard:
             return wall_left, wall_right, wall_up, wall_down
 
         def vertex_kind(grid_x: int, grid_y: int) -> str:
+            """Classify a maze vertex according to its wall connections."""
             wall_left, wall_right, wall_up, wall_down = vertex_walls(
                 grid_x, grid_y)
             count = sum((wall_left, wall_right, wall_up, wall_down))
@@ -1282,6 +1316,7 @@ class GameBoard:
 
     def _add_horizontal_wall_cap(self, identifier: str, x: float, y: float,
                                  wall_thick: float, left: bool) -> None:
+        """Add a triangular collision cap to a horizontal wall."""
         half = wall_thick / 2.0
 
         if left:
@@ -1296,6 +1331,7 @@ class GameBoard:
 
     def _add_vertical_wall_cap(self, identifier: str, x: float, y: float,
                                wall_thick: float, top: bool) -> None:
+        """Add a triangular collision cap to a vertical wall."""
         half = wall_thick / 2.0
 
         if top:
@@ -1310,6 +1346,7 @@ class GameBoard:
 
     def _add_maze_column(self, identifier: str, x: float, y: float,
                          wall_thick: float) -> None:
+        """Add collision geometry for an isolated maze column."""
         half = wall_thick / 2.0
         self.physics.add_obstacle(self.obstacles, identifier + "_top",
                                   "triangle", x1=x - half, y1=y,
@@ -1319,14 +1356,17 @@ class GameBoard:
                                   x2=x + half, y2=y, x3=x, y3=y + half)
 
     def add_wall_debris(self, cell_x: int, cell_y: int, wall: str) -> None:
+        """Register debris from a destroyed wall segment."""
         self.game.audio.sound_play("break")
         self.wall_debris.append((time.perf_counter(), cell_x, cell_y, wall))
 
     def drop_bomb(self) -> None:
+        """Place a bomb at Pac-Man's current maze cell."""
         pacman = self.game.player.state
         self.bomb_cell = (pacman.cell_x, pacman.cell_y)
 
     def display_bomb(self) -> None:
+        """Render the bomb at its current maze position."""
         cell_x, cell_y = self.bomb_cell
         if cell_x == -1 or cell_y == -1:
             return
@@ -1338,6 +1378,7 @@ class GameBoard:
                                     size, size)
 
     def detonate_bomb(self) -> None:
+        """Trigger the explosion of the currently placed bomb."""
         self.game.audio.sound_play("explode")
         now = time.perf_counter()
         cell_x, cell_y = self.bomb_cell
@@ -1345,35 +1386,45 @@ class GameBoard:
         self.bomb_cell = (-1, -1)
 
     def blast_bomb(self) -> None:
+        """Apply bomb damage and render the active explosion."""
         blast_x, blast_y, starttime = self.bomb_detonation
+
         if blast_x == -1 or blast_y == -1 or starttime == -1.0:
             return
+
         now = time.perf_counter()
         duration = self.core.defaults.inventory_bomb_blast_duration
         progress = (now - starttime) / duration
+
         if progress >= 1.0:
             self.bomb_detonation = (-1, -1, -1.0)
+            return
+
         pacman = self.game.player.state
         ghosts = self.game.ghosts.states
+
         blast_t = blast_y
         while self.game.maze.is_direction_available((blast_x, blast_t),
                                                     "up"):
             blast_t -= 1
+
         blast_b = blast_y
         while self.game.maze.is_direction_available((blast_x, blast_b),
                                                     "down"):
             blast_b += 1
+
         blast_r = blast_x
         while self.game.maze.is_direction_available((blast_r, blast_y),
                                                     "right"):
             blast_r += 1
+
         blast_l = blast_x
         while self.game.maze.is_direction_available((blast_l, blast_y),
                                                     "left"):
             blast_l -= 1
-        y = blast_y
 
         def check_victims(x: int, y: int) -> None:
+            """Apply explosion damage to characters occupying a maze cell."""
             if (pacman.cell_x == x and pacman.cell_y == y
                     and pacman.status == 1
                     and not self.core.cht_table.invulnerable
@@ -1394,16 +1445,20 @@ class GameBoard:
                         ghost.pos_x, ghost.pos_y, f"{earned:,}", cl_text,
                         self.core.gm_state.character_size * 0.8, 5.0, 2.0)
 
+        y = blast_y
         for x in range(blast_l, blast_r + 1):
             check_victims(x, y)
+
         x = blast_x
         for y in range(blast_t, blast_b + 1):
             check_victims(x, y)
+
         self.display_bomb_blast(blast_x, blast_y, blast_t, blast_r,
                                 blast_b, blast_l, progress)
 
     def display_bomb_blast(self, bx: int, by: int, bt: int, br: int,
                            bb: int, bl: int, progress: float) -> None:
+        """Render the cross-shaped bomb explosion across accessible cells."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         cl1 = rcl.scale_alpha(rcl.BLAST_OUT, 1.0 - progress)

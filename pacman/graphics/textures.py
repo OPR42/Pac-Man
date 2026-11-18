@@ -13,7 +13,10 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 
 class Textures:
+    """Manage render textures, image resources, shaders"""
+    """and procedural materials."""
     def __init__(self, core: Core) -> None:
+        """Initialize texture, image and shader resource collections."""
         self.core = core
         self.shapes = core.game.graphics.shapes
         self.items: dict[str, RaylibObject] = {}
@@ -22,6 +25,7 @@ class Textures:
         self.current: str | None = None
 
     def shader_load(self, name: str | None = None) -> None:
+        """Load a supported shader if it is not already available."""
         if name in self.shaders:
             return
         if name == "grayscale":
@@ -30,6 +34,7 @@ class Textures:
                                  / "assets" / "shaders" / "grayscale.fs"))
 
     def set_minimal_log_level(self, minimal: bool = False) -> None:
+        """Adjust Raylib trace logging during resource operations."""
         if minimal:
             pr.set_trace_log_level(
                 pr.LOG_WARNING)  # type: ignore[attr-defined]
@@ -39,6 +44,7 @@ class Textures:
 
     def begin(self, name: str, width: int, height: int,
               bilinear: bool = False) -> None:
+        """Create a render texture and begin drawing into it."""
         self.set_minimal_log_level(True)
 
         try:
@@ -60,6 +66,7 @@ class Textures:
             raise
 
     def end(self) -> None:
+        """Finish drawing into the current render texture."""
         if self.current is None:
             return
 
@@ -71,9 +78,11 @@ class Textures:
             self.set_minimal_log_level(False)
 
     def exists(self, name: str) -> bool:
+        """Check whether a named render texture exists."""
         return name in self.items
 
     def get(self, name: str) -> RaylibObject | None:
+        """Return a named render texture if available."""
         return self.items.get(name)
 
     def draw(self, name: str, x: int, y: int,
@@ -83,6 +92,8 @@ class Textures:
              tint: RaylibObject = (255, 255, 255, 255),
              flip_x: bool = False, flip_y: bool = False,
              y_ratio: float = 1.0) -> None:
+        """Draw a render texture with optional scaling, rotation"""
+        """and flipping."""
         render_texture = self.items.get(name)
 
         if render_texture is None:
@@ -119,6 +130,7 @@ class Textures:
                             angle, tint)
 
     def unload(self, name: str) -> None:
+        """Release a named render texture."""
         self.set_minimal_log_level(True)
 
         try:
@@ -133,6 +145,7 @@ class Textures:
             self.set_minimal_log_level(False)
 
     def unload_all(self) -> tuple[int, int, int]:
+        """Release all managed textures, images and shaders."""
         self.set_minimal_log_level(True)
 
         nb_tex = len(self.items)
@@ -154,6 +167,7 @@ class Textures:
         return (nb_tex, nb_img, nb_shd)
 
     def set_filter(self, name: str, texture_filter: int) -> None:
+        """Set the filtering mode of a named render texture."""
         render_texture = self.items.get(name)
 
         if render_texture is None:
@@ -162,6 +176,7 @@ class Textures:
         pr.set_texture_filter(render_texture.texture, texture_filter)
 
     def size(self, name: str) -> tuple[int, int] | None:
+        """Return the dimensions of a named render texture."""
         render_texture = self.items.get(name)
 
         if render_texture is None:
@@ -170,6 +185,7 @@ class Textures:
         return (render_texture.texture.width, render_texture.texture.height)
 
     def load_image(self, name: str, path: str) -> None:
+        """Load an image file as a managed GPU texture."""
         if name in self.images:
             return
 
@@ -190,6 +206,7 @@ class Textures:
                            height: int, angle: float = 0.0,
                            alpha: int = 255, autocenter: bool = False,
                            cover: bool = False) -> None:
+        """Draw a managed image texture within a destination rectangle."""
         texture = self.images.get(name)
 
         if texture is None:
@@ -244,6 +261,7 @@ class Textures:
                             angle, tint)
 
     def unload_image(self, name: str) -> None:
+        """Release a named image texture."""
         self.set_minimal_log_level(True)
 
         try:
@@ -256,6 +274,7 @@ class Textures:
             self.set_minimal_log_level(False)
 
     def generate_texture(self, name: str) -> bool:
+        """Generate and register a supported procedural material texture."""
         if name in self.images:
             return True
         allowed = ["old_paper", "brushed_metal", "gunmetal", "lightwood",
@@ -295,6 +314,7 @@ class Textures:
 
     def snapshot_capture_area(self, x: int, y: int, width: int,
                               height: int) -> RaylibObject:
+        """Capture a rectangular screen area as a GPU texture."""
         screen = pr.load_image_from_screen()
         scale = pr.get_window_scale_dpi()
         scale_y = scale.y if scale.y > 0.0 else 1.0
@@ -330,9 +350,12 @@ class Textures:
 
     def snapshot_restore_area(self, texture: RaylibObject, x: int, y: int,
                               shader: str | None = None) -> None:
-        if texture is None or not shader:
+        """Restore a captured screen area with an optional shader."""
+        if texture is None:
             return
-        shader_ref = self.shaders.get(shader)
+
+        shader_ref = self.shaders.get(shader) if shader is not None else None
+
         if shader_ref is not None:
             pr.begin_shader_mode(shader_ref)
         pr.draw_texture(texture, x, y, pr.WHITE)
@@ -340,6 +363,7 @@ class Textures:
             pr.end_shader_mode()
 
     def snapshot_unload(self, texture: RaylibObject) -> None:
+        """Release a captured screen texture."""
         if texture is not None:
             self.set_minimal_log_level(True)
             try:
@@ -605,6 +629,7 @@ class Textures:
         return texture
 
     def replace_from_image(self, name: str, image: RaylibObject) -> None:
+        """Replace the contents of a render texture using an image."""
         render_texture = self.items.get(name)
         if render_texture is None:
             return
@@ -623,6 +648,7 @@ class Textures:
 
     def outline_mask(self, name: str, mask_color: Color, contour_color: Color,
                      fill_color: Color) -> None:
+        """Apply an outline and fill colors to a masked texture region."""
         render_texture = self.items.get(name)
         if render_texture is None:
             return

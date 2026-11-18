@@ -2,7 +2,8 @@ from pydantic import BaseModel, ConfigDict, Field
 
 
 class Defaults(BaseModel):
-    allow_continue_on_quickaccess: bool = True
+    """Define internal default values and gameplay constants."""
+    allow_continue_on_quickaccess: bool = False
     allow_raylib_shapes: bool = True
     allow_terminal_display: bool = True
 
@@ -110,11 +111,13 @@ class Defaults(BaseModel):
 
 
 class LevelConfig(BaseModel):
-    width: int = 12
+    """Define the dimensions of a maze level."""
+    width: int = 14
     height: int = 10
 
 
 class Config(BaseModel):
+    """Store user-configurable game settings and level definitions."""
     model_config = ConfigDict(extra="ignore")
     data_dir: str = "data"
     highscore_filename: str = "hall_of_fame.json"
@@ -167,6 +170,7 @@ class Config(BaseModel):
 
 
 class GameState(BaseModel):
+    """Track the current game state, progress and statistics."""
     status: int = 0
     skin: int = 0
     starttime: float = 0.0
@@ -199,6 +203,7 @@ class GameState(BaseModel):
 
 
 class PointsTable(BaseModel):
+    """Store point values for collectibles, ghosts and bonuses."""
     pacgum: int = 0
     super_pacgum: int = 0
     ghost: int = 0
@@ -212,6 +217,7 @@ class PointsTable(BaseModel):
 
 
 class CharacterState(BaseModel):
+    """Track a character's position, movement and activity."""
     name: str = ""
     displayed: bool = False
     pos_x: int = 0
@@ -236,7 +242,8 @@ class CharacterState(BaseModel):
 
 
 class CheatsTable(BaseModel):
-    unlocked: bool = True
+    """Track cheat availability and active cheat effects."""
+    unlocked: bool = False
     invulnerable: bool = False
     sprinter: bool = False
     outatime: bool = False
@@ -247,13 +254,14 @@ class CheatsTable(BaseModel):
 
 
 class Score(BaseModel):
+    """Represent a high-score entry and its integrity status."""
     name: str
     score: int
     corrupted: bool = False
 
 
 class PacgumState(BaseModel):
-    """Store a Pacgum state."""
+    """Track a Pacgum's position, type and movement path."""
     superpacgum: bool = False
     pos_x: float = -1.0
     pos_y: float = -1.0
@@ -262,6 +270,7 @@ class PacgumState(BaseModel):
 
 
 class HUDLifeState(BaseModel):
+    """Track the position, movement and animation state of a HUD life."""
     pos_x: float = 0.0
     pos_y: float = 0.0
     vel_x: float = 0.0
@@ -275,10 +284,7 @@ class HUDLifeState(BaseModel):
 
 
 class LogEvent(BaseModel):
-    """
-    Carry structured information from processing code
-    to the user interface.
-    """
+    """Carry structured log events from game logic to the interface."""
     source: str = ""
     type: str = ""
     message: str = ""

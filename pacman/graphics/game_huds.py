@@ -18,8 +18,10 @@ RaylibObject: TypeAlias = Any
 
 
 class GameHUDs:
+    """Manage HUD rendering, interactive controls and animated life tokens."""
     def __init__(self, core: Core,
                  lvp: RectangleGeometry, rvp: RectangleGeometry) -> None:
+        """Initialize HUD geometry, controls and animation state."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -68,6 +70,7 @@ class GameHUDs:
                           "Maze", "maze", "maze", rel_to_center=False)]
 
     def launch(self) -> None:
+        """Create HUD resources and initialize the game menus."""
         self.lvp = self.gameboard.lvp
         self.rvp = self.gameboard.rvp
         self.create_huds_textures()
@@ -82,6 +85,7 @@ class GameHUDs:
         self.gamemenus.launch()
 
     def reset(self) -> None:
+        """Reset HUD counters, animations and dependent interface state."""
         self.red_alert = False
         self.red_alert_time = time.perf_counter()
         self.livebox_lives = []
@@ -104,6 +108,7 @@ class GameHUDs:
         self.game.inventory.reset()
 
     def resize(self) -> None:
+        """Rebuild HUD resources and geometry after a window resize."""
         self.lvp = self.gameboard.lvp
         self.rvp = self.gameboard.rvp
         self.create_huds_textures()
@@ -117,6 +122,7 @@ class GameHUDs:
         self.game.inventory.resize()
 
     def draw_huds(self) -> None:
+        """Render HUD panels, controls, inventory and animations."""
         left_only = False
         if self.core.gm_state.level < 0:
             left_only = True
@@ -149,6 +155,7 @@ class GameHUDs:
             self.gamemenus.clear_background()
 
     def display_huds_textures(self) -> None:
+        """Draw the cached left and right HUD backgrounds."""
         left_only = False
         if self.core.gm_state.level < 0:
             left_only = True
@@ -173,6 +180,7 @@ class GameHUDs:
                            cl=cl_border, thick=rg(4), roundness=0.25)
 
     def update_counters(self) -> None:
+        """Render score, level, lives and remaining time."""
         left_only = False
         if self.core.gm_state.level < 0:
             left_only = True
@@ -184,6 +192,7 @@ class GameHUDs:
         def write_in_box(box: RectangleGeometry, value: int,
                          timer: bool = False, level: bool = False,
                          alert: int | None = None) -> bool:
+            """Format and render a counter inside its assigned rectangle."""
             sround = self.utils.sym_round
             if timer:
                 if value >= 600000:
@@ -205,7 +214,9 @@ class GameHUDs:
 
             cl = rcl.PACMAN_YELLOW
             red_alert = False
-            if alert is not None and value <= alert:
+            if (alert is not None and value <= alert
+                    and not (timer and gmstate.pacgum_cur <= 0
+                             and gmstate.suppacgum_cur <= 0)):
                 now = time.perf_counter()
                 if not self.red_alert:
                     self.red_alert_time = now
@@ -238,6 +249,7 @@ class GameHUDs:
         self.red_alert = red_alert
 
     def display_hud_buttons(self, index: int, rgb_factor: float) -> None:
+        """Render an interactive HUD button with its current visual state."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -371,6 +383,7 @@ class GameHUDs:
     def display_r_checkbox(self, index: int, rgb_factor: float,
                            check: bool = False,
                            lbl_size: int | None = None) -> None:
+        """Render a cheat option checkbox and its label."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -439,6 +452,7 @@ class GameHUDs:
 
     def display_rc_checkbox(self, index: int, rgb_factor: float,
                             lbl_size: int, check: bool = False) -> None:
+        """Render a settings checkbox and its current state."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -480,6 +494,7 @@ class GameHUDs:
                         thick=thick, cl=line_color, filled=False)
 
     def display_clickable_label(self, index: int, lbl_size: int) -> None:
+        """Render an interactive text label."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -513,6 +528,7 @@ class GameHUDs:
 
     def display_btn_prev(self, index: int, btn_size: int,
                          max_size: int) -> None:
+        """Render a previous-value navigation button."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -546,6 +562,7 @@ class GameHUDs:
 
     def display_list_next(self, index: int, txt_size: int,
                           btn_size: int, listitem: str) -> None:
+        """Render a selectable list and its navigation controls."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -587,6 +604,7 @@ class GameHUDs:
 
     def display_numbar(self, index: int, low: int, high: int, step: int,
                        value: int, unit: str, max_size: int) -> None:
+        """Render a numeric setting as an interactive bar."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         draw = self.graphics.shapes
@@ -637,6 +655,7 @@ class GameHUDs:
                   bar_font, txt_size, bar_color)
 
     def create_huds_textures(self) -> None:
+        """Generate the static HUD background textures."""
         left_only = False
         if self.core.gm_state.level < 0:
             left_only = True
@@ -655,6 +674,7 @@ class GameHUDs:
 
         def add_box(x: int, y: int, width: int, height: int,
                     left: bool = False) -> RectangleGeometry:
+            """Draw a decorative HUD information box."""
             box = geo.rectangle_geometry(x, y, width, height)
             cl_back = rcl.BASE_BLACK
             cl_light = rcl.BASE_DARKER_GREY
@@ -696,6 +716,7 @@ class GameHUDs:
 
         def add_button_box(x: int, y: int, width: int, height: int,
                            left: bool = True) -> RectangleGeometry:
+            """Draw a decorative HUD button container."""
             box = geo.rectangle_geometry(x, y, width, height)
             cl_back = rcl.BASE_BLACK
             cl_light = rcl.BASE_DARKER_GREY
@@ -901,6 +922,7 @@ class GameHUDs:
                 i.disabled = left_only
 
     def livebox_set_geometry(self, capacity: int | None = None) -> None:
+        """Calculate reserve life token dimensions for the available space."""
         sround = self.utils.sym_round
         if capacity is None:
             capacity = self.core.defaults.hud_livebox_capacity
@@ -1005,7 +1027,7 @@ class GameHUDs:
         return float(x), float(y)
 
     def livebox_draw_halo(self, life: HUDLifeState, now: float) -> None:
-        """Draw a materialization halo and return True when complete."""
+        """Draw the expanding materialization halo of a reserve Pac-Man."""
         sround = self.utils.sym_round
         if life.halo_start_time is None:
             return
@@ -1023,6 +1045,7 @@ class GameHUDs:
 
     def livebox_convert_coords_on_resize(self,
                                          old_box: RectangleGeometry) -> None:
+        """Reposition reserve life tokens after a HUD resize."""
         sround = self.utils.sym_round
         if old_box.wdt <= 0 or old_box.hgt <= 0:
             return
@@ -1074,6 +1097,7 @@ class GameHUDs:
         velocity_deadzone = max(1.0, radius * 0.25)
 
         def keep_inside(life: HUDLifeState) -> None:
+            """Constrain a life token to the LiveBox boundaries."""
             if life.pos_x < left:
                 life.pos_x = left
                 if life.vel_x < 0.0:
@@ -1093,6 +1117,7 @@ class GameHUDs:
 
         def resolve_pair(first: HUDLifeState,
                          second: HUDLifeState) -> None:
+            """Resolve overlap between two reserve life tokens."""
             if first.stable and second.stable:
                 return
             dx = first.pos_x - second.pos_x
@@ -1144,6 +1169,7 @@ class GameHUDs:
         cell_size = max(1.0, radius * 2.0)
 
         def cell_coords(life: HUDLifeState) -> tuple[int, int]:
+            """Return the spatial grid coordinates of a life token."""
             return (math.floor(life.pos_x / cell_size),
                     math.floor(life.pos_y / cell_size))
 
@@ -1357,6 +1383,7 @@ class GameHUDs:
         self.livebox_texture_valid = True
 
     def hourglass_create_texture(self) -> None:
+        """Generate the textures used to render the hourglass."""
         if self.core.gm_state.level < 0:
             return
         sround = self.utils.sym_round
@@ -1407,6 +1434,7 @@ class GameHUDs:
         def hourglass_part(x: int, y: int, width: int, height: int,
                            roundness: float, thick: int,
                            angle: float = 0.0) -> None:
+            """Draw a component of the hourglass texture."""
             with self.graphics.clip(x, y, width, height):
                 self.graphics.textures.draw_image_texture(
                     "wood", x, y, width, height,
@@ -1440,6 +1468,7 @@ class GameHUDs:
             bulb_inner_size, bulb_inner_size)
 
     def hourglass_draw(self, flipping: float = 0.0) -> None:
+        """Render the hourglass and its current sand level."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         georect = self.geometry.rectangle_geometry
@@ -1461,15 +1490,18 @@ class GameHUDs:
         botsand_height = 0
 
         def rot(x: int, y: int) -> tuple[int, int]:
+            """Rotate a point around the hourglass center."""
             return geo.rotate_point(x, y, self.cont_time.ct.x,
                                     self.cont_time.ct.y, flipping)
 
         def rot_top(x: int, y: int) -> tuple[int, int]:
+            """Rotate a point belonging to the upper hourglass bulb."""
             offset = sround(
                 (bulb_top.hgt - topsand_height + glass_thick) * slide_progress)
             return rot(x, y - offset)
 
         def rot_bot(x: int, y: int) -> tuple[int, int]:
+            """Rotate a point belonging to the lower hourglass bulb."""
             offset = sround(
                 (bulb_bot.hgt - botsand_height + glass_thick) * slide_progress)
             return rot(x, y - offset)
@@ -1562,6 +1594,7 @@ class GameHUDs:
 
     def hourglass_flip(self, init: bool = False,
                        duration: float = 0.0, snapshot: float = 0.0) -> None:
+        """Animate the hourglass rotation and update its orientation."""
         if init:
             self.hourglass_flip_duration = duration
             self.hourglass_flip_starttime = time.perf_counter()

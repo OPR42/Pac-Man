@@ -18,6 +18,7 @@ RaylibObject: TypeAlias = Any
 
 @dataclass
 class GameSettingsValues:
+    """Store the values currently displayed in the settings menu."""
     language: str = "English"
     hints: bool = True
     window_maximized: bool = False
@@ -31,7 +32,10 @@ class GameSettingsValues:
 
 
 class GameSettingsMenu:
+    """Manage game settings, their controls and their graphical"""
+    """presentation."""
     def __init__(self, core: Core) -> None:
+        """Initialize settings controls, geometry and displayed values."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -49,23 +53,28 @@ class GameSettingsMenu:
         self.settings_currents: GameSettingsValues = GameSettingsValues()
 
     def launch(self) -> None:
+        """Initialize the settings menu layout."""
         self.panel_geometry_done = False
         self.build_settings_geometry()
 
     def reset(self) -> None:
+        """Reset settings menu controls and cached display values."""
         self.ui_items = []
         self.panel_geometry_done = False
         self.settings_currents = GameSettingsValues()
 
     def resize(self) -> None:
+        """Rebuild the settings menu layout after resizing."""
         self.panel_geometry_done = False
         self.build_settings_geometry()
 
     def command(self, cmd: str) -> None:
+        """Process a settings command for the currently focused control."""
         focus = self.graphics.interface.current_focused_code()
 
         def value_barnum(cur: int, cmd: str, low: int, high: int,
                          step: int, fine_step: int) -> int:
+            """Adjust a numeric setting using navigation or bar position."""
             if cmd == "right" or cmd.endswith(("nxt", "lbl")):
                 cur = min(high, (cur // step + 1) * step)
             elif cmd == "left" or cmd.endswith("prv"):
@@ -78,11 +87,13 @@ class GameSettingsMenu:
             return cur
 
         def value_checkbox(cur: bool, cmd: str) -> bool:
+            """Toggle a checkbox when an activation command is received."""
             if cmd in ("right", "left", focus):
                 return not cur
             return cur
 
         def value_list(cur: int, list_len: int, cmd: str) -> int:
+            """Move through a list of values with wraparound."""
             if cmd == "right" or cmd.endswith(("nxt", "lbl")):
                 cur += 1
             elif cmd == "left" or cmd.endswith("prv"):
@@ -151,9 +162,12 @@ class GameSettingsMenu:
             self.graphics.reposition_and_resize()
         elif focus.startswith("resolution_"):
             res_cur = (self.graphics.screen_width, self.graphics.screen_height)
-            workarea = self.graphics.window_info.workarea
-            max_wdt = workarea.width
-            max_hgt = workarea.height
+            max_wdt = 800
+            max_hgt = 450
+            if self.graphics.window_info:
+                workarea = self.graphics.window_info.workarea
+                max_wdt = workarea.width
+                max_hgt = workarea.height
             reslist = [(800, 600), (1024, 768), (1280, 720), (1280, 800),
                        (1280, 1024), (1366, 768), (1440, 900), (1600, 900),
                        (1600, 1200), (1680, 1050), (1920, 1080), (1920, 1200),
@@ -187,6 +201,8 @@ class GameSettingsMenu:
                      y: int = -1,
                      xy: tuple[int, int] = (-1, -1)
                      ) -> InterfaceItem | None:
+        """Find a settings control by code, vertical position"""
+        """or coordinates."""
         if not self.ui_items:
             return None
         elif code != "":
@@ -204,6 +220,7 @@ class GameSettingsMenu:
         return None
 
     def build_settings_geometry(self) -> None:
+        """Build the settings panel and its interactive controls."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         georec = self.geometry.rectangle_geometry
@@ -224,23 +241,27 @@ class GameSettingsMenu:
 
         def add_button(x: int, y: int, wdt: int, hgt: int,
                        lbl: str, code: str) -> None:
+            """Add a button to the settings interface."""
             self.ui_items.append(InterfaceItem(
                 x=x, y=y, width=wdt, height=hgt, label=lbl,
                 code=code, kind="button", rel_to_center=False))
 
         def add_title(x: int, y: int, wdt: int, hgt: int, lbl: str) -> None:
+            """Add a section title to the settings interface."""
             self.ui_items.append(InterfaceItem(
                 x=x, y=y, width=wdt, height=hgt, label=lbl, code="",
                 kind="zone", rel_to_center=False))
 
         def add_checkbox(x: int, y: int, wdt: int, hgt: int,
                          lbl: str, code: str) -> None:
+            """Add a checkbox to the settings interface."""
             self.ui_items.append(InterfaceItem(
                 x=x, y=y, width=wdt, height=hgt, label=lbl,
                 code=code, kind="rc_checkbox", rel_to_center=False))
 
         def add_list(x: int, y: int, wdt: int, hgt: int,
                      lbl: str, code: str) -> None:
+            """Add a selectable list with previous and next controls."""
             lbl_wdt = sround(wdt / 2)
             prv_x, prv_wdt = x + lbl_wdt, hgt
             nxt_x, nxt_wdt = x + lbl_wdt + prv_wdt, wdt - lbl_wdt - prv_wdt
@@ -257,6 +278,7 @@ class GameSettingsMenu:
 
         def add_numbar(x: int, y: int, wdt: int, hgt: int,
                        lbl: str, code: str) -> None:
+            """Add an interactive numeric adjustment bar."""
             lbl_wdt = sround(wdt / 2)
             bar_x, bar_wdt = x + lbl_wdt, wdt - lbl_wdt
             self.ui_items.append(InterfaceItem(
@@ -305,6 +327,7 @@ class GameSettingsMenu:
         self.panel_geometry_done = True
 
     def update_values(self) -> None:
+        """Refresh displayed settings values from the current game state."""
         lex = self.core.lexicon
         cur = self.settings_currents
         cur.language = lex("language").capitalize()
@@ -323,9 +346,11 @@ class GameSettingsMenu:
         cur.sound_volume = int(self.game.audio.sound_volume * 100)
 
     def save(self) -> bool:
+        """Save the current configuration and report whether it succeeded."""
         return self.core.config_manager.save(self.core.config)
 
     def draw_settings_menu(self) -> None:
+        """Render the settings panel and its interactive controls."""
         if not self.panel_geometry_done:
             self.build_settings_geometry()
         self.update_values()
@@ -412,6 +437,7 @@ class GameSettingsMenu:
                                              max_size=label_size)
 
     def _max_label_size(self) -> int:
+        """Find a common font size that fits the settings labels."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         lex = self.core.lexicon

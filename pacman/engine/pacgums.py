@@ -11,8 +11,8 @@ from pacman.engine.player import Player
 
 class Pacgums:
     """Manage Pacgums and their spatial interactions."""
-
     def __init__(self, core: Core, maze: Maze, player: Player) -> None:
+        """Initialize Pacgum states and movement dependencies."""
         self.core = core
         self.maze = maze
         self.player = player
@@ -51,6 +51,7 @@ class Pacgums:
 
     def trigger_superpacgum_effect(self, disable: bool = False,
                                    pause_duration: float = 0.0) -> None:
+        """Start, stop or adjust the super Pacgum effect timer."""
         if disable:
             self.superpacgum_starttime = -1.0
         elif pause_duration != 0.0 and self.superpacgum_starttime != -1.0:
@@ -219,9 +220,6 @@ class Pacgums:
         if distance <= step:
             gum.pos_x = target_x
             gum.pos_y = target_y
-            return True
-
-        if distance <= 0.0:
             return True
 
         gum.pos_x += dx / distance * step

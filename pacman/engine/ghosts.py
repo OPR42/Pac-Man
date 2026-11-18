@@ -51,6 +51,7 @@ class Ghosts:
             actor.cycle = ghosts_wave
 
     def update_state(self) -> None:
+        """Update ghost states according to active effects and power-ups."""
         if self.core.game.pacgums.superpacgum_starttime != -1.0:
             suppacgum_active = True
             now = time.perf_counter()
@@ -341,8 +342,8 @@ class Ghosts:
                     cells = forward_cells
                 if not cells:
                     break
-                fleeing = actor.activity in (3, 5)
-                if actor.name == "clyde":
+                fleeing = actor.activity == 3
+                if actor.name == "clyde" and actor.activity == 2:
                     distance = math.hypot(current[0] - pacman_cell[0],
                                           current[1] - pacman_cell[1])
                     if distance <= 4:

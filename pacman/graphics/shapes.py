@@ -14,7 +14,9 @@ GREY = (127, 127, 127, 255)
 
 
 class Shapes:
+    """Provide graphical primitives and procedural game illustrations."""
     def __init__(self, core: Core) -> None:
+        """Initialize drawing utilities and Raylib rendering options."""
         self.core = core
         self.game = core.game
         self.geometry = core.game.graphics.geometry
@@ -24,6 +26,7 @@ class Shapes:
         self.raylib_default_line_thick: float = 0.0
 
     def _mix_color(self, cl1: Color, cl2: Color, factor: float) -> Color:
+        """Interpolate between two RGBA colors."""
         sround = self.utils.sym_round
         factor = max(0.0, min(1.0, factor))
         cl1r, cl1g, cl1b, cl1a = cl1
@@ -36,6 +39,7 @@ class Shapes:
 
     def _gradient_factor(self, position: float,
                          gradient_range: tuple[int, float]) -> float:
+        """Return the normalized position within a gradient range."""
         start, end = gradient_range
 
         if start == end:
@@ -46,12 +50,14 @@ class Shapes:
     def _gradient_color(self, position: float,
                         gradient_range: tuple[int, int],
                         cl1: Color, cl2: Color) -> Color:
+        """Return the interpolated color at a gradient position."""
         factor = self._gradient_factor(position, gradient_range)
 
         return self._mix_color(cl1, cl2, factor)
 
     def _point_on_circle(self, center_x: float, center_y: float, radius: float,
                          angle: float) -> tuple[int, int]:
+        """Calculate a point on a circle at the specified angle."""
         sround = self.utils.sym_round
         point_x = sround(center_x + radius * math.cos(math.radians(angle)))
         point_y = sround(center_y + radius * math.sin(math.radians(angle)))
@@ -65,16 +71,19 @@ class Shapes:
         return sround(min(wdt, hgt) * max(0.0, min(1.0, roundness)) / 2)
 
     def pixel(self, x: int, y: int, cl: Color = GREY) -> None:
+        """Draw a single pixel."""
         pr.draw_pixel(x, y, cl)
 
     def text(self, x: int, y: int, txt: str, font: RaylibObject,
              font_size: int, cl: Color = GREY) -> None:
+        """Draw text using the specified font and size."""
         pr.draw_text_ex(font, txt, pr.Vector2(x, y), font_size, 0, cl)
 
     def text_block_max(self, x: int, y: int, width: int, height: int, txt: str,
                        font: RaylibObject, cl: Color = rcl.BASE_BLACK,
                        justify: str = "left", align: str = "top",
                        preserve_spacing: bool = False) -> None:
+        """Render wrapped text within a bounded rectangle."""
         if width <= 0 or height <= 0 or not txt:
             return
 
@@ -109,6 +118,7 @@ class Shapes:
              cl: Color = GREY, edge_square: bool = False,
              edge_rounded: bool = False, edge_sharp: bool = False,
              edge_shortsharp: bool = False) -> None:
+        """Draw a line with optional custom endpoint shapes."""
         sround = self.utils.sym_round
         dx = x2 - x1
         dy = y2 - y1
@@ -159,6 +169,7 @@ class Shapes:
     def triangle(self, x1: float, y1: float, x2: float, y2: float, x3: float,
                  y3: float, thick: int = 1, cl: Color = GREY,
                  filled: bool = False) -> None:
+        """Draw a filled or outlined triangle."""
         sround = self.utils.sym_round
         cross = (x2 - x1) * (y3 - y1) - (y2 - y1) * (x3 - x1)
 
@@ -199,6 +210,7 @@ class Shapes:
                 sector_end_angle: float = 360.0, sector_closed: bool = True,
                 thick: int = 1, cl: Color = GREY,
                 filled: bool = True) -> None:
+        """Draw an ellipse or elliptical sector with optional rotation."""
         sround = self.utils.sym_round
         if radius_x <= 0 or radius_y <= 0:
             return
@@ -237,6 +249,7 @@ class Shapes:
         full_ellipse = math.isclose(span, 360.0)
 
         def ellipse_point(theta_deg: float) -> tuple[float, float]:
+            """Calculate a rotated ellipse point at the specified angle."""
             theta = math.radians(theta_deg)
             cos_t = math.cos(theta)
             sin_t = math.sin(theta)
@@ -298,6 +311,7 @@ class Shapes:
     def circle(self, center_x: float, center_y: float, radius: float,
                thick: int = 1, cl: Color = GREY,
                filled: bool = True) -> None:
+        """Draw a filled or outlined circle."""
         if self.allow_raylib_shapes:
             if filled:
                 pr.draw_circle_v(pr.Vector2(center_x, center_y),
@@ -315,6 +329,7 @@ class Shapes:
                       sector_start_angle: float, sector_end_angle: float,
                       thick: int = 1, cl: Color = GREY,
                       filled: bool = True) -> None:
+        """Draw a filled or outlined circular sector."""
         if self.allow_raylib_shapes:
             while sector_end_angle < sector_start_angle:
                 sector_end_angle += 360.0
@@ -339,6 +354,7 @@ class Shapes:
                        sector_end_angle: float, angle: float = 0.0,
                        thick: int = 1, cl: Color = GREY,
                        filled: bool = True) -> None:
+        """Draw an elliptical sector with optional rotation."""
         self.ellipse(center_x, center_y, radius_x, radius_y, angle=angle,
                      sector_start_angle=sector_start_angle,
                      sector_end_angle=sector_end_angle, thick=thick,
@@ -347,6 +363,7 @@ class Shapes:
     def arc(self, x: int, y: int, radius: int, start_angle: int,
             end_angle: int, thick: int = 1,
             cl: Color = GREY) -> None:
+        """Draw an elliptical arc between two angles."""
         self.ellipse(x, y, radius, radius, sector_start_angle=start_angle,
                      sector_end_angle=end_angle, sector_closed=False,
                      thick=thick, cl=cl, filled=False)
@@ -369,6 +386,7 @@ class Shapes:
         segments = max(12, min(180, sround((math.pi * radius) / 48)))
 
         def corner_for_angle(angle: float) -> tuple[int, int]:
+            """Return the bounding-square corner for an angular quadrant."""
             normalized = angle % 360.0
 
             if normalized < 90.0:
@@ -465,9 +483,12 @@ class Shapes:
     def rectangle(self, x: int, y: int, width: int, height: int,
                   roundness: float = 0.0, thick: int = 1,
                   cl: Color = GREY, filled: bool = False) -> None:
+        """Draw a rectangle with optional rounded corners"""
+        """and transformations."""
 
         def base_rect(x: int, y: int, width: int, height: int, thick: int = 1,
                       cl: Color = GREY, filled: bool = False) -> None:
+            """Draw the base rectangle using the current geometry and style."""
             if width <= 0 or height <= 0:
                 return
             x2 = x + width
@@ -676,6 +697,7 @@ class Shapes:
     def circle_gradient(self, x: int, y: int, radius: int,
                         cl1: Color = GREY,
                         cl2: Color = GREY) -> None:
+        """Draw a circle with a radial color gradient."""
         pr.draw_circle_gradient(x, y, radius, cl1, cl2)
 
     def rectangle_round_gradient(self, x: int, y: int,
@@ -683,6 +705,7 @@ class Shapes:
                                  cl1: Color = GREY, cl2: Color = GREY,
                                  clip: tuple[int, int, int, int] | None = None,
                                  ) -> None:
+        """Draw a rounded rectangle with a color gradient."""
         sround = self.utils.sym_round
         if radius == -1:
             radius = sround(max(width, height) / 2)
@@ -717,6 +740,7 @@ class Shapes:
                eye_color: Color = rcl.BASE_BLACK, opacity: float = 1.0,
                contour: bool = True, variant: str = "",
                last_hor_dir: str = "") -> tuple[int, int, int]:
+        """Draw Pac-Man with configurable orientation and facial animation."""
         sround = self.utils.sym_round
         mouth_opening = max(0.0, mouth_opening)
         eye_opening = max(0.0, min(1.0, eye_opening))
@@ -936,6 +960,7 @@ class Shapes:
               variant: str = "", actor_name: str = "",
               texture_free: bool = False,
               force_body_color: Color | None = None) -> None:
+        """Draw a ghost with configurable appearance and animation."""
         sround = self.utils.sym_round
 
         if variant == "ghostbuster":
@@ -1125,6 +1150,7 @@ class Shapes:
                    angle: float = 0.0, line_spacing: float = 0.0,
                    align: str = "left", thick: int = 1,
                    cl: Color = rcl.BASE_BLACK) -> None:
+        """Render text using geometric line-segment characters."""
         stick_font: dict[str, tuple[int, ...]] = {
             " ": (),
             "!": (5256, 5758),
@@ -1260,6 +1286,7 @@ class Shapes:
 
         def rotate_point(local_x: float,
                          local_y: float) -> tuple[float, float]:
+            """Rotate a point around the current text glyph origin."""
             screen_x = (center_x + local_x * cos_a - local_y * sin_a)
             screen_y = (center_y + local_x * sin_a + local_y * cos_a)
             return screen_x, screen_y
@@ -1268,10 +1295,8 @@ class Shapes:
                         vector_a: tuple[float, float],
                         vector_b: tuple[float, float],
                         thick: int, cl: Color) -> None:
-            """
-            Fill the outer gap between two stick-font
-            segments sharing a node.
-            """
+            """Fill the outer gap between two stick-font"""
+            """segments sharing a node."""
             ax, ay = vector_a
             bx, by = vector_b
             length_a, length_b = math.hypot(ax, ay), math.hypot(bx, by)
@@ -1373,6 +1398,7 @@ class Shapes:
 
     def pacgum(self, center_x: int, center_y: int, size: int,
                superpg: bool = False, variant: int = 0) -> None:
+        """Draw a Pac-Gum with its configured appearance."""
         sround = self.utils.sym_round
 
         if variant == 2:
@@ -1396,6 +1422,7 @@ class Shapes:
             self.circle(center_x, center_y, radius, cl=color, filled=True)
 
     def sheriff_star(self, center_x: int, center_y: int, size: int) -> None:
+        """Draw a sheriff's star."""
         sround = self.utils.sym_round
         cl_shade = (127, 127, 127, 255)
         cl_shine = (191, 191, 191, 255)
@@ -1420,6 +1447,7 @@ class Shapes:
         self.triangle(ix, iy, jx, jy, hx, hy, cl=cl_shine, filled=True)
 
     def gold_nugget(self, center_x: int, center_y: int, size: int) -> None:
+        """Draw a stylized gold nugget."""
         sround = self.utils.sym_round
         cx, cy, q = center_x, center_y, sround(size / 5)
         cl_bright = (255, 226, 112, 255)
@@ -1431,6 +1459,7 @@ class Shapes:
              (cx - 2 * q, cy + q), (cx, cy)]
 
         def tri(a: int, b: int, c: int, cl: Color) -> None:
+            """Draw a triangle forming part of the gold nugget."""
             self.triangle(*p[a], *p[b], *p[c], cl=cl, filled=True)
 
         tri(0, 1, 7, cl_gold)
@@ -1444,6 +1473,7 @@ class Shapes:
                       cl=cl_shine, filled=True)
 
     def burger(self, center_x: int, center_y: int, size: int) -> None:
+        """Draw a stylized hamburger."""
         sround = self.utils.sym_round
         cx, cy = center_x, center_y
         r = sround(size / 2)
@@ -1472,6 +1502,7 @@ class Shapes:
                   thick=st, cl=sesame)
 
     def bretzel(self, center_x: int, center_y: int, size: int) -> None:
+        """Draw a stylized pretzel."""
         sround = self.utils.sym_round
         cx, cy = center_x, center_y
         q, r = sround(size / 4), sround(size * 0.30)
@@ -1538,6 +1569,7 @@ class Shapes:
                angle: int, mouth_angle: float, eye_opening: float,
                last_hor_dir: str = "", opacity: float = 1.0,
                face_color: Color = (-1, -1, -1, -1)) -> tuple[int, int, int]:
+        """Draw the Slimer character."""
         sround = self.utils.sym_round
         rad = math.radians(angle)
         fx, fy = math.cos(rad), math.sin(rad)
@@ -1624,12 +1656,10 @@ class Shapes:
     def ghostbuster(self, center_x: int, center_y: int, radius: int,
                     angle: float, eye_opening: float, wave: float,
                     name: str, actor_name: str) -> None:
+        """Draw a Ghostbuster character in the requested animation state."""
         sround = self.utils.sym_round
 
         state = name if name in ("dead", "scared", "disgusted") else "normal"
-
-        # if actor_name != "blinky" or state != "normal":
-        #     return
 
         if (actor_name not in ("blinky", "pinky", "inky", "clyde")
                 or state not in ("normal", "dead", "scared", "disgusted")):
@@ -1747,6 +1777,7 @@ class Shapes:
     def _ghostbuster_common_texture(self, radius: int, shirt: Color,
                                     skin: Color, hair: Color,
                                     dead: bool = False) -> None:
+        """Draw the shared visual elements of a Ghostbuster character."""
         sround = self.utils.sym_round
         r = radius
         cx = r
@@ -1840,6 +1871,7 @@ class Shapes:
 
     def _ghostbuster_hair(
             self, cx: int, r: int, hair: Color) -> None:
+        """Draw the selected Ghostbuster hairstyle."""
         sround = self.utils.sym_round
         top = -1
         mid = sround(r * 0.14) - 1
@@ -1855,6 +1887,7 @@ class Shapes:
                       right, sround(r * 0.43), cl=hair, filled=True)
 
     def _ghostbuster_dead_legs(self, radius: int) -> None:
+        """Draw the legs of a defeated Ghostbuster."""
         sround = self.utils.sym_round
         r = radius
         cx = r
@@ -1870,6 +1903,7 @@ class Shapes:
 
     def companion_square(self, center_x: int, center_y: int, size: int,
                          lines_color: Color = rcl.CUBE_LINES) -> None:
+        """Draw a stylized companion cube."""
         sround = self.utils.sym_round
         size = (size // 2) * 2
         area = self.geometry.rectangle_geometry(
@@ -1886,6 +1920,7 @@ class Shapes:
                        cl=rcl.CUBE_FRAME, filled=True)
 
         def bezeled_square(cx: int, cy: int, size: int, bzl: int = 6) -> None:
+            """Draw a beveled square component of the companion cube."""
             bezel_size = sround(size / bzl)
             side_len = size - bezel_size * 2
             half_size = sround(size / 2)
@@ -1929,6 +1964,7 @@ class Shapes:
 
     def heart(self, center_x: int, center_y: int, size: int,
               cl: Color = rcl.BLINKY_RED) -> None:
+        """Draw a stylized heart."""
         if size <= 0:
             return
         radius = max(1, round(size * 0.5))
@@ -2053,6 +2089,7 @@ class Shapes:
               cl_active: Color = rcl.BASE_WHITE, cl_back: Color = rcl.BLANK,
               cl_body: Color = rcl.BLANK,
               cl_frame: Color = rcl.BASE_BR_WHITE) -> int:
+        """Draw a mouse input symbol."""
         if size <= 0:
             return 0
         sround = self.utils.sym_round
@@ -2116,6 +2153,7 @@ class Shapes:
 
     def school42(self, center_x: int, center_y: int, size: int,
                  cl: Color = rcl.BASE_BLUE) -> None:
+        """Draw the School 42 emblem."""
         if size <= 0:
             return
         sround = self.utils.sym_round
@@ -2151,11 +2189,13 @@ class Shapes:
                         cl_keyback: Color = rcl.BLANK,
                         cl_keybody: Color = rcl.LIGHT_BEIGE,
                         cl_keyframe: Color = rcl.HOURGLASS_WOOD) -> None:
+        """Draw a gamepad with labeled controls."""
         if size <= 0:
             return
 
         def draw_key(center_x: int, center_y: int, text: str,
                      size: int) -> None:
+            """Draw an individual labeled gamepad control."""
             self.key(center_x, center_y, text, size,
                      cl=cl_keytext, cl_body=cl_keybody,
                      cl_frame=cl_keyframe, kind="pad")
@@ -2280,3 +2320,29 @@ class Shapes:
         mb_x = sround((body.ct.x - body.q1ct.x) / 2)
         draw_key(body.ct.x - mb_x, mb_y, "Back", sround(key_size * 0.8))
         draw_key(body.ct.x + mb_x, mb_y, "Play", sround(key_size * 0.8))
+
+    def shining_star(self, center_x: int, center_y: int, size: int,
+                     angle: float, ratio_wh: float,
+                     cl: Color = rcl.PACMAN_YELLOW,) -> None:
+        """Draw a star with animated or decorative highlights."""
+        if size <= 0 or ratio_wh <= 0.0:
+            return
+        poc = self._point_on_circle
+        arm_height = size / (ratio_wh + 2)
+        square_base = size - arm_height * 2
+        square_radius = math.hypot(square_base / 2, square_base / 2)
+        arm_radius = arm_height + square_base / 2
+        ax, ay = poc(center_x, center_y, square_radius, 225.0 + angle)
+        bx, by = poc(center_x, center_y, square_radius, 315.0 + angle)
+        cx, cy = poc(center_x, center_y, square_radius, 45.0 + angle)
+        dx, dy = poc(center_x, center_y, square_radius, 135.0 + angle)
+        ex, ey = poc(center_x, center_y, arm_radius, 270.0 + angle)
+        fx, fy = poc(center_x, center_y, arm_radius, 0.0 + angle)
+        gx, gy = poc(center_x, center_y, arm_radius, 90.0 + angle)
+        hx, hy = poc(center_x, center_y, arm_radius, 180.0 + angle)
+        self.triangle(ax, ay, bx, by, cx, cy, cl=cl, filled=True)
+        self.triangle(dx, dy, ax, ay, cx, cy, cl=cl, filled=True)
+        self.triangle(ax, ay, bx, by, ex, ey, cl=cl, filled=True)
+        self.triangle(bx, by, cx, cy, fx, fy, cl=cl, filled=True)
+        self.triangle(cx, cy, dx, dy, gx, gy, cl=cl, filled=True)
+        self.triangle(dx, dy, ax, ay, hx, hy, cl=cl, filled=True)

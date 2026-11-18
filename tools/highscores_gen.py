@@ -10,7 +10,7 @@ CHECKSUM_LEN = 16
 CHECKSUM_KEY = b"Pac-Man-42-Hall-of-Fame"
 
 scores = [
-    ("V", 125000),
+    ("  OPR 42  ", 2892396),
     ("SOLE SURVR", 98420),
     ("Furiosa42", 87310),
     ("Chuck NRS", 76900),

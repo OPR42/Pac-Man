@@ -41,7 +41,6 @@ class RenderColors:
     WALL_STD = (46, 46, 254, 255)
     PAPER = (241, 237, 226, 255)
     PAPER_OLD = (211, 173, 124, 255)
-    BLANK = (0, 0, 0, 0)
     PORTAL_BLUE = (0, 140, 255, 255)
     PORTAL_ORANGE = (255, 140, 0, 255)
     PORTAL_YELLOW_HALO = (222, 199, 51, 255)
@@ -96,7 +95,8 @@ class RenderColors:
     def mix_rgba(rgb_a: tuple[int, int, int, int],
                  rgb_b: tuple[int, int, int, int],
                  weight_a: float) -> tuple[int, int, int, int]:
-        if not rgb_a or not rgb_b or not weight_a:
+        """Blend two RGBA colors using the specified weight."""
+        if not rgb_a or not rgb_b:
             return (127, 127, 127, 127)
 
         wa = min(1.0, max(0.0, weight_a))

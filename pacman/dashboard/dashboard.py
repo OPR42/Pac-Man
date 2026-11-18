@@ -11,7 +11,9 @@ NBSP = "\u00A0"
 
 
 class Dashboard:
+    """Manage the terminal dashboard, game statistics and event log."""
     def __init__(self, core: Core) -> None:
+        """Initialize dashboard dimensions, colors and shared references."""
         self.core = core
         self.key_control = core.key_control
         self.step: int = 0
@@ -55,6 +57,7 @@ class Dashboard:
         self.utils = Utils()
 
     def launch(self) -> None:
+        """Initialize the terminal canvas and display the dashboard."""
         if self.core.defaults.allow_terminal_display:
             from .launcher import Launcher
             launcher = Launcher(self.core, self)
@@ -71,6 +74,7 @@ class Dashboard:
         self.step = 1
 
     def receive_key(self, key: str = "") -> None:
+        """Handle keyboard commands for navigating the event log."""
         if (key == "up" or key == "down" or key == "top" or key == "bottom"
            or key == "pgup" or key == "pgdown"):
             panel = self.logbook
@@ -98,6 +102,7 @@ class Dashboard:
                     self.canvas.print_canvas()
 
     def receive_event(self, event: LogEvent) -> None:
+        """Process a log event and update the terminal display."""
         panel = self.logbook
         if panel is None:
             return
@@ -232,8 +237,10 @@ class Dashboard:
             self.canvas.print_canvas()
 
     def update_dashboard(self) -> None:
+        """Refresh the displayed game state, statistics and cheat statuses."""
         def cropcenter(txt: str = "", width: int = 0) -> str:
-            if not txt or len(txt) <= 0 or width <= 0:
+            """Truncate and center text within a fixed character width."""
+            if not txt or width <= 0:
                 return ""
             if len(txt) > width:
                 txt = txt[:(width - 1)] + "…"
@@ -242,7 +249,8 @@ class Dashboard:
         def display_value(x: int = 0, y: int = 0, width: int = 0,
                           txt: str = "", color: str = self.cl_alt_text,
                           transparent: bool = False) -> None:
-            if not txt or len(txt) <= 0 or width <= 0:
+            """Display a centered value within the dashboard boundaries."""
+            if not txt or width <= 0:
                 return
             if (x < self.x_start or x + width > self.x_end
                or not (self.y_start <= y <= self.y_end)):
@@ -309,7 +317,7 @@ class Dashboard:
                             ("status", 126, 10)]
         direction_labels = ["RIGHT", "DOWNRIGHT", "DOWN", "DOWNLEFT", "LEFT",
                             "UPLEFT", "UP", "UPRIGHT"]
-        activity_labels = ["Idle", "Moving", "Chasing", "Fleing", "Dying",
+        activity_labels = ["Idle", "Moving", "Chasing", "Fleeing", "Dying",
                            "Returning"]
         status_labels = ["Dead", "Alive", "Tangible", "Ethereal", "Stunned",
                          "Disgusted"]

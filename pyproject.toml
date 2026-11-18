@@ -10,7 +10,6 @@ authors = [
 
 dependencies = [
     "pydantic>=2.0.0",
-    "numpy>=1.24.0",
     "raylib==5.5.0.4",
     "mazegenerator",
 ]

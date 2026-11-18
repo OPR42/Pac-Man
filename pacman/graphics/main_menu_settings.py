@@ -17,6 +17,7 @@ RaylibObject: TypeAlias = Any
 
 @dataclass
 class SettingsValues:
+    """Store the values displayed in the settings menu."""
     language: str = "English"
     hints: bool = True
     screensaver_delay: int = 30
@@ -36,7 +37,9 @@ class SettingsValues:
 
 
 class MainMenuSettings:
+    """Manage game settings, interactive controls and configuration changes."""
     def __init__(self, core: Core) -> None:
+        """Initialize settings controls, values and layout dependencies."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -54,13 +57,17 @@ class MainMenuSettings:
         self.settings_currents: SettingsValues = SettingsValues()
 
     def resize(self) -> None:
+        """Mark the settings panel geometry for rebuilding."""
         self.panel_geometry_done = False
 
     def command(self, cmd: str) -> None:
+        """Process a settings command and apply"""
+        """the resulting configuration change."""
         focus = self.graphics.interface.current_focused_code()
 
         def value_barnum(cur: int, cmd: str, low: int, high: int,
                          step: int, fine_step: int) -> int:
+            """Adjust a numeric value using directional or direct bar input."""
             if cmd == "right" or cmd.endswith(("nxt", "lbl")):
                 cur = min(high, (cur // step + 1) * step)
             elif cmd == "left" or cmd.endswith("prv"):
@@ -73,11 +80,13 @@ class MainMenuSettings:
             return cur
 
         def value_checkbox(cur: bool, cmd: str) -> bool:
+            """Toggle a checkbox value when its control is activated."""
             if cmd in ("right", "left", focus):
                 return not cur
             return cur
 
         def value_list(cur: int, list_len: int, cmd: str) -> int:
+            """Move through a circular list of selectable values."""
             if cmd == "right" or cmd.endswith(("nxt", "lbl")):
                 cur += 1
             elif cmd == "left" or cmd.endswith("prv"):
@@ -182,9 +191,12 @@ class MainMenuSettings:
             self.core.gm_state.on_timeout = index_updt
         elif focus.startswith("resolution_"):
             res_cur = (self.graphics.screen_width, self.graphics.screen_height)
-            workarea = self.graphics.window_info.workarea
-            max_wdt = workarea.width
-            max_hgt = workarea.height
+            max_wdt = 800
+            max_hgt = 450
+            if self.graphics.window_info:
+                workarea = self.graphics.window_info.workarea
+                max_wdt = workarea.width
+                max_hgt = workarea.height
             reslist = [(800, 600), (1024, 768), (1280, 720), (1280, 800),
                        (1280, 1024), (1366, 768), (1440, 900), (1600, 900),
                        (1600, 1200), (1680, 1050), (1920, 1080), (1920, 1200),
@@ -214,11 +226,9 @@ class MainMenuSettings:
             self.graphics.main_menu.main_menu_credits.geometry_built = False
             self.graphics.main_menu.main_menu_help.geometry_built = False
 
-    def find_item_by(self,
-                     code: str = "",
-                     y: int = -1,
-                     xy: tuple[int, int] = (-1, -1)
-                     ) -> InterfaceItem | None:
+    def find_item_by(self, code: str = "", y: int = -1,
+                     xy: tuple[int, int] = (-1, -1)) -> InterfaceItem | None:
+        """Find a settings control by code or screen coordinates."""
         if not self.ui_items:
             return None
         elif code != "":
@@ -236,6 +246,8 @@ class MainMenuSettings:
         return None
 
     def switch_focus_column(self, code: str = "") -> None:
+        """Move keyboard focus to the corresponding control"""
+        """in the other column."""
         if code == "":
             return
         lvp, rvp = self.lvp, self.rvp
@@ -257,6 +269,7 @@ class MainMenuSettings:
         self.graphics.interface.switch_focus_to(target_item.code)
 
     def create_panel_geometry(self) -> None:
+        """Build the settings panel layout and interactive controls."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         georec = self.geometry.rectangle_geometry
@@ -276,23 +289,27 @@ class MainMenuSettings:
 
         def add_button(x: int, y: int, wdt: int, hgt: int,
                        lbl: str, code: str) -> None:
+            """Add a button to the settings panel."""
             self.ui_items.append(InterfaceItem(
                 x=x, y=y, width=wdt, height=hgt, label=lbl,
                 code=code, kind="button", rel_to_center=False))
 
         def add_title(x: int, y: int, wdt: int, hgt: int, lbl: str) -> None:
+            """Add a noninteractive section title to the settings panel."""
             self.ui_items.append(InterfaceItem(
                 x=x, y=y, width=wdt, height=hgt, label=lbl, code="",
                 kind="zone", rel_to_center=False))
 
         def add_checkbox(x: int, y: int, wdt: int, hgt: int,
                          lbl: str, code: str) -> None:
+            """Add a checkbox control to the settings panel."""
             self.ui_items.append(InterfaceItem(
                 x=x, y=y, width=wdt, height=hgt, label=lbl,
                 code=code, kind="r_checkbox", rel_to_center=False))
 
         def add_list(x: int, y: int, wdt: int, hgt: int,
                      lbl: str, code: str) -> None:
+            """Add a list selector with previous and next controls."""
             lbl_wdt = sround(wdt / 2)
             prv_x, prv_wdt = x + lbl_wdt, hgt
             nxt_x, nxt_wdt = x + lbl_wdt + prv_wdt, wdt - lbl_wdt - prv_wdt
@@ -309,6 +326,7 @@ class MainMenuSettings:
 
         def add_numbar(x: int, y: int, wdt: int, hgt: int,
                        lbl: str, code: str) -> None:
+            """Add a numeric adjustment bar to the settings panel."""
             lbl_wdt = sround(wdt / 2)
             bar_x, bar_wdt = x + lbl_wdt, wdt - lbl_wdt
             self.ui_items.append(InterfaceItem(
@@ -383,6 +401,8 @@ class MainMenuSettings:
         self.panel_geometry_done = True
 
     def update_values(self) -> None:
+        """Refresh the displayed settings from"""
+        """the current game configuration."""
         lex = self.core.lexicon
         cur = self.settings_currents
         cur.language = lex("language").capitalize()
@@ -408,6 +428,7 @@ class MainMenuSettings:
         cur.minigames = self.core.config.minigames
 
     def defaults(self) -> None:
+        """Restore default settings and apply them to the running game."""
         dflt = self.settings_defaults
         self.core.config.language = dflt.language.lower()
         self.core.load_language()
@@ -424,8 +445,8 @@ class MainMenuSettings:
         self.graphics.screen_height = int(dimensions[1])
         self.core.config.window_width = int(dimensions[0])
         self.core.config.window_height = int(dimensions[1])
-        words = dflt.window_position.lower().split(" ")
-        self.core.config.window_position = f"{words[0]}{words[1]}"
+        self.core.config.window_position = (
+            dflt.window_position.lower().replace(" ", ""))
         self.core.config.window_resizable = dflt.window_resizable
         self.graphics.restore_resizable = True
         self.graphics.reposition_and_resize()
@@ -441,19 +462,37 @@ class MainMenuSettings:
         self.core.config.lives = dflt.lives
         self.core.config.new_life_threshold = dflt.new_life_threshold
         self.core.config.level_max_time = dflt.level_max_time
-        words = dflt.timeout_consequence.lower().split(" ")
-        self.core.config.timeout_consequence = f"{words[0]}_{words[1]}"
+        self.core.config.timeout_consequence = (
+            dflt.timeout_consequence.lower().replace(" ", "_"))
         self.core.config.minigames = dflt.minigames
         self.main_menu.qvp_ready = False
         self.core.load_config_to_environment()
         self.graphics.reposition_and_resize()
         self.game.audio.restore_volume()
         self.game.audio.jukebox_volume(self.game.audio.music_volume)
+        button = self.find_item_by(code="defaults")
+        if button:
+            x, y = button.x + button.width // 2, button.y + button.height // 2
+            self.graphics.gameboard.add_board_text(
+                x, y, self.core.lexicon("SET_DftOK"),
+                rcl.DISGUSTED_GHOST_GREEN,
+                (button.height // 3) * 2, 3.0, 3.0, outlined=True)
 
     def save(self) -> bool:
-        return self.core.config_manager.save(self.core.config)
+        """Save the current configuration to persistent storage."""
+        success = self.core.config_manager.save(self.core.config)
+        button = self.find_item_by(code="save")
+        if button:
+            cl = rcl.DISGUSTED_GHOST_GREEN if success else rcl.BLINKY_RED
+            txt_ref = "SET_SavOK" if success else "SET_SavKO"
+            x, y = button.x + button.width // 2, button.y + button.height // 2
+            self.graphics.gameboard.add_board_text(
+                x, y, self.core.lexicon(txt_ref), cl,
+                (button.height // 3) * 2, 3.0, 3.0, outlined=True)
+        return success
 
     def draw_settings_panel(self) -> None:
+        """Render the settings panel and its interactive controls."""
         if not self.panel_geometry_done:
             self.create_panel_geometry()
         self.update_values()
@@ -561,6 +600,7 @@ class MainMenuSettings:
                                               max_size=label_size)
 
     def _max_label_size(self) -> int:
+        """Find a font size suitable for all settings labels."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         lex = self.core.lexicon

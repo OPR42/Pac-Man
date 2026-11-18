@@ -23,6 +23,7 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 @dataclass
 class RuleFragment:
+    """Represent a text or control fragment in a minigame rule."""
     text: str
     kind: str = "text"
     width: int = 0
@@ -34,7 +35,9 @@ RuleLayout: TypeAlias = tuple[list[RuleLine], int, int]
 
 
 class MiniGames:
+    """Coordinate minigames, rules, transitions and replay options."""
     def __init__(self, core: Core) -> None:
+        """Initialize minigame instances and shared interface state."""
         self.core = core
         self.game = core.game
         self.controls = core.game.controls
@@ -63,12 +66,14 @@ class MiniGames:
         self.invaders = Invaders(core)
 
     def launch(self) -> None:
+        """Connect and launch all minigame controllers."""
         self.snake.launch()
         self.breaker.launch()
         self.tetris.launch()
         self.invaders.launch()
 
     def reset(self) -> None:
+        """Reset shared minigame state and individual controllers."""
         self.level = 0
         self.level_after = 0
         self.offer_panel_built = False
@@ -84,6 +89,7 @@ class MiniGames:
         self.invaders.reset()
 
     def start_level(self, level: int = 0, level_after: int = 0) -> None:
+        """Prepare and initialize the requested minigame level."""
         if not (-4 <= level <= -1
                 and 1 <= level_after <= len(self.core.config.levels)):
             return
@@ -128,30 +134,36 @@ class MiniGames:
         self.gameboard.gamehuds.livebox_set_lives(self.core.gm_state.lives_cur)
 
     def resume_from_pause(self, pause_duration: float) -> None:
+        """Resume minigame timing after a pause."""
         if self.level == -2:
             self.breaker.resume_from_pause(pause_duration)
 
     def resize(self) -> None:
+        """Rebuild the active minigame layout after resizing."""
         if self.level < 0:
             self.set_board_geometry(self.level)
             self.offer_panel_built = False
             self.intro_panel_built = False
 
     def command(self, cmd: str) -> None:
+        """Route commands to the active minigame or interface."""
         if not cmd:
             return
         if self.endgame or not self.acknowledge:
             if cmd == "enter":
                 cmd = self.graphics.interface.focus or ""
             if cmd == "generic_acknowledge":
+                self.game.audio.sound_play("click")
                 self.generic_intro_shown = True
                 self.intro_panel_built = False
             elif cmd == "acknowledge":
+                self.game.audio.sound_play("click")
                 self.acknowledge = True
-                for i, item in enumerate(self.intro_ui_items):
+                for item in self.intro_ui_items:
                     if item.kind == "button" and item.code == "pause_menu":
                         item.disabled = False
             elif cmd == "continue":
+                self.game.audio.sound_play("click")
                 if self.game.one_level_only:
                     self.game._play_transition(9, 1, 1)
                     self.graphics.gameboard.reset()
@@ -163,6 +175,7 @@ class MiniGames:
                     self.game.start_new_level(self.level_after)
                     self.game.set_step(6)
             elif cmd == "again" and self.core.gm_state.lives_cur > 0:
+                self.game.audio.sound_play("click")
                 self.game._add_life(-1)
                 self.start_level(self.level, self.level_after)
             elif cmd in ("right", "down", "tab"):
@@ -182,6 +195,7 @@ class MiniGames:
             self.invaders.command(cmd)
 
     def update(self) -> None:
+        """Update the active minigame when input is enabled."""
         if not self.acknowledge:
             return
         if not self.input_armed:
@@ -200,6 +214,7 @@ class MiniGames:
             self.invaders.update()
 
     def set_board_geometry(self, level: int) -> None:
+        """Configure the active minigame board geometry."""
         if not -4 <= level <= -1:
             return
         if level == -1:
@@ -212,6 +227,7 @@ class MiniGames:
             self.invaders.set_board_geometry()
 
     def draw_minigames_board(self) -> None:
+        """Render the active minigame and its interface overlays."""
         gameboard = self.gameboard
 
         self.game.audio.ingame_update()
@@ -259,6 +275,7 @@ class MiniGames:
             self.play_again_offer()
 
     def display_rules(self) -> None:
+        """Display the active minigame instructions and controls."""
         gamemenus = self.gameboard.gamehuds.gamemenus
 
         if not gamemenus.background_built:
@@ -320,6 +337,7 @@ class MiniGames:
                              cl_key_body, cl_key_frame, cl_key_text)
 
     def build_panel_rules(self) -> None:
+        """Build the interactive panel containing minigame rules."""
         sround = self.utils.sym_round
         mvp = self.gameboard.mvp
         gamemenus = self.gameboard.gamehuds.gamemenus
@@ -388,6 +406,7 @@ class MiniGames:
         return width
 
     def rule_key_width(self, text: str, size: int) -> int:
+        """Calculate the display width of a rule control symbol."""
         sround = self.utils.sym_round
         size = (size // 2) * 2
         half_size = sround(size / 2)
@@ -397,6 +416,7 @@ class MiniGames:
     def draw_rules_text(self, text: str, cl_title: Color, cl_text: Color,
                         cl_key_body: Color, cl_key_frame: Color,
                         cl_key_text: Color) -> None:
+        """Render formatted minigame instructions and control symbols."""
         draw = self.graphics.shapes
         sround = self.utils.sym_round
         ivp = self.ivp
@@ -410,6 +430,7 @@ class MiniGames:
             return
 
         def prepare(size: int) -> RuleLayout:
+            """Prepare a rule fragment for layout and rendering."""
             title_size = size * 2
             line_height = sround(size * 1.35)
             title_height = sround(title_size * 1.35)
@@ -508,6 +529,7 @@ class MiniGames:
             y += height
 
     def play_again_offer(self) -> None:
+        """Display the endgame results and replay options."""
         gamemenus = self.gameboard.gamehuds.gamemenus
 
         if not gamemenus.background_built:
@@ -614,6 +636,7 @@ class MiniGames:
                 gamemenus.gamehuds.display_hud_buttons(i, rgb_factor)
 
     def build_panel_offer(self) -> None:
+        """Build the endgame replay and continuation controls."""
         sround = self.utils.sym_round
         mvp = self.gameboard.mvp
         gamemenus = self.gameboard.gamehuds.gamemenus

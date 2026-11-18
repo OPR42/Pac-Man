@@ -6,7 +6,9 @@ from pacman.core import Core
 
 
 class MainMenuIdle:
+    """Manage the animated visitor appearing on the idle menu screen."""
     def __init__(self, core: Core) -> None:
+        """Initialize the visitor animation state and timing."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -32,11 +34,14 @@ class MainMenuIdle:
         self.visitor_blink_fast: bool = False
 
     def _next_visitor_delay(self) -> float:
+        """Generate a random delay before the next visitor appears."""
         return self.random.uniform(
             self.core.config.main_menu_idle_visitor_min_time,
             self.core.config.main_menu_idle_visitor_max_time)
 
     def start(self) -> None:
+        """Reset or disable the visitor animation according"""
+        """to configuration."""
         if (self.core.config.main_menu_idle_visitor_min_time <= 0
            or self.core.config.main_menu_idle_visitor_max_time
            < self.core.config.main_menu_idle_visitor_min_time):
@@ -48,6 +53,7 @@ class MainMenuIdle:
         self.visitor_next = self._next_visitor_delay()
 
     def draw_idle_panel(self) -> None:
+        """Render idle high-score panels and the animated visitor."""
         elapsed = time.perf_counter() - self.main_menu.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
         self.main_menu.highscores_tab(rgb_factor, -650, -290, kind=1)
@@ -58,6 +64,7 @@ class MainMenuIdle:
             self._draw_visitor()
 
     def _update_visitor(self) -> None:
+        """Advance the visitor through its animation phases."""
         now = time.perf_counter()
 
         if self.visitor_phase == "waiting":
@@ -141,6 +148,7 @@ class MainMenuIdle:
             return
 
     def _start_visitor(self, now: float) -> None:
+        """Initialize a visitor entering from a random screen edge."""
         screen_wdt = self.graphics.screen_width
         screen_hgt = self.graphics.screen_height
         self.visitor_radius = max(1, min(screen_wdt, screen_hgt) // 4)
@@ -174,6 +182,7 @@ class MainMenuIdle:
         self.visitor_phase_start = now
 
     def _start_blink_sequence(self, now: float) -> None:
+        """Start a randomly selected blinking sequence."""
         self.visitor_blink_fast = self.random.choice((True, False))
 
         if self.visitor_blink_fast:
@@ -185,6 +194,7 @@ class MainMenuIdle:
         self.visitor_phase_start = now
 
     def _start_leaving(self, now: float) -> None:
+        """Prepare the visitor's departure trajectory and rotation."""
         screen_wdt = self.graphics.screen_width
         screen_hgt = self.graphics.screen_height
         center_x = screen_wdt / 2
@@ -215,6 +225,7 @@ class MainMenuIdle:
         self.visitor_phase_start = now
 
     def _draw_visitor(self) -> None:
+        """Render the visitor with phase-dependent mouth and eye animations."""
         if self.visitor_phase == "waiting":
             return
 

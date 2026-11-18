@@ -17,6 +17,7 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 @dataclass
 class InventoryItem:
+    """Store an inventory item's appearance, quantity and effect state."""
     icon_name: str
     icon_angle: int
     icon_box: RectangleGeometry
@@ -30,6 +31,7 @@ class InventoryItem:
 
 @dataclass
 class CrateItem:
+    """Describe an item crate placed in the maze."""
     item_name: str = ""
     item_pts: int = -1
     item_color: Color = (0, 0, 0, 0)
@@ -39,6 +41,7 @@ class CrateItem:
 
 @dataclass
 class CrateSpawnRule:
+    """Define the conditions and weight for spawning an item crate."""
     item_name: str = ""
     min_level: int = 0
     unique: bool = False
@@ -47,6 +50,7 @@ class CrateSpawnRule:
 
 @dataclass
 class ItemDiscovery:
+    """Track discovery and usage milestones for an item."""
     name: str = ""
     seen: bool = False
     seeing_reported: bool = False
@@ -57,7 +61,9 @@ class ItemDiscovery:
 
 
 class Inventory:
+    """Manage inventory items, power-ups, crates and item graphics."""
     def __init__(self, core: Core) -> None:
+        """Initialize inventory items, crate rules and discovery tracking."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -108,6 +114,7 @@ class Inventory:
             ]
 
     def reset(self) -> None:
+        """Reset inventory contents, crate rules and discovery states."""
         default_rect = self.geometry.rectangle_geometry(0, 0, 1, 1)
         self.inv_items = [
             InventoryItem("item_hourglass", 30, default_rect, 0.90,
@@ -128,11 +135,11 @@ class Inventory:
         self.boxes_built = False
         self.crates = []
         self.crates_spawn_rules = [
-            CrateSpawnRule("nothing", 0, False, 0.30),
-            CrateSpawnRule("hourglass", 2, False, 0.20),
+            CrateSpawnRule("nothing", 0, False, 0.10),
+            CrateSpawnRule("hourglass", 2, False, 0.40),
             CrateSpawnRule("sage", 4, False, 0.20),
             CrateSpawnRule("bomb", 6, False, 0.20),
-            CrateSpawnRule("pacman", 3, False, 0.50),
+            CrateSpawnRule("pacman", 3, False, 0.20),
             CrateSpawnRule("bowtie", 5, True, 0.40),
             CrateSpawnRule("stetson", 7, True, 0.40),
             CrateSpawnRule("slime", 9, True, 0.40),
@@ -151,15 +158,18 @@ class Inventory:
             ]
 
     def resize(self) -> None:
+        """Rebuild inventory graphics after a viewport resize."""
         self.boxes_built = False
         self.update_boxes_geometry()
 
     def cancel_effects(self) -> None:
+        """Cancel all active inventory item effects."""
         for item in self.inv_items:
             item.effect_start_time = 0.0
             item.effect_progress = -1.0
 
     def command(self, cmd: str = "") -> None:
+        """Execute an inventory item command."""
         if not cmd or (cmd != "hourglass" and cmd[:10] != "inventory_"):
             return
         if self.core.gm_state.level < 0:
@@ -241,6 +251,7 @@ class Inventory:
                 item.effect_start_time += pause_duration
 
     def change_skin(self, skin: int = 0) -> None:
+        """Toggle a character skin and update inventory icons."""
         if not 1 <= skin <= 3:
             return
         gmstate = self.core.gm_state
@@ -265,6 +276,7 @@ class Inventory:
             self.inv_items[i + 3].icon_angle = angle
 
     def update_boxes_geometry(self) -> None:
+        """Update inventory geometry and regenerate item textures."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         self.boxes_built = False
@@ -297,6 +309,7 @@ class Inventory:
         self.boxes_built = True
 
     def update_ui_items(self, index: int, count: int) -> None:
+        """Update inventory interface elements according to item counts."""
         ui_items = self.graphics.gameboard.gamehuds.ui_items
 
         if index == 0:
@@ -320,6 +333,7 @@ class Inventory:
             inventory.kind = "table"
 
     def change_count(self, index: int, change: int) -> None:
+        """Adjust an inventory item's quantity without allowing negatives."""
         if not 0 <= index < 6 or change == 0:
             return
         if self.inv_items[index].quantity + change < 0:
@@ -328,11 +342,13 @@ class Inventory:
         self.inv_items[index].quantity += change
 
     def get_count(self, index: int) -> int | None:
+        """Return the quantity of an inventory item."""
         if not 0 <= index < 6:
             return None
         return self.inv_items[index].quantity
 
     def update_inventory_display(self) -> None:
+        """Draw inventory icons, quantities and active effect indicators."""
         if self.game.step < 6:
             return
         draw = self.shapes
@@ -426,6 +442,7 @@ class Inventory:
                               box.x + box.wdt - 1, box.bct.y, cl=cl_dark)
 
     def display_crate(self, x_cell: int, y_cell: int, kind: str = "") -> None:
+        """Draw an item crate at a maze cell."""
         gmstate = self.core.gm_state
         sround = self.utils.sym_round
         if (not 0 <= x_cell < gmstate.maze_width
@@ -442,6 +459,7 @@ class Inventory:
                                     size, size)
 
     def add_crate(self, x_cell: int, y_cell: int, kind: str = "") -> None:
+        """Add an item crate to an available maze cell."""
         gmstate = self.core.gm_state
 
         if (not 0 <= x_cell < gmstate.maze_width
@@ -490,6 +508,7 @@ class Inventory:
         gmstate.item_cur += 1
 
     def take_crate(self, x_cell: int, y_cell: int) -> None:
+        """Collect a crate and apply its reward."""
         gmstate = self.core.gm_state
         if (not 0 <= x_cell < gmstate.maze_width
                 or not 0 <= y_cell < gmstate.maze_height):
@@ -531,6 +550,7 @@ class Inventory:
             self.game._add_life(1)
 
     def crates_spawn_init(self, create_timeout: bool = True) -> None:
+        """Schedule the next crate spawn and optional timeout threshold."""
         self.crates_next_spawntime = (
             time.perf_counter() + random.uniform(
                 self.core.defaults.inventory_crates_min_time_interval,
@@ -542,6 +562,7 @@ class Inventory:
             self.core.defaults.inventory_crates_hourflipper_max_remaining_time)
 
     def spawn_crate(self, timeout_is_near: bool = False) -> None:
+        """Select and spawn an eligible item crate."""
         gmstate = self.core.gm_state
         pacman = self.game.player.state
 
@@ -597,6 +618,7 @@ class Inventory:
         self.add_crate(cell_x, cell_y, item_name)
 
     def _create_inventory_textures(self, size: int = 0) -> None:
+        """Generate textures for all inventory items."""
         if size <= 0:
             return
         self._create_hourglass_texture(size)
@@ -608,6 +630,7 @@ class Inventory:
         self._create_pacman_texture(size)
 
     def _create_item_crates(self, crate_size: int = 0) -> None:
+        """Generate textures for collectible item crates."""
         if crate_size <= 0:
             return
         draw = self.graphics.shapes
@@ -640,6 +663,7 @@ class Inventory:
 
     def _create_world_items(self, bowtie_size: int = 0, hat_size: int = 0,
                             bomb_size: int = 0) -> None:
+        """Generate textures for items displayed in the game world."""
         if bowtie_size <= 0 or hat_size <= 0 or bomb_size <= 0:
             return
         self._create_bowtie_texture(bowtie_size, world=True)
@@ -647,6 +671,7 @@ class Inventory:
         self._create_bomb_texture(bomb_size, world=True)
 
     def _create_hourglass_texture(self, size: int = 0) -> None:
+        """Generate the hourglass item texture."""
         sround = self.utils.sym_round
         geo = self.geometry
         draw = self.graphics.shapes
@@ -1281,7 +1306,7 @@ class Inventory:
         self.graphics.textures.end()
 
     def _create_pacman_texture(self, size: int = 0) -> None:
-        """Create the slime texture."""
+        """Create the Pac-Man item texture."""
         if size <= 0:
             return
 

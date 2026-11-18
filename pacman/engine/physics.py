@@ -5,12 +5,14 @@ from typing import Literal, NamedTuple, Protocol, TypeAlias
 
 
 class CircleHitbox(NamedTuple):
+    """Define a circular collision shape."""
     center_x: float
     center_y: float
     radius: float
 
 
 class CircleSectorHitbox(NamedTuple):
+    """Define a circular sector collision shape."""
     center_x: float
     center_y: float
     radius: float
@@ -19,6 +21,7 @@ class CircleSectorHitbox(NamedTuple):
 
 
 class RectangleHitbox(NamedTuple):
+    """Define a possibly rotated rectangular collision shape."""
     center_x: float
     center_y: float
     width: float
@@ -27,6 +30,7 @@ class RectangleHitbox(NamedTuple):
 
 
 class TriangleHitbox(NamedTuple):
+    """Define a triangular collision shape."""
     x1: float
     y1: float
     x2: float
@@ -40,6 +44,7 @@ SolidHitbox: TypeAlias = (CircleHitbox | CircleSectorHitbox
 
 
 class AllowedRectZone(NamedTuple):
+    """Define a rectangular zone within which movement is allowed."""
     identifier: str
     center_x: float
     center_y: float
@@ -50,6 +55,7 @@ class AllowedRectZone(NamedTuple):
 
 
 class Obstacle(NamedTuple):
+    """Group solid hitboxes and optional collision exemptions."""
     identifier: str
     solids: tuple[SolidHitbox, ...]
     allowed: tuple[SolidHitbox, ...] = ()
@@ -60,6 +66,7 @@ PhysicsObject: TypeAlias = Obstacle | AllowedRectZone
 
 
 class Collision(NamedTuple):
+    """Describe a collision contact, normal and penetration depth."""
     contact_x: float
     contact_y: float
     normal_x: float
@@ -79,30 +86,37 @@ ObstacleKind: TypeAlias = Literal[
 
 @dataclass
 class CircleBody:
+    """Represent a movable circular physics body."""
     x: float
     y: float
     radius: float
 
     @property
     def hitboxes(self) -> tuple[SolidHitbox, ...]:
+        """Return the circular hitbox associated with this body."""
         return (CircleHitbox(center_x=self.x, center_y=self.y,
                              radius=self.radius),)
 
 
 class PhysicalBody(Protocol):
+    """Define the interface required for a movable physics body."""
     x: float
     y: float
 
     @property
     def hitboxes(self) -> tuple[SolidHitbox, ...]:
+        """Expose the collision shapes associated with a physics body."""
         ...
 
 
 class Physics:
+    """Manage collision detection, obstacles and movement constraints."""
     def __init__(self) -> None:
+        """Initialize the physics generation counter."""
         self.generation: int = 0
 
     def invalidate(self) -> None:
+        """Increment the physics generation to invalidate cached state."""
         self.generation += 1
 
     def add_obstacle(self, obstacles: list[PhysicsObject], identifier: str,
@@ -115,6 +129,7 @@ class Physics:
                      x2: float = 0.0, y2: float = 0.0,
                      x3: float = 0.0, y3: float = 0.0,
                      persistent: bool = False) -> None:
+        """Create or replace an obstacle or allowed movement zone."""
         self.remove_obstacle(obstacles, identifier)
 
         if kind == "circle":
@@ -162,15 +177,18 @@ class Physics:
 
     def remove_obstacle(self, obstacles: list[PhysicsObject],
                         identifier: str) -> None:
+        """Remove obstacles matching an identifier."""
         obstacles[:] = [obstacle for obstacle in obstacles
                         if obstacle.identifier != identifier]
 
     def clear_obstacles(self, obstacles: list[PhysicsObject]) -> None:
+        """Remove all non-persistent obstacles."""
         obstacles[:] = [obstacle for obstacle in obstacles
                         if obstacle.persistent]
 
     def collision(self, moving: SolidHitbox,
                   static: SolidHitbox) -> Collision | None:
+        """Detect a collision between two hitboxes."""
         if isinstance(moving, CircleHitbox):
             if isinstance(static, CircleHitbox):
                 return self._circle_circle(moving, static)
@@ -202,6 +220,7 @@ class Physics:
 
     def obstacle_collision(self, hitbox: SolidHitbox,
                            obstacle: PhysicsObject) -> Collision | None:
+        """Detect a collision between a hitbox and an obstacle."""
         if isinstance(obstacle, AllowedRectZone):
             collision = self._allowed_rect_collision(hitbox, obstacle)
             if collision is None:
@@ -233,6 +252,7 @@ class Physics:
 
     def first_collision(self, hitboxes: tuple[SolidHitbox, ...],
                         obstacles: list[PhysicsObject]) -> Collision | None:
+        """Return the deepest collision among hitboxes and obstacles."""
         best_collision: Collision | None = None
 
         for hitbox in hitboxes:
@@ -249,6 +269,7 @@ class Physics:
     def reflect_velocity(self, vx: float, vy: float,
                          normal_x: float, normal_y: float,
                          restitution: float = 1.0) -> tuple[float, float]:
+        """Reflect velocity against a collision normal."""
         dot = vx * normal_x + vy * normal_y
 
         if dot >= 0.0:
@@ -262,6 +283,7 @@ class Physics:
             self, x: float, y: float, vx: float, vy: float,
             collision: Collision,
             restitution: float = 1.0) -> tuple[float, float, float, float]:
+        """Resolve penetration and reflect velocity after a collision."""
         x += collision.normal_x * collision.penetration
         y += collision.normal_y * collision.penetration
         vx, vy = self.reflect_velocity(vx, vy, collision.normal_x,
@@ -271,6 +293,7 @@ class Physics:
 
     def _angle_in_sector(self, angle: float, start_angle: float,
                          end_angle: float) -> bool:
+        """Check whether an angle belongs to a circular sector."""
         angle %= 360.0
         start_angle %= 360.0
         end_angle %= 360.0
@@ -285,6 +308,7 @@ class Physics:
 
     def _circle_circle(self, moving: CircleHitbox,
                        static: CircleHitbox) -> Collision | None:
+        """Detect a collision between two circles."""
         dx = moving.center_x - static.center_x
         dy = moving.center_y - static.center_y
         distance = math.hypot(dx, dy)
@@ -308,6 +332,7 @@ class Physics:
     def _circle_polygon(
             self, circle: CircleHitbox,
             polygon: tuple[tuple[float, float], ...]) -> Collision | None:
+        """Detect a collision between a circle and a polygon."""
         closest_x = 0.0
         closest_y = 0.0
         closest_distance_sq = math.inf
@@ -356,6 +381,7 @@ class Physics:
     def _polygon_polygon(
             self, polygon_a: tuple[tuple[float, float], ...],
             polygon_b: tuple[tuple[float, float], ...]) -> Collision | None:
+        """Detect a collision between two convex polygons."""
         min_overlap = math.inf
         best_axis_x = 0.0
         best_axis_y = 0.0
@@ -405,6 +431,7 @@ class Physics:
 
     def _circle_circle_sector(self, circle: CircleHitbox,
                               sector: CircleSectorHitbox) -> Collision | None:
+        """Detect a collision between a circle and a circular sector."""
         dx = circle.center_x - sector.center_x
         dy = circle.center_y - sector.center_y
         center_distance = math.hypot(dx, dy)
@@ -496,6 +523,7 @@ class Physics:
 
     def _allowed_rect_collision(self, hitbox: SolidHitbox,
                                 zone: AllowedRectZone) -> Collision | None:
+        """Detect whether a hitbox exceeds an allowed rectangular zone."""
         zone_polygon = self._rectangle_polygon(
             RectangleHitbox(zone.center_x, zone.center_y, zone.width,
                             zone.height, zone.angle))
@@ -512,6 +540,7 @@ class Physics:
     def _circle_allowed_polygon(
             self, circle: CircleHitbox,
             polygon: tuple[tuple[float, float], ...]) -> Collision | None:
+        """Detect when a circle extends outside an allowed polygon."""
         worst_penetration = 0.0
         best_collision: Collision | None = None
         center_x, center_y = self._polygon_center(polygon)
@@ -550,6 +579,7 @@ class Physics:
     def _polygon_allowed_polygon(
             self, moving: tuple[tuple[float, float], ...],
             allowed: tuple[tuple[float, float], ...]) -> Collision | None:
+        """Detect when a polygon extends outside an allowed polygon."""
         best_collision: Collision | None = None
         center_x, center_y = self._polygon_center(allowed)
 
@@ -591,6 +621,7 @@ class Physics:
 
     def _contact_is_allowed(self, x: float, y: float,
                             allowed: tuple[SolidHitbox, ...]) -> bool:
+        """Check whether a collision contact lies in an exempted region."""
         for hitbox in allowed:
             if self._point_in_hitbox(x, y, hitbox):
                 return True
@@ -599,6 +630,7 @@ class Physics:
 
     def _point_in_hitbox(self, x: float, y: float,
                          hitbox: SolidHitbox) -> bool:
+        """Check whether a point lies inside a hitbox."""
         if isinstance(hitbox, CircleSectorHitbox):
             dx = x - hitbox.center_x
             dy = y - hitbox.center_y
@@ -619,6 +651,7 @@ class Physics:
 
     def _hitbox_polygon(self, hitbox: RectangleHitbox | TriangleHitbox,
                         ) -> tuple[tuple[float, float], ...]:
+        """Convert a rectangular or triangular hitbox into polygon vertices."""
         if isinstance(hitbox, RectangleHitbox):
             return self._rectangle_polygon(hitbox)
 
@@ -627,6 +660,7 @@ class Physics:
 
     def _rectangle_polygon(self, rectangle: RectangleHitbox
                            ) -> tuple[tuple[float, float], ...]:
+        """Return the rotated vertices of a rectangular hitbox."""
         half_width = rectangle.width / 2
         half_height = rectangle.height / 2
         local_points = ((-half_width, -half_height),
@@ -646,6 +680,7 @@ class Physics:
     def _closest_point_on_segment(self, point_x: float, point_y: float,
                                   x1: float, y1: float, x2: float, y2: float,
                                   ) -> tuple[float, float]:
+        """Return the closest point on a segment to a given position."""
         dx = x2 - x1
         dy = y2 - y1
         length_sq = dx * dx + dy * dy
@@ -660,6 +695,7 @@ class Physics:
 
     def _point_in_polygon(self, x: float, y: float,
                           polygon: tuple[tuple[float, float], ...]) -> bool:
+        """Check whether a point lies inside a polygon."""
         inside = False
         j = len(polygon) - 1
 
@@ -677,6 +713,7 @@ class Physics:
     def _polygon_edge_normal(self, polygon: tuple[tuple[float, float], ...],
                              point_x: float, point_y: float
                              ) -> tuple[float, float]:
+        """Return the outward normal of the polygon edge nearest a point."""
         center_x, center_y = self._polygon_center(polygon)
         best_distance = math.inf
         best_normal_x = 1.0
@@ -712,6 +749,7 @@ class Physics:
 
     def _project_polygon(self, polygon: tuple[tuple[float, float], ...],
                          axis_x: float, axis_y: float) -> tuple[float, float]:
+        """Project a polygon onto an axis and return its bounds."""
         first_x, first_y = polygon[0]
         projection = first_x * axis_x + first_y * axis_y
         minimum = projection
@@ -726,6 +764,7 @@ class Physics:
 
     def _polygon_center(self, polygon: tuple[tuple[float, float], ...]
                         ) -> tuple[float, float]:
+        """Return the arithmetic center of a polygon's vertices."""
         x = sum(point[0] for point in polygon) / len(polygon)
         y = sum(point[1] for point in polygon) / len(polygon)
 
@@ -734,6 +773,7 @@ class Physics:
     def _support_point(self, polygon: tuple[tuple[float, float], ...],
                        direction_x: float, direction_y: float
                        ) -> tuple[float, float]:
+        """Return the polygon vertex farthest along a direction."""
         best_x, best_y = polygon[0]
         best_projection = (best_x * direction_x + best_y * direction_y)
 
@@ -748,6 +788,7 @@ class Physics:
 
     def _translate_hitbox(self, hitbox: SolidHitbox,
                           dx: float, dy: float) -> SolidHitbox:
+        """Translate a hitbox without modifying its shape."""
         if isinstance(hitbox, CircleHitbox):
             return CircleHitbox(hitbox.center_x + dx, hitbox.center_y + dy,
                                 hitbox.radius)
@@ -767,6 +808,7 @@ class Physics:
     def body_collision(
             self, hitboxes_a: tuple[SolidHitbox, ...],
             hitboxes_b: tuple[SolidHitbox, ...]) -> Collision | None:
+        """Return the deepest collision between two collections of hitboxes."""
         best: Collision | None = None
 
         for hitbox_a in hitboxes_a:
@@ -782,6 +824,7 @@ class Physics:
     def blocking_obstacle(self, obstacles: list[PhysicsObject],
                           body: PhysicalBody,
                           x: float, y: float) -> str | None:
+        """Return the identifier of an obstacle blocking a body position."""
         dx = x - body.x
         dy = y - body.y
         hitboxes = tuple(self._translate_hitbox(hitbox, dx, dy)
@@ -795,4 +838,5 @@ class Physics:
 
     def is_free(self, obstacles: list[PhysicsObject], body: PhysicalBody,
                 x: float, y: float) -> bool:
+        """Check whether a body can occupy a position without collision."""
         return self.blocking_obstacle(obstacles, body, x, y) is None

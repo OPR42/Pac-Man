@@ -5,7 +5,7 @@ from pathlib import Path
 
 
 class Utils:
-    """Provide utility methods shared across the RAG project."""
+    """Provide utility methods shared across the Pac-Man project."""
     @staticmethod
     def split_words(text: str, max_length: int) -> list[str]:
         """
@@ -61,13 +61,7 @@ class Utils:
         width: int,
     ) -> tuple[list[str], list[tuple[int, int] | None]]:
         """Wrap text and map source characters to their visual positions."""
-        wrapped = self.split_words(text, width)
-
-        if isinstance(wrapped, str):
-            lines = wrapped.splitlines()
-
-        else:
-            lines = list(wrapped)
+        lines = self.split_words(text, width)
 
         if not lines:
             lines = [""]
@@ -89,12 +83,14 @@ class Utils:
         return lines, positions
 
     def sym_round(self, value: float) -> int:
+        """Round to the nearest integer, with halves away from zero."""
         if value >= 0:
             return math.floor(value + 0.5)
 
         return math.ceil(value - 0.5)
 
     def get_resource_path(self) -> Path:
+        """Return the resource directory for source and bundled executions."""
         meipass = getattr(sys, '_MEIPASS', None)
 
         if meipass is not None:
@@ -105,7 +101,7 @@ class Utils:
 
 def raylib_key_test() -> None:
     def key_name(key: int) -> str:
-        """Return the Raylib KEY_* name matching a key code."""
+        """Open a Raylib window to display pressed key codes."""
         for name in dir(pr.KeyboardKey):
             if name.startswith("KEY_"):
                 if getattr(pr.KeyboardKey, name) == key:

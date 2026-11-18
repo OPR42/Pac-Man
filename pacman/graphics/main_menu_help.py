@@ -27,6 +27,7 @@ HelpPanelLayout: TypeAlias = tuple[
 
 @dataclass
 class HelpStyle:
+    """Define the typography, color and alignment of help text."""
     size: float = 1.0
     font: str = "regular"
     color: str = "sand"
@@ -35,6 +36,7 @@ class HelpStyle:
 
 @dataclass
 class HelpFragment:
+    """Represent a text or input-symbol fragment in a help line."""
     text: str
     kind: str = "text"
     width: int = 0
@@ -42,6 +44,7 @@ class HelpFragment:
 
 @dataclass
 class HelpLine:
+    """Store a formatted help line and its rendering geometry."""
     text: str
     style: HelpStyle
     fragments: list[HelpFragment] = field(default_factory=list)
@@ -56,12 +59,15 @@ class HelpLine:
 
 @dataclass
 class HelpSection:
+    """Group help lines belonging to a localized section."""
     key: str
     lines: list[HelpLine] = field(default_factory=list)
 
 
 class MainMenuHelp:
+    """Build and display the interactive game help panel."""
     def __init__(self, core: Core) -> None:
+        """Initialize help content, scrolling controls and rendering state."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -90,9 +96,11 @@ class MainMenuHelp:
         self.was_azerty: bool = self.core.azerty_layout
 
     def resize(self) -> None:
+        """Mark the help panel geometry for rebuilding."""
         self.geometry_built = False
 
     def enter(self) -> None:
+        """Reset the help panel and detect the current keyboard layout."""
         self.core.azerty_layout = self.core.is_layout_azerty()
         self.progress = 0.0
         self.scroll_from = 0.0
@@ -100,7 +108,8 @@ class MainMenuHelp:
         self.scroll_start = 0.0
 
     def command(self, cmd: str) -> None:
-        if not cmd:
+        """Process scrolling commands and update navigation controls."""
+        if not cmd or not self.geometry_built or self.height <= 0:
             return
 
         now = time.perf_counter()
@@ -131,12 +140,14 @@ class MainMenuHelp:
         self.update_buttons_state()
 
     def scroll_to(self, target: float) -> None:
+        """Animate scrolling toward a normalized target position."""
         self.update_scroll()
         self.scroll_from = self.progress
         self.scroll_target = max(0.0, min(1.0, target))
         self.scroll_start = time.perf_counter()
 
     def update_scroll(self) -> None:
+        """Advance the current scrolling animation."""
         if self.progress == self.scroll_target:
             return
 
@@ -150,6 +161,7 @@ class MainMenuHelp:
             self.progress = self.scroll_target
 
     def build_help_geometry(self) -> None:
+        """Build the help viewport, controls and rendered panels."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         georec = self.geometry.rectangle_geometry
@@ -196,6 +208,7 @@ class MainMenuHelp:
         self.geometry_built = True
 
     def update_buttons_state(self) -> None:
+        """Enable or disable scrolling controls according to their limits."""
         interface = self.graphics.interface
         for item in self.ui_items:
             if item.code == "scroll_up":
@@ -216,6 +229,8 @@ class MainMenuHelp:
                     item.disabled = False
 
     def fit_help_texts(self) -> None:
+        """Select a font size that fits the help content"""
+        """within layout constraints."""
         initial_size = max(1, self.svp.hgt // 20)
         max_height = self.svp.hgt
         best_sections: list[list[HelpLine]] | None = None
@@ -252,6 +267,7 @@ class MainMenuHelp:
 
     def help_fragment_width(self, kind: str, text: str,
                             size: int) -> int:
+        """Measure the width of a text or input-symbol fragment."""
         if kind == "mouse":
             return size
         if kind in ("key", "pad"):
@@ -260,6 +276,7 @@ class MainMenuHelp:
         return round(width)
 
     def help_key_width(self, text: str, size: int) -> int:
+        """Calculate the rendered width of a keyboard or gamepad key."""
         sround = self.utils.sym_round
         size = (size // 2) * 2
         half_size = sround(size / 2)
@@ -267,6 +284,7 @@ class MainMenuHelp:
         return half_size * 2 + add_width
 
     def help_tokenize(self, line: str) -> list[str]:
+        """Split help text into tokens while preserving input-symbol markup."""
         pattern = re.compile(
             r"(?:<(?:key|pad|mouse)=[^>]+>"
             r"(?:\s*<(?:key|pad|mouse)=[^>]+>)*[^\s<]*)"
@@ -275,6 +293,7 @@ class MainMenuHelp:
         return [match.group() for match in pattern.finditer(line)]
 
     def help_measure(self, text: str, size: int) -> float:
+        """Measure help text containing embedded input symbols."""
         pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         width = 0.0
         cursor = 0
@@ -301,6 +320,7 @@ class MainMenuHelp:
 
     def prepare_help_section(self, section: HelpSection,
                              base_size: int) -> list[HelpLine]:
+        """Convert a help section into formatted lines and tables."""
         prepared: list[HelpLine] = []
         index = 0
         while index < len(section.lines):
@@ -323,7 +343,7 @@ class MainMenuHelp:
 
     def prepare_help_table(self, sources: list[HelpLine],
                            base_size: int) -> list[HelpLine]:
-        # A frame directive is only valid as the first row of a table.
+        """Build the layout and rendering geometry of a help table."""
         framed = False
         frame_color = "sand"
 
@@ -518,6 +538,7 @@ class MainMenuHelp:
 
     def prepare_help_plain_line(self, section: HelpSection,
                                 base_size: int) -> list[HelpLine]:
+        """Format and wrap ordinary help text into renderable lines."""
         pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         prepared: list[HelpLine] = []
         sround = self.utils.sym_round
@@ -576,6 +597,7 @@ class MainMenuHelp:
         return prepared
 
     def draw_help_fragments(self, line: HelpLine, x: int, y: int) -> None:
+        """Render the text and input symbols composing a help line."""
         draw = self.graphics.shapes
         sround = self.utils.sym_round
         fonts = {"regular": self.graphics.font_regular,
@@ -604,6 +626,7 @@ class MainMenuHelp:
             x += fragment.width
 
     def draw_help_section(self, section: HelpSection, y: int) -> int:
+        """Render a help section and return the next vertical position."""
         draw = self.graphics.shapes
         sround = self.utils.sym_round
         colors = {"yellow": rcl.PACMAN_YELLOW,
@@ -637,9 +660,11 @@ class MainMenuHelp:
         return y
 
     def help_section_height(self, section: HelpSection) -> int:
+        """Return the total rendered height of a help section."""
         return sum(line.height for line in section.lines)
 
     def prepare_help_texts(self) -> None:
+        """Load and parse all localized help sections."""
         keys = ("HLP_Title", "HLP_Intro", "HLP_Principles", "HLP_Interface",
                 "HLP_Gamepad", "HLP_Controls", "HLP_Menus", "HLP_Settings",
                 "HLP_Play", "HLP_Bonus", "HLP_Minigames", "HLP_Score",
@@ -647,6 +672,8 @@ class MainMenuHelp:
         self.sections = [self.parse_help_text(key) for key in keys]
 
     def help_panel_layouts(self) -> tuple[HelpPanelLayout, ...]:
+        """Define the sections, illustrations and spacing"""
+        """of each help panel."""
         return (
             # Sections, Actors (angle, mouth_opening, scale), margins
             (("HLP_Title",),
@@ -738,6 +765,8 @@ class MainMenuHelp:
         )
 
     def parse_help_text(self, key: str) -> HelpSection:
+        """Parse localized help text, substitutions"""
+        """and formatting directives."""
         lex = self.core.lexicon
         text = lex(key)
         years, months, days = (
@@ -823,12 +852,15 @@ class MainMenuHelp:
         return section
 
     def help_actor_x(self, cell: int) -> int:
+        """Return the horizontal position of an actor in"""
+        """the nine-cell layout."""
         if not 0 <= cell <= 8:
             raise ValueError(f"Invalid help scene cell: {cell}")
         return round((cell + 0.5) * self.width / 9)
 
     def draw_help_actor(self, actor: HelpActor, y: int,
                         base_size: int) -> None:
+        """Render a decorative character or object in the help panel."""
         sround = self.utils.sym_round
         tex = self.graphics.textures
         draw = self.graphics.shapes
@@ -902,6 +934,7 @@ class MainMenuHelp:
                          sround(radius_y * 0.90), cl=inner_cl, filled=True)
 
     def create_help_panels(self) -> None:
+        """Generate the textures composing the help panel."""
         tex = self.graphics.textures
         base = self.base_text_size
         width = self.width
@@ -937,6 +970,7 @@ class MainMenuHelp:
         self.height = sum(self.panel_heights)
 
     def draw_help_panel(self) -> None:
+        """Render the help panel, scrolling content and navigation controls."""
         now = time.perf_counter()
         if now >= self.layout_check_time:
             self.layout_check_time = now + 0.25

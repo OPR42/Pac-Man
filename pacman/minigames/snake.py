@@ -9,7 +9,9 @@ from pacman.graphics.colors import RenderColors as rcl
 
 
 class Snake:
+    """Manage Snake gameplay, movement, collectibles and rendering."""
     def __init__(self, core: Core) -> None:
+        """Initialize Snake gameplay state and dependencies."""
         self.core = core
         self.game = core.game
         self.controls = core.game.controls
@@ -40,9 +42,11 @@ class Snake:
         self.mouth_close_from = self.mouth_cycle
 
     def launch(self) -> None:
+        """Connect Snake to the minigame coordinator."""
         self.minigames = self.core.game.minigames
 
     def reset(self) -> None:
+        """Restore the initial Snake state."""
         self.path = []
         self.direction = 0
         self.requested_direction = 0
@@ -66,6 +70,7 @@ class Snake:
         self.mouth_close_from = self.mouth_cycle
 
     def initialize(self) -> None:
+        """Prepare a new Snake board and spawn collectibles."""
         gmstate = self.core.gm_state
         start_x = float(gmstate.maze_width // 2)
         start_y = float(gmstate.maze_height // 2)
@@ -96,6 +101,7 @@ class Snake:
         self.gameboard.status = "play"
 
     def set_board_geometry(self) -> None:
+        """Calculate the Snake board layout and graphical resources."""
         sround = self.utils.sym_round
         gmstate = self.core.gm_state
         rg = self.graphics.rg
@@ -139,12 +145,14 @@ class Snake:
         self.graphics.textures.end()
 
     def cell_blocked(self, cell_x: int, cell_y: int) -> bool:
+        """Check whether a cell lies outside the board."""
         gmstate = self.core.gm_state
 
         return not (0 <= cell_x < gmstate.maze_width
                     and 0 <= cell_y < gmstate.maze_height)
 
     def body_blocked(self, cell_x: int, cell_y: int) -> bool:
+        """Check whether a cell intersects the snake's body."""
         epsilon = 1e-9
 
         for i in range(len(self.path) - 1):
@@ -164,6 +172,7 @@ class Snake:
         return False
 
     def command(self, cmd: str) -> None:
+        """Handle requested movement directions."""
         directions = {"right": 0, "down": 1, "left": 2, "up": 3}
         direction = directions.get(cmd)
 
@@ -184,10 +193,12 @@ class Snake:
             self.requested_direction = direction
 
     def grow(self, length: float = 1.0) -> None:
+        """Increase the snake's body length."""
         if length > 0:
             self.length += length
 
     def set_direction(self, direction: int) -> None:
+        """Update the snake's current movement direction."""
         self.direction = direction
 
         if direction == 0:
@@ -196,6 +207,7 @@ class Snake:
             self.last_hor_dir = "left"
 
     def update(self) -> None:
+        """Advance the snake and process movement collisions."""
         now = time.perf_counter()
         dt = min(now - self.last_update, 0.1)
         sround = self.utils.sym_round
@@ -276,6 +288,7 @@ class Snake:
             self.trim_tail()
 
     def trim_tail(self) -> None:
+        """Trim the snake's path to its current body length."""
         epsilon = 1e-9
 
         if self.length <= epsilon:
@@ -305,6 +318,7 @@ class Snake:
         self.path = new_path
 
     def spawn_pacgum(self, super_pacgum: bool = False) -> bool:
+        """Spawn a collectible in an available board cell."""
         gmstate = self.core.gm_state
         available = [(x, y)
                      for x in range(gmstate.maze_width)
@@ -333,6 +347,7 @@ class Snake:
         return True
 
     def update_blink(self, now: float) -> None:
+        """Update Pac-Man's blinking animation."""
         defaults = self.core.defaults
 
         if self.blink_start_time is not None:
@@ -352,6 +367,7 @@ class Snake:
             self.blink_next_time = None
 
     def ahead_pacgum(self) -> tuple[bool | None, float]:
+        """Check for a collectible ahead of Pac-Man."""
         if not self.path:
             return None, -1.0
 
@@ -383,6 +399,7 @@ class Snake:
         return nearest_super, nearest_distance
 
     def update_mouth(self, eaten_super: bool | None, now: float) -> None:
+        """Update Pac-Man's mouth animation."""
         defaults = self.core.defaults
         close_duration = defaults.pacman_mouth_close_duration
         min_cycle = defaults.pacman_min_mouth_opening
@@ -426,6 +443,7 @@ class Snake:
         self.mouth_cycle = min_cycle
 
     def draw_board(self) -> None:
+        """Render the Snake board, collectibles and body."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg

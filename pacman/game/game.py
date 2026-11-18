@@ -13,7 +13,9 @@ from .highscores import HighScores
 
 
 class Game:
+    """Coordinate game initialization, execution and gameplay state."""
     def __init__(self, core: Core) -> None:
+        """Initialize game state and gameplay managers."""
         self.core = core
         self.dashboard = core.dashboard
         self.step: int = 0
@@ -68,6 +70,7 @@ class Game:
         """
 
     def launch(self) -> None:
+        """Initialize game systems and run the main game loop."""
         self.highscores.load()
 
         with SuppressStderr():
@@ -115,6 +118,7 @@ class Game:
                          message="Exiting, come back soon"))
 
     def run_loop(self) -> None:
+        """Process input, update game state and render each frame."""
         while not self.graphics.window_should_close():
             if self.return_to_menu:
                 if self.return_to_menu == "success":
@@ -175,6 +179,7 @@ class Game:
                     self.audio.toggle_mute()
                 elif cmd == "toggle_frame_and_banner":
                     self.graphics.toggle_frame_and_banner()
+                self.audio.sound_play("bip")
 
             if self.step in (1, 3):
                 if src in ("key", "pad") and cmd in ("next", "prev"):
@@ -194,6 +199,7 @@ class Game:
                 if (src in ("leftclick", "rightclick", "pad")
                         and cmd == "scores"):
                     if cmd == "scores":
+                        self.audio.sound_play("click")
                         self.graphics.main_menu.start_highscores_flip()
                 elif ((src in ("key", "pad") and cmd in ("enter", "inv_enter",
                                                          "back", "play",
@@ -202,6 +208,7 @@ class Game:
                           and (cmd in ("exit", "help", "settings", "play",
                                        "quick_access", "credits")
                                or cmd.startswith("jump_to_L")))):
+                    self.audio.sound_play("click")
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     elif src in ("key", "pad") and cmd == "inv_enter":
@@ -293,6 +300,7 @@ class Game:
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd == "back":
+                        self.audio.sound_play("click")
                         self.graphics.interface.switch_focus_to("back")
                         self._play_transition(3, 1, 1)
                         self.set_step(1)
@@ -323,13 +331,16 @@ class Game:
                     elif cmd == "up":
                         self.graphics.interface.focus_previous()
                     elif cmd == "back":
+                        self.audio.sound_play("click")
                         self.graphics.interface.switch_focus_to("back")
                         self._play_transition(4, 1, 1)
                         self.set_step(1)
                         self._play_transition(4, 1, 2)
                     elif cmd == "defaults":
+                        self.audio.sound_play("click")
                         self.graphics.main_menu.main_menu_settings.defaults()
                     elif cmd == "save":
+                        self.audio.sound_play("click")
                         self.graphics.main_menu.main_menu_settings.save()
                     else:
                         self.graphics.main_menu.main_menu_settings.command(cmd)
@@ -375,10 +386,13 @@ class Game:
                             and not (self.core.gm_state.level < 0
                                      and (self.minigames.endgame
                                           or not self.minigames.acknowledge))):
+                        self.audio.sound_play("click")
                         self.set_step(self.toggle_pause())
                     elif cmd == "cheat_menu" and self.core.cht_table.unlocked:
                         if self.toggle_pause() == 8:
                             self.set_step(12)
+                        else:
+                            self.audio.sound_play("click")
                 elif (src in ("leftclick", "rightclick", "key", "pad")
                       and (cmd == "hourglass" or cmd[:10] == "inventory_")):
                     self.inventory.command(cmd)
@@ -420,16 +434,21 @@ class Game:
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd in ("pause_menu", "resume"):
+                        self.audio.sound_play("click")
                         self.set_step(self.toggle_pause())
                     elif cmd == "back":
+                        self.audio.sound_play("click")
                         self.set_step(9)
                     elif cmd == "quit":
+                        self.audio.sound_play("click")
                         self.set_step(10)
                     elif cmd == "cheat" and self.core.cht_table.unlocked:
                         self.set_step(12)
                     elif cmd == "settings":
+                        self.audio.sound_play("click")
                         self.set_step(15)
                     elif cmd == "back_to_std":
+                        self.audio.sound_play("click")
                         self._play_transition(6, 7, 1)
                         self.start_new_level(self.minigames.level_after)
                         self.set_step(6)
@@ -449,10 +468,13 @@ class Game:
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd in ("pause_menu", "resume"):
+                        self.audio.sound_play("click")
                         self.set_step(self.toggle_pause())
                     elif cmd == "no":
+                        self.audio.sound_play("click")
                         self.set_step(8)
                     elif cmd == "yes":
+                        self.audio.sound_play("click")
                         if (self.highscores.qualifies(self.core.gm_state.score)
                                 and not self.one_level_only):
                             gmmenu = self.graphics.gameboard.gamehuds.gamemenus
@@ -536,6 +558,7 @@ class Game:
                     elif src in ("key", "pad") and cmd == "inv_enter":
                         cmd = self.graphics.interface.inv_code() or ""
                     if cmd in ("pause_menu", "resume", "cheat_menu"):
+                        self.audio.sound_play("click")
                         self.set_step(self.toggle_pause())
                     else:
                         self.cheats.receive_command(cmd)
@@ -555,6 +578,7 @@ class Game:
                     if src in ("key", "pad") and cmd == "enter":
                         cmd = self.graphics.interface.focus or ""
                     if cmd in ("continue", "pause_menu"):
+                        self.audio.sound_play("click")
                         if self.highscores.qualifies(self.core.gm_state.score):
                             gmmenu = self.graphics.gameboard.gamehuds.gamemenus
                             gmmenu.gamescoremenu.before_score_gamestep = (
@@ -597,6 +621,7 @@ class Game:
                         self.graphics.interface.focus_previous(
                             avoid=("pause_menu",))
                     elif cmd == "back":
+                        self.audio.sound_play("click")
                         self.set_step(8)
                     else:
                         gamemenu.gamesettingsmenu.command(cmd)
@@ -607,6 +632,7 @@ class Game:
                                     "scroll_normal")):
                     credits = self.graphics.main_menu.main_menu_credits
                     if cmd == "back":
+                        self.audio.sound_play("click")
                         self._play_transition(16, 1, 1)
                         self.graphics.interface.focus = None
                         self.set_step(1)
@@ -624,9 +650,12 @@ class Game:
                         and cmd in ("back", "up_held", "down_held",
                                     "scroll_normal")):
                     if cmd == "back":
+                        self.audio.sound_play("click")
                         self._play_transition(16, 1, 1)
                         self.graphics.interface.focus = None
                         self.set_step(1)
+                        self.graphics.gameboard.reset()
+                        self.victory.reset()
                         self.graphics.main_menu.enter()
                         self._play_transition(16, 1, 2)
                     elif cmd == "up_held":
@@ -640,6 +669,7 @@ class Game:
             self.dashboard.update_dashboard()
 
     def set_step(self, step: int) -> None:
+        """Switch game screens and initialize the corresponding state."""
         if not 0 <= step <= 17:
             return
 
@@ -659,7 +689,6 @@ class Game:
             gmstate.maze_width = lvdims.width
             gmstate.maze_height = lvdims.height
             gmstate.seed = self.core.config.seed
-            gmstate.score = 0
             gmstate.lives_init = self.core.config.lives
             gmstate.lives_cur = self.core.config.lives
             gmstate.pacgum_eaten, gmstate.suppacgum_eaten = 0, 0
@@ -778,6 +807,7 @@ class Game:
 
     def start_new_level(self, level: int, no_special: bool = False,
                         new_start: bool = False) -> None:
+        """Generate and initialize a new maze or special level."""
         gmstate = self.core.gm_state
 
         self.cheats.disable_persistent_cheats()
@@ -860,6 +890,7 @@ class Game:
         self.pause_menu = False
 
     def check_conditions(self) -> None:
+        """Check gameplay conditions and update level progression."""
         if self.graphics.gameboard.status != "play":
             return
         gmstate = self.core.gm_state
@@ -906,6 +937,7 @@ class Game:
             self.inventory.spawn_crate(timeout_is_near=False)
 
     def level_complete(self) -> None:
+        """Handle completion of the current level."""
         gmstate = self.core.gm_state
         if self.graphics.gameboard.status != "complete":
             self.graphics.gameboard.status = "complete"
@@ -928,6 +960,7 @@ class Game:
                 self.graphics.gameboard.status = "warp_out"
 
     def all_levels_completed(self) -> None:
+        """Handle victory after completing all levels."""
         self.toggle_pause(force_pause=True)
         self.gamerun_endtime = time.perf_counter()
         self._add_points_to_score((self.core.gm_state.lives_cur
@@ -937,6 +970,7 @@ class Game:
         self.set_step(14)
 
     def pacman_dies(self) -> None:
+        """Trigger Pac-Man's death sequence."""
         if self.graphics.gameboard.pacman_deathtime != -1.0:
             return
         self.audio.sound_play("death")
@@ -945,6 +979,7 @@ class Game:
         self.graphics.gameboard.status = "death"
 
     def game_over(self) -> None:
+        """End the current game and display the game-over state."""
         if self.step in (11, 13, 14):
             return
         if self.one_level_only:
@@ -955,6 +990,7 @@ class Game:
         self.set_step(13)
 
     def toggle_pause(self, force_pause: bool = False) -> int:
+        """Pause or resume gameplay and adjust affected timers."""
         if (self.graphics.gameboard.status not in ("play", "pause")
                 and not force_pause):
             return -1
@@ -979,6 +1015,7 @@ class Game:
             return 8
 
     def update_characters(self) -> None:
+        """Update character movement, animations and interactions."""
         if self.pause_menu:
             return
 
@@ -1011,6 +1048,7 @@ class Game:
         self.check_collision()
 
     def check_collision(self) -> None:
+        """Handle Pac-Man collisions with ghosts and collectible crates."""
         pacman = self.player.state
         if pacman.status == 0:
             return
@@ -1063,6 +1101,7 @@ class Game:
 
     def _add_points_to_score(self, quantity: int = 0,
                              new_life: bool = True) -> None:
+        """Update the score and award lives at score thresholds."""
         if quantity == 0:
             return
         if quantity + self.core.gm_state.score < 0:
@@ -1077,6 +1116,7 @@ class Game:
             self._add_life(max(0, new_threshold - old_threshold))
 
     def _add_life(self, quantity: int = 0) -> None:
+        """Adjust the number of lives and refresh the HUD."""
         if quantity == 0:
             return
         gmstate = self.core.gm_state
@@ -1088,6 +1128,7 @@ class Game:
         self.graphics.gameboard.gamehuds.livebox_set_lives(gmstate.lives_cur)
 
     def _flip_hourglass(self, init: bool = False) -> None:
+        """Animate an hourglass flip and adjust the remaining time."""
         gmstate = self.core.gm_state
         duration = 1.0
         if init:
@@ -1119,12 +1160,14 @@ class Game:
             self.flip_hourglass = False
 
     def _initialize_characters(self) -> None:
+        """Spawn Pac-Man and ghosts at their starting positions."""
         start_x, start_y = self.core.gm_state.start_pos
         self.player.spawn(start_x, start_y)
         self.ghosts.spawn()
 
     def _play_transition(self, from_step: int, to_step: int,
                          phase: int = 0) -> None:
+        """Run a screen transition until its animation completes."""
         transitions = self.graphics.transitions
         transitions.start(from_step, to_step, phase)
 
@@ -1134,9 +1177,11 @@ class Game:
 
     def _start_transition(self, from_step: int, to_step: int,
                           phase: int = 0) -> None:
+        """Start a screen transition without waiting for completion."""
         self.graphics.transitions.start(from_step, to_step, phase)
 
     def _update_character_blinks(self, now: float) -> None:
+        """Schedule and update character blinking animations."""
         for actor in self.core.chr_states:
             if actor.blink_start_time is not None:
                 if (now - actor.blink_start_time

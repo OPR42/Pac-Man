@@ -12,7 +12,9 @@ from pacman.engine.physics import Physics
 
 
 class Core:
+    """Coordinate game initialization, configuration and shared state."""
     def __init__(self, config_filename: str = "") -> None:
+        """Initialize the core components and default game state."""
         self.defaults = Defaults()
         if getattr(sys, "frozen", False):
             self.defaults.allow_terminal_display = False
@@ -56,7 +58,8 @@ class Core:
         self.physics = Physics()
         self.azerty_layout: bool = False
 
-    def launch(self, arg: str = "") -> None:
+    def launch(self) -> None:
+        """Initialize the game environment and start the main game loop."""
         self.dashboard.launch()
         self._emit(
             LogEvent(source="  core  ", type="start",
@@ -87,6 +90,7 @@ class Core:
         self.dashboard.receive_event(event)
 
     def load_config_to_environment(self) -> None:
+        """Apply configuration settings to the game state and points table."""
         self.gm_state.status = 0
         self.gm_state.skin = 0
         self.gm_state.frame_and_banner = self.config.frame_and_banner
@@ -185,6 +189,8 @@ class Core:
             text = text.replace("”", "\"")
             text = text.replace("« ", "\"")
             text = text.replace(" »", "\"")
+            text = text.replace("„", "\"")
+            text = text.replace("“", "\"")
             text = text.replace("`", "'")
             text = text.replace("’", "'")
             text = text.replace("‘", "'")
@@ -205,6 +211,7 @@ class Core:
         return languages
 
     def _load_language_file(self, path: Path) -> dict[str, str] | None:
+        """Load and validate a language dictionary from a JSON file."""
         try:
             with path.open("r", encoding="utf-8") as file:
                 data = json.load(file)
@@ -233,6 +240,7 @@ class Core:
         return data
 
     def is_layout_azerty(self) -> bool:
+        """Detect whether the active GNOME keyboard layout is AZERTY."""
         try:
             result = subprocess.run(
                 ["gsettings", "get", "org.gnome.desktop.input-sources",

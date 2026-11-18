@@ -18,6 +18,7 @@ InterfaceKind: TypeAlias = Literal[
 
 @dataclass
 class InterfaceItem:
+    """Describe an interactive interface element."""
     x: int
     y: int
     width: int
@@ -32,18 +33,22 @@ class InterfaceItem:
 
 @dataclass
 class InterfaceHint:
+    """Store an interface hint and its display position."""
     item: InterfaceItem
     x: float
     y: float
 
 
 class InterfaceGeometry(NamedTuple):
+    """Associate an interface item with its screen geometry."""
     item: InterfaceItem
     rectangle: RectangleGeometry
 
 
 class Interface:
+    """Manage interface elements, focus, mouse input and hints."""
     def __init__(self, core: Core) -> None:
+        """Initialize interface state and interaction tracking."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -63,6 +68,7 @@ class Interface:
         self.hint_wait: float = 0.0
 
     def set_items(self, ui_items: list[InterfaceItem]) -> None:
+        """Replace interface items and rebuild their geometries."""
         if self.ui_items is ui_items:
             return
 
@@ -76,6 +82,7 @@ class Interface:
             self.focus = None
 
     def rebuild(self) -> None:
+        """Rebuild interface geometries and reset hover state."""
         self._build_geometries()
         self.hovered = None
         self.hint = None
@@ -85,6 +92,7 @@ class Interface:
             self.focus = None
 
     def _build_geometries(self) -> None:
+        """Compute screen geometries for all interface items."""
         rg = self.graphics.rg
         vp_x, vp_y, vp_width, vp_height = (
             self.graphics.viewport_rectangle)
@@ -104,6 +112,7 @@ class Interface:
             self.geometries.append(InterfaceGeometry(item, rectangle))
 
     def get(self, code: str) -> InterfaceGeometry | None:
+        """Return the geometry associated with an item code."""
         for geometry in self.geometries:
             if geometry.item.code == code:
                 return geometry
@@ -111,15 +120,18 @@ class Interface:
         return None
 
     def lock(self) -> None:
+        """Disable interface interactions and clear active hints."""
         self.hint = None
         self.hint_wait = 0.0
         self.locked = True
 
     def unlock(self) -> None:
+        """Enable interface interactions and refresh mouse tracking."""
         self.locked = False
         self.last_mouse_pos = pr.get_mouse_position()
 
     def _focusable_codes(self, avoid: tuple[str, ...] = ("",)) -> list[str]:
+        """Return enabled interface codes eligible for keyboard focus."""
         return [item.code for item in self.ui_items if (
             item.kind in ("button", "r_checkbox", "clickable_label",
                           "btn_prev", "list_next", "bar_next", "rc_checkbox",
@@ -128,6 +140,7 @@ class Interface:
             and item.code not in avoid and not item.disabled)]
 
     def focus_key(self, direction: str) -> None:
+        """Move focus between virtual keyboard keys."""
         if self.locked:
             return
 
@@ -143,7 +156,7 @@ class Interface:
             return 0.0
 
         keys = [geometry for geometry in self.geometries
-                if geometry.item.kind == "key"]
+                if geometry.item.kind == "key" and not geometry.item.disabled]
         if not keys:
             return
 
@@ -228,6 +241,7 @@ class Interface:
             self.focus = wrapped[0][1].item.code
 
     def highlight_key(self, key: str = "") -> None:
+        """Focus the virtual keyboard key matching a code."""
         if not key:
             return
         for item in self.ui_items:
@@ -236,6 +250,7 @@ class Interface:
                 break
 
     def focus_next(self, avoid: tuple[str, ...] = ("",)) -> None:
+        """Move focus to the next eligible interface item."""
         if self.locked:
             return None
 
@@ -265,6 +280,7 @@ class Interface:
         self.focus = codes[(index + 1) % len(codes)]
 
     def focus_previous(self, avoid: tuple[str, ...] = ("",)) -> None:
+        """Move focus to the previous eligible interface item."""
         if self.locked:
             return None
 
@@ -294,16 +310,19 @@ class Interface:
         self.focus = codes[(index - 1) % len(codes)]
 
     def focused(self, code: str) -> bool:
+        """Check whether an interface item currently has focus."""
         return self.focus == code
 
     def current_focused_code(self) -> str:
+        """Return the currently focused item code."""
         if self.focus:
             return self.focus
         else:
             return ""
 
     def switch_focus_to(self, code: str) -> None:
-        if not code or code == "":
+        """Assign focus to an eligible interface item."""
+        if not code:
             return
         if self.locked:
             return
@@ -313,6 +332,7 @@ class Interface:
 
     def _point_in_item(self, x: float, y: float,
                        geometry: InterfaceGeometry) -> bool:
+        """Check whether a point lies inside an interface item."""
         sround = self.utils.sym_round
         if geometry.item.kind == "button":
             return self._point_in_button(x, y, geometry.rectangle)
@@ -324,6 +344,7 @@ class Interface:
 
     def _point_in_button(self, x: float, y: float,
                          button: RectangleGeometry) -> bool:
+        """Check whether a point lies inside a rounded button."""
         radius = button.rad
 
         left_dx = x - button.c2ct.x
@@ -342,6 +363,7 @@ class Interface:
                 and button.c1tl.y <= y <= button.c1bl.y)
 
     def update_mouse(self) -> None:
+        """Update mouse hover, focus, cursor and hint state."""
         if not self.graphics.mouse_inside_window():
             return
 
@@ -412,6 +434,7 @@ class Interface:
         self.last_mouse_pos = mouse
 
     def item_at(self, x: float, y: float) -> InterfaceGeometry | None:
+        """Return the enabled interface item under a screen position."""
         for geometry in self.geometries:
             if geometry.item.kind == "maze" and self.game.step != 7:
                 continue
@@ -423,9 +446,11 @@ class Interface:
         return None
 
     def hovered_code(self) -> str | None:
+        """Return the code of the currently hovered item."""
         return self.hovered
 
     def inv_code(self) -> str | None:
+        """Return the alternate code of the focused item."""
         for item in self.ui_items:
             if item.code == self.focus:
                 if item.inv_code:
@@ -466,6 +491,7 @@ class Interface:
     def clicked_code(self, right_click: bool = False,
                      numbars_only: bool = False,
                      scrollitems_only: bool = False) -> str | None:
+        """Translate a mouse click into an interface command."""
         if self.locked:
             return None
 
@@ -529,6 +555,7 @@ class Interface:
         return code
 
     def show_hint(self) -> None:
+        """Draw the contextual hint for the hovered interface item."""
         if not self.hint or not self.hint.item or not self.hint.item.label:
             return
         if (self.hint.item.label == "PAU_Cht"

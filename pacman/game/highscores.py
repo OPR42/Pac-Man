@@ -16,6 +16,7 @@ CHECKSUM_KEY = b"Pac-Man-42-Hall-of-Fame"
 class HighScores:
     """Manage persistent game highscores."""
     def __init__(self, core: Core) -> None:
+        """Initialize high-score storage and ranking state."""
         self.core = core
         self.scores: list[Score] = []
         self.filepath = (Path(self.core.config.data_dir)
@@ -123,8 +124,7 @@ class HighScores:
                          message=f"Unable to save highscores: {str(error)}"))
 
     def add_score(self, name: str, score: int) -> bool:
-        """Add a valid score and keep at most
-           self.core.defaults.highscores_max_entries."""
+        """Add a valid score while respecting the maximum entry count."""
         if not self._valid_name(name):
             self.core._emit(
                 LogEvent(source="hallfame", type="warning",
@@ -170,9 +170,11 @@ class HighScores:
         return (score > hall_limit or score < wall_limit)
 
     def switch_list(self) -> None:
+        """Switch between the Hall of Fame and Wall of Shame."""
         self.current_list = (self.current_list + 1) % 2
 
     def list_scores(self) -> list[Score]:
+        """Return the currently selected high-score ranking."""
         if self.current_list == 0:
             return self.hall_of_fame()
 
@@ -216,31 +218,19 @@ class HighScores:
         return 0
 
     def _entry_checksum(self, entry: Score) -> str:
-        payload = (
-            f"{entry.name}|{entry.score}|{int(entry.corrupted)}"
-        ).encode("utf-8")
+        """Compute the integrity checksum of a score entry."""
+        payload = (f"{entry.name}|{entry.score}|{int(entry.corrupted)}"
+                   ).encode("utf-8")
 
         return hmac.new(CHECKSUM_KEY, payload,
                         hashlib.sha256).hexdigest()[:CHECKSUM_LEN]
 
     def _build_signature(self, scores: list[Score]) -> str:
+        """Build a combined integrity signature for all score entries."""
         return "".join(self._entry_checksum(entry) for entry in scores)
 
-    def _verify_signature(self, scores: list[Score], signature: str) -> None:
-        for index, entry in enumerate(scores):
-            start = index * CHECKSUM_LEN
-            end = start + CHECKSUM_LEN
-            stored_checksum = signature[start:end]
-            if (len(stored_checksum) != CHECKSUM_LEN
-               or stored_checksum != self._entry_checksum(entry)):
-                entry.score = self.core.defaults.highscores_corrupted
-                entry.corrupted = True
-                self.core._emit(
-                    LogEvent(source="hallfame", type="warning",
-                             message=("Corrupted highscore entry: "
-                                      + f"{entry.name}")))
-
     def _valid_name(self, name: object) -> bool:
+        """Check whether a player name meets the allowed format."""
         if not isinstance(name, str):
             return False
 
@@ -248,10 +238,12 @@ class HighScores:
                 and all(char.isalnum() or char == " " for char in name))
 
     def _valid_score(self, score: object) -> bool:
+        """Check whether a score is a valid non-negative integer."""
         return (isinstance(score, int)
                 and not isinstance(score, bool) and score >= 0)
 
     def _trim_scores(self) -> None:
+        """Retain the highest, lowest and corrupted score entries."""
         if len(self.scores) <= self.core.defaults.highscores_max_entries:
             return
 
@@ -269,12 +261,14 @@ class HighScores:
         self.scores = kept[:self.core.defaults.highscores_max_entries]
 
     def _corrupted_placeholder(self, index: int) -> Score:
+        """Create a placeholder for an invalid score entry."""
         return Score(name=f"UNKNOWN{index + 1}"[:10],
                      score=self.core.defaults.highscores_corrupted,
                      corrupted=True)
 
     def _verify_entry_signature(self, entry: Score, signature: str,
                                 index: int) -> bool:
+        """Verify the stored checksum of a single score entry."""
         start = index * CHECKSUM_LEN
         end = start + CHECKSUM_LEN
         stored_checksum = signature[start:end]

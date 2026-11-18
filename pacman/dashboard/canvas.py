@@ -144,7 +144,7 @@ class Canvas:
         x_end: int | None = None,
         y_end: int | None = None,
     ) -> None:
-        """ Restore the built state of every cell in a rectangular area. """
+        """Restore saved cells within the specified or default canvas area."""
         if x_start is None:
             x_start = 1
         if y_start is None:

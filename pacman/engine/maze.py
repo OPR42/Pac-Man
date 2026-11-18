@@ -7,7 +7,9 @@ from pacman.core import Core
 
 
 class Maze:
+    """Manage maze generation, navigation and wall modifications."""
     def __init__(self, core: Core) -> None:
+        """Initialize the maze generator and its dimensions."""
         self.core = core
         self.dashboard = core.dashboard
         self.game = core.game
@@ -23,6 +25,7 @@ class Maze:
                                        exit_cell=self.target, seed=self.seed)
 
     def _update_landmarks(self) -> None:
+        """Update the maze center and corner coordinates."""
         self.center = ((self.width - 1) // 2, (self.height - 1) // 2)
         self.tl_corner = (0, 0)
         self.tr_corner = (self.width - 1, 0)
@@ -31,6 +34,7 @@ class Maze:
 
     def generate(self, width: int, height: int,
                  seed: int | None = None, log: bool = False) -> None:
+        """Generate a maze with the specified dimensions and seed."""
         self.grid = []
         self.seed = seed if seed is not None else width * height
         self.width = width
@@ -45,6 +49,7 @@ class Maze:
 
         if log:
             msg = f"Maze generated, size {self.width}x{self.height}:\n"
+            txt_var = ""
             msg_end = ""
             center_found = False
             for y, line in enumerate(self.grid):
@@ -66,6 +71,7 @@ class Maze:
                                      message_end=msg_end))
 
     def is_cell_available(self, coord: tuple[int, int]) -> bool:
+        """Check whether a cell is inside the maze and traversable."""
         x, y = coord
 
         if not (0 <= x < self.width and 0 <= y < self.height):
@@ -74,6 +80,7 @@ class Maze:
         return 0 <= self.grid[y][x] < 15
 
     def closest_available_cell(self, x: int, y: int) -> tuple[int, int]:
+        """Find the traversable cell closest by Euclidean distance."""
         if self.is_cell_available((x, y)):
             return x, y
         closest = (-1, -1)
@@ -90,6 +97,7 @@ class Maze:
 
     def shortest_path(self, origin: tuple[int, int],
                       target: tuple[int, int], log: bool = False) -> str:
+        """Return the shortest path between two traversable cells."""
         if not (self.is_cell_available(origin)
                 and self.is_cell_available(target)):
             return ""
@@ -112,6 +120,7 @@ class Maze:
         return path
 
     def available_directions(self, coord: tuple[int, int]) -> list[str]:
+        """Return directions accessible from a given cell."""
         if not self.is_cell_available(coord):
             return []
 
@@ -129,9 +138,11 @@ class Maze:
 
     def is_direction_available(self, coord: tuple[int, int],
                                direction: str) -> bool:
+        """Check whether movement is possible in a given direction."""
         return direction in self.available_directions(coord)
 
     def get_cell(self, coord: tuple[int, int]) -> int | None:
+        """Return the value of a traversable maze cell."""
         if not self.is_cell_available(coord):
             return None
 
@@ -141,6 +152,7 @@ class Maze:
 
     def move(self, coord: tuple[int, int],
              direction: str) -> tuple[int, int] | None:
+        """Return the adjacent cell in a direction if accessible."""
         if not self.is_direction_available(coord, direction):
             return None
 
@@ -153,6 +165,7 @@ class Maze:
 
     def find_nearest_available_cell(self, x: int, y: int
                                     ) -> tuple[int, int] | None:
+        """Find the nearest traversable cell using breadth-first search."""
         width = self.width
         height = self.height
         queue = deque([(x, y)])
@@ -175,6 +188,7 @@ class Maze:
 
     def find_nearest_available_cells(self, x: int,
                                      y: int) -> list[tuple[int, int]]:
+        """Find all traversable cells at the minimum grid distance."""
         width = self.width
         height = self.height
         queue = deque([(x, y, 0)])

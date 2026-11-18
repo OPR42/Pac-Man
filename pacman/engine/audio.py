@@ -12,7 +12,9 @@ SOUND_EXTENSIONS = (".wav", ".ogg", ".mp3", ".flac")
 
 
 class Audio:
+    """Manage sound effects, music playback and audio settings."""
     def __init__(self, core: Core) -> None:
+        """Initialize audio settings and playback resources."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -34,6 +36,7 @@ class Audio:
         self.available: bool = False
 
     def launch(self) -> None:
+        """Initialize the audio device and load available music tracks."""
         self.available = False
         try:
             pr.init_audio_device()
@@ -54,6 +57,7 @@ class Audio:
                      message="Audio Device ", text_var="activated"))
 
     def toggle_mute(self) -> None:
+        """Toggle audio muting."""
         if not self.available:
             return
         lex = self.core.lexicon
@@ -72,6 +76,7 @@ class Audio:
                                             volume=0, begin=True, mute=True)
 
     def set_audio_volume(self, channel: str, delta: float = 0.0) -> None:
+        """Adjust the volume of the selected audio channel."""
         if not self.available:
             return
         if not channel:
@@ -83,6 +88,8 @@ class Audio:
             volume = max(0.0, min(1.0, self.master_volume + delta))
             pr.set_master_volume(volume)
             self.master_volume = volume
+            if volume > 0.0:
+                self.mute = False
             self.graphics.show_audio_volume(label=lex("AUD_Volume"),
                                             volume=volume, begin=True)
 
@@ -103,6 +110,7 @@ class Audio:
                                             volume=volume, begin=True)
 
     def fade(self, factor: float) -> None:
+        """Apply a temporary fade to the master volume."""
         if not self.available:
             return
         factor = max(0.0, min(1.0, factor))
@@ -110,32 +118,38 @@ class Audio:
             pr.set_master_volume(self.master_volume * factor)
 
     def restore_volume(self) -> None:
+        """Restore the configured master volume."""
         if not self.available:
             return
         if not self.mute:
             pr.set_master_volume(self.master_volume)
 
     def get_audio_volume(self) -> tuple[float, float, float]:
+        """Return the master, sound and music volume levels."""
         if not self.available:
             return (0.0, 0.0, 0.0)
         return (self.master_volume, self.sound_volume, self.music_volume)
 
     def get_master_volume(self) -> float:
+        """Return the configured master volume."""
         if not self.available:
             return 0.0
         return self.master_volume
 
     def get_sounds_volume(self) -> float:
+        """Return the configured sound effects volume."""
         if not self.available:
             return 0.0
         return self.sound_volume
 
     def get_music_volume(self) -> float:
+        """Return the configured music volume."""
         if not self.available:
             return 0.0
         return self.music_volume
 
     def jukebox_load(self, name: str) -> bool:
+        """Load a music track into the jukebox."""
         if not self.available:
             return False
         if not self.audio_path.is_dir():
@@ -176,8 +190,6 @@ class Audio:
                 track_info = f"{artist} — {title}"
             elif title:
                 track_info = title
-            self.ingame_current_artist = artist
-            self.ingame_current_title = title
         self.jukebox_music.looping = True
         pr.set_music_volume(self.jukebox_music, self.music_volume)
         self.core._emit(
@@ -189,6 +201,7 @@ class Audio:
         return True
 
     def jukebox_play(self) -> None:
+        """Start playback of the loaded jukebox track."""
         if not self.available:
             return
         if self.jukebox_music is None:
@@ -202,6 +215,7 @@ class Audio:
                      message="Jukebox playing"))
 
     def jukebox_update(self) -> None:
+        """Update the active jukebox music stream."""
         if not self.available:
             return
         if self.jukebox_music is None or not self.jukebox_active:
@@ -210,6 +224,7 @@ class Audio:
         pr.update_music_stream(self.jukebox_music)
 
     def jukebox_volume(self, volume: float) -> None:
+        """Set the jukebox music volume."""
         if not self.available:
             return
         self.music_volume = max(0.0, min(1.0, volume))
@@ -218,6 +233,7 @@ class Audio:
             pr.set_music_volume(self.jukebox_music, self.music_volume)
 
     def jukebox_fade_out(self, factor: float) -> None:
+        """Apply a temporary fade to the jukebox volume."""
         if not self.available:
             return
         factor = max(0.0, min(1.0, factor))
@@ -227,6 +243,7 @@ class Audio:
                                 self.music_volume * factor)
 
     def jukebox_stop(self) -> None:
+        """Stop jukebox playback."""
         if not self.available:
             return
         if self.jukebox_music is None:
@@ -239,6 +256,7 @@ class Audio:
                      message="Jukebox stopped"))
 
     def jukebox_unload(self) -> None:
+        """Unload the current jukebox music stream."""
         if self.jukebox_music is None:
             return
 
@@ -249,6 +267,7 @@ class Audio:
         self.jukebox_music = None
 
     def close(self) -> None:
+        """Release audio resources and close the audio device."""
         self.jukebox_unload()
         self.ingame_stop()
         self.sounds_unload_all()
@@ -257,6 +276,7 @@ class Audio:
             pr.close_audio_device()
 
     def sound_load(self, name: str) -> bool:
+        """Load and cache a sound effect."""
         if not self.available:
             return False
         if name in self.sounds:
@@ -294,6 +314,7 @@ class Audio:
         return True
 
     def sound_play(self, name: str) -> None:
+        """Play a sound effect, loading it if necessary."""
         if not self.available:
             return
         sound = self.sounds.get(name)
@@ -310,6 +331,7 @@ class Audio:
         pr.play_sound(sound)
 
     def sound_stop(self, name: str) -> None:
+        """Stop playback of a sound effect."""
         if not self.available:
             return
         sound = self.sounds.get(name)
@@ -318,6 +340,7 @@ class Audio:
             pr.stop_sound(sound)
 
     def sound_unload(self, name: str) -> None:
+        """Unload a cached sound effect."""
         sound = self.sounds.pop(name, None)
         if not self.available:
             return
@@ -325,12 +348,14 @@ class Audio:
             pr.unload_sound(sound)
 
     def sounds_unload_all(self) -> None:
+        """Unload all cached sound effects."""
         for sound in self.sounds.values():
             pr.unload_sound(sound)
 
         self.sounds.clear()
 
     def ingame_volume(self, volume: float) -> None:
+        """Set the volume of the current in-game music."""
         if not self.available:
             return
         self.music_volume = max(0.0, min(1.0, volume))
@@ -339,6 +364,7 @@ class Audio:
             pr.set_music_volume(self.ingame_music, self.music_volume)
 
     def ingame_load_tracks(self) -> None:
+        """Discover available in-game music tracks."""
         if not self.available:
             return
         self.ingame_tracks = sorted(
@@ -351,6 +377,7 @@ class Audio:
                          message="No ingame music found"))
 
     def _ingame_choose_next(self) -> Path | None:
+        """Choose a random track without immediately repeating the last."""
         if not self.available:
             return None
         if not self.ingame_tracks:
@@ -365,6 +392,7 @@ class Audio:
         return random.choice(candidates)
 
     def ingame_play_next(self) -> None:
+        """Load and play the next in-game music track."""
         if not self.available:
             return
         next_track = self._ingame_choose_next()
@@ -398,6 +426,7 @@ class Audio:
                      message_end=f"\n{track_info}"))
 
     def ingame_update(self) -> None:
+        """Update in-game music playback and advance finished tracks."""
         if not self.available:
             return
         if not self.ingame_active:
@@ -413,6 +442,7 @@ class Audio:
             self.ingame_play_next()
 
     def ingame_start(self) -> None:
+        """Start in-game music playback if not already active."""
         if not self.available:
             return
         if self.ingame_active:
@@ -421,6 +451,7 @@ class Audio:
         self.ingame_play_next()
 
     def ingame_stop(self) -> None:
+        """Stop and unload the current in-game music."""
         if not self.available:
             return
         if self.ingame_music is not None:
