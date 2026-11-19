@@ -57,6 +57,7 @@ class InventoryStats:
         self.text_lines: int = 0
         self.text_characters: int = 0
 
+
 def collect_stats(root: Path) -> InventoryStats:
     stats = InventoryStats()
     directories: set[Path] = set()

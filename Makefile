@@ -217,6 +217,8 @@ re:				fclean install
 build:			install
 				@echo "      ${MAGENTA}──╼━━══${RESET} 📦 Packaging ${MAGENTA}${DISP_NAME}${RESET} project as ${YELLOW}distributable${RESET} using ${BRIGHT_BLUE}pyinstaller${RESET} 📦 ${MAGENTA}═══━━╾──${RESET}\n"; \
 				uv run pyinstaller --onefile --add-data "data:data" --add-data "pacman/assets:assets" pac-man.py
+				chmod +x dist/pac-man
+				tar -czvf dist/pac-man.tar.gz -C dist pac-man
 				@echo "\n               ${MAGENTA}──╼━━══${RESET} ✅ ${MAGENTA}${DISP_NAME}${RESET} project ${YELLOW}distributable${RESET} package ${GREEN}built${RESET} ✅ ${MAGENTA}══━━╾──${RESET}\n\n"; \
 
 keytest:		

@@ -1,6 +1,6 @@
 # Acceptance test plan
 
-## Summary
+## 📋 Summary
 
 1. [Launch](#1-launch)
 2. [Configuration file](#2-configuration-file)
@@ -45,7 +45,7 @@
 |Fixed seed for level 1|The first level is always the same|☑️❌|
 |Random seed for next levels|Levels after 1 are randomly generated|☑️❌|
 |Configurable size|The maze takes on the indicated dimensions|☑️❌|
-|Flag `Perfect=False`|The maze contains loops and is Pac-man-compatible|☑️❌|
+|Flag `Perfect=False`|The maze contains loops and is Pac-Man-compatible|☑️❌|
 |Failed generation|[...]|☑️❌|
 
 
@@ -53,12 +53,12 @@
 
 |Test performed|Action|Result||
 |---|---|---|---|
-|Collision|Move towards a wall|Pac-man stops|☑️❌|
-|Move up|Press < up_key >|Pac-man moves upwards if he does not encounter a wall.|☑️❌|
-|Move down|Press < down_key >|Pac-man moves downwards if he does not encounter a wall.|☑️❌|
-|Move right|Press < right_key >|Pac-man moves to the right if he does not encounter a wall.|☑️❌|
-|Move left|Press < left_key >|Pac-man moves to the left if he does not encounter a wall.|☑️❌|
-|Contact with a ghost|Move onto a ghost|Pac-man loses a life and reappears in the center.|☑️❌|
+|Collision|Move towards a wall|Pac-Man stops|☑️❌|
+|Move up|Press < up_key >|Pac-Man moves upwards if he does not encounter a wall.|☑️❌|
+|Move down|Press < down_key >|Pac-Man moves downwards if he does not encounter a wall.|☑️❌|
+|Move right|Press < right_key >|Pac-Man moves to the right if he does not encounter a wall.|☑️❌|
+|Move left|Press < left_key >|Pac-Man moves to the left if he does not encounter a wall.|☑️❌|
+|Contact with a ghost|Move onto a ghost|Pac-Man loses a life and reappears in the center.|☑️❌|
 |Last life loss|Move onto a ghost|Game ends|☑️❌|
 
 
@@ -69,8 +69,8 @@
 |Non-edible ghost|Auto|Chases the player|☑️❌|
 |Edible ghost|Auto|Runs away from the player|☑️❌|
 |Disgusted ghost|Use sage|Flees from the player within a certain radius|☑️❌|
-|Contact with Pac-man (non-edible)|Move onto a ghost|Eats Pac-man and continues on its way|☑️❌|
-|Contact with Pac-man (edible)|Move onto a ghost|Is eaten, respawns in its corner|☑️❌|
+|Contact with Pac-Man (non-edible)|Move onto a ghost|Eats Pac-Man and continues on its way|☑️❌|
+|Contact with Pac-Man (edible)|Move onto a ghost|Is eaten, respawns in its corner|☑️❌|
 
 ## 6. Pacgums and Super-pacgums
 
@@ -145,7 +145,7 @@
 - Double the ghosts' movement speed
 - Remove 1 life
 - Trigger a "Game over"
-- Kill Pacman
+- Kill Pac-Man
 </i>
 
 <span style='color: purple'>
@@ -167,10 +167,11 @@
 
 |Test performed|Result||
 |---|---|---|
-|Start game|[...]|☑️❌|
-|View highscores|[...]|☑️❌|
-|Instructions|[...]|☑️❌|
-|Exit|[...]|☑️❌|
+|Play game|Starts the game with the configured settings|☑️❌|
+|Settings|Opens the ``setttings`` menu|☑️❌|
+|Guide|Opens the guide that explains how the game works|☑️❌|
+|Quit|Quits an closes the game|☑️❌|
+|Credits|Opens the credits|☑️❌|
 
 <span style='color: purple'>
 
@@ -179,11 +180,11 @@
 
 |Test performed|Result||
 |---|---|---|
-|Current score|[...]|☑️❌|
-|Remaining lives|[...]|☑️❌|
-|Current level|[...]|☑️❌|
-|Remaining time|[...]|☑️❌|
-|Inventory|||
+|Current score|Displays the total score of the player|☑️❌|
+|Remaining lives|Displays how many lives the player has left|☑️❌|
+|Current level|Displays the current level number|☑️❌|
+|Remaining time|Displays the time remaining to complete the level|☑️❌|
+|Inventory|Displays which items the player can use, and in what quantity |☑️❌|
 
 <span style='color: purple'>
 
@@ -197,6 +198,36 @@
 |Settings|[...]|☑️❌|
 |Cheats|[...]|☑️❌|
 |Exit|[...]|☑️❌|
+
+<span style='color: purple'>
+
+### Settings menu
+</span>
+
+Please note that the in-game settings menu contains fewer options, as some can only be modified before launching the game.
+
+|Test performed|Result||
+|---|---|---|
+|**Interface:**|||
+|Language|The language changes for the entire game.|☑️❌|
+|Tooltips|Tooltips are enabled/disabled for the entire game.|☑️❌|
+|Screensaver|The idle time on the main menu before the screensaver starts changes|☑️❌|
+|**Window:**|||
+|Maximized|Enables or disables maximum size mode|☑️❌|
+|Resolution|Changes the width and height of the window|☑️❌|
+|Position|Changes the position of the window on screen|☑️❌|
+|Resizable|Allows/disallows the window to be resized|☑️❌|
+|Frame and banner|Enables/disables the frame and banner surrounding the game area|☑️❌|
+|**Audio:**|||
+|Master volume|Increases/decreases the game's master volume|☑️❌|
+|Music volume|Increases/decreases the game music volume only|☑️❌|
+|Sound volume|Increases/decreases the volume of game sounds only|☑️❌|
+|**Gameplay:**|||
+|Starting lives|Changes the number of lives available at start|☑️❌|
+|Extra life|Changes the score threshold for earning an extra life|☑️❌|
+|Time limit|Changes the time available to complete a level|☑️❌|
+|On timeout|Changes what happens when the player runs out of time|☑️❌|
+|Mini-games|Enables/disables mini-games|☑️❌|
 
 <span style='color: purple'>
 
@@ -259,8 +290,8 @@
 ### ⚠️ Game
 </span>
 
-- In point-and-click mode, when clicking on a blocked tile, Pacman always targets the nearest tile in a clockwise direction (1st up, 2nd right, etc.)  
-↳ Issue: Pacman should target a tile based on the section of the clicked square.
+- In point-and-click mode, when clicking on a blocked tile, Pac-Man always targets the nearest tile in a clockwise direction (1st up, 2nd right, etc.)  
+↳ Issue: Pac-Man should target a tile based on the section of the clicked square.
 
 - Cheat menu is accessible even when not visible : it is hidden, not disabled.  
 ↳ Issue: Anyone can access it simply by knowing that it's here.
@@ -285,3 +316,20 @@
 
 - In the settings menu, unchecking the "resizable" box and then restoring default settings messes up the whole "Window" section.  
 ↳ Issue: Confusion for the player
+
+<span style='color: goldenrod'>
+
+### ⚠️ User guide
+</span>
+
+- Once the guide is opened, it remains in the language in which it was opened; it does not reload after a language change.
+↳ Issue: The guide is not translated, even after changing the language.
+
+<span style='color: goldenrod'>
+
+### ⚠️ Package creation
+</span>
+
+- If the package is created from a computer that does not have audio available (such as the lbonnet session), audio will also be unavailable to users of the package.
+↳ Issue: The users to whom the package is distributed do not have the game's sound.
+
