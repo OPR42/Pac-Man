@@ -1,5 +1,6 @@
 import ctypes
 import pyray as pr
+import sys
 import time
 
 from collections.abc import Iterable, Iterator
@@ -20,21 +21,11 @@ from .raylib_log_formatter import RaylibLogFormatter
 from .shapes import Shapes
 from .textures import Textures
 from .x11_geometry import (get_frame_extents, get_window_info, get_workarea,
-                           WindowInfo)
+                           WindowInfo, WorkArea)
 
 RaylibObject: TypeAlias = Any
 
 FONT_CODEPOINTS = list(range(32, 256))
-
-libc = ctypes.CDLL(None)
-
-libc.vsnprintf.argtypes = [
-    ctypes.c_void_p,
-    ctypes.c_size_t,
-    ctypes.c_void_p,
-    ctypes.c_void_p,
-]
-libc.vsnprintf.restype = ctypes.c_int
 
 
 class Graphics:
@@ -90,7 +81,8 @@ class Graphics:
         self.pr = pr
         self.shapes = Shapes(self.core)
         self.textures = Textures(self.core)
-        pr.set_trace_log_callback(self._raylib_callback)
+        if self._raylib_callback is not None:
+            pr.set_trace_log_callback(self._raylib_callback)
         pr.set_trace_log_level(pr.LOG_INFO)  # type: ignore[attr-defined]
         flags = pr.FLAG_WINDOW_HIDDEN  # type: ignore[attr-defined]
         if self.core.config.window_resizable:
@@ -134,7 +126,9 @@ class Graphics:
 
         pr.set_window_size(self.screen_width, self.screen_height)
         pr.set_window_position(x_pos, y_pos)
-
+        if sys.platform == "win32" and self.core.config.window_maximized:
+            pr.clear_window_state(pr.FLAG_WINDOW_HIDDEN)
+            pr.maximize_window()
         if maximized_info is not None:
             pr.set_window_opacity(0.0)
 
@@ -143,6 +137,10 @@ class Graphics:
         pr.end_drawing()
         pr.clear_window_state(
             pr.FLAG_WINDOW_HIDDEN)  # type: ignore[attr-defined]
+
+        if sys.platform == "win32" and self.core.config.window_maximized:
+            self.screen_width = pr.get_screen_width()
+            self.screen_height = pr.get_screen_height()
 
         if maximized_info is not None:
             timeout = time.perf_counter() + 0.5
@@ -212,8 +210,114 @@ class Graphics:
         self.main_menu = MainMenu(self.core)
         self.gameboard = GameBoard(self.core)
 
+    def get_max_dimensions(self) -> tuple[int, int]:
+        """Return maximum client dimensions fitting the desktop."""
+        if self.window_info:
+            workarea = self.window_info.workarea
+            return workarea.width, workarea.height
+
+        if sys.platform == "win32":
+            from ctypes import wintypes
+            rect = wintypes.RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(
+                    0x0030, 0, ctypes.byref(rect), 0):
+                width = rect.right - rect.left
+                height = rect.bottom - rect.top
+                return max(1, width - 16), max(1, height - 40)
+
+        monitor = pr.get_current_monitor()
+        return (pr.get_monitor_width(monitor),
+                pr.get_monitor_height(monitor))
+
+    def get_desktop_workarea(self) -> WorkArea | None:
+        """Return the usable desktop area for the current platform."""
+        if self.window_info:
+            return self.window_info.workarea
+
+        if sys.platform == "win32":
+            from ctypes import wintypes
+            rect = wintypes.RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(
+                    0x0030, 0, ctypes.byref(rect), 0):
+                return WorkArea(x=rect.left,
+                                y=rect.top,
+                                width=rect.right - rect.left,
+                                height=rect.bottom - rect.top)
+
+        return None
+
+    def get_window_frame_margins(self) -> tuple[int, int, int, int]:
+        """Return Windows window-frame margins (left, top, right, bottom)."""
+        if sys.platform != "win32":
+            return (0, 0, 0, 0)
+
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetActiveWindow()
+        if not hwnd:
+            return (0, 0, 0, 0)
+
+        window_rect = wintypes.RECT()
+        client_rect = wintypes.RECT()
+        client_origin = wintypes.POINT(0, 0)
+
+        if not user32.GetWindowRect(hwnd, ctypes.byref(window_rect)):
+            return (0, 0, 0, 0)
+        if not user32.GetClientRect(hwnd, ctypes.byref(client_rect)):
+            return (0, 0, 0, 0)
+        if not user32.ClientToScreen(hwnd, ctypes.byref(client_origin)):
+            return (0, 0, 0, 0)
+
+        left = client_origin.x - window_rect.left
+        top = client_origin.y - window_rect.top
+        client_width = client_rect.right - client_rect.left
+        client_height = client_rect.bottom - client_rect.top
+        right = window_rect.right - client_origin.x - client_width
+        bottom = window_rect.bottom - client_origin.y - client_height
+
+        return (left, top, right, bottom)
+
     def reposition_and_resize(self) -> None:
         """Apply the configured window size and position."""
+        if sys.platform == "win32":
+            if self.core.config.window_maximized:
+                pr.maximize_window()
+                self.screen_width = pr.get_screen_width()
+                self.screen_height = pr.get_screen_height()
+            else:
+                pr.restore_window()
+                self.screen_width = self.notmax_width
+                self.screen_height = self.notmax_height
+                monitor = pr.get_current_monitor()
+                monitor_width = pr.get_monitor_width(monitor)
+                monitor_height = pr.get_monitor_height(monitor)
+                frame_left, frame_top, frame_right, frame_bottom = (
+                    self.get_window_frame_margins())
+                workarea = self.get_desktop_workarea()
+                if workarea is not None:
+                    x_pos, y_pos = self.get_window_position(
+                        workarea.width, workarea.height,
+                        self.screen_width, self.screen_height)
+                    x_pos += workarea.x
+                    y_pos += workarea.y
+                else:
+                    monitor = pr.get_current_monitor()
+                    x_pos, y_pos = self.get_window_position(
+                        pr.get_monitor_width(monitor),
+                        pr.get_monitor_height(monitor),
+                        self.screen_width, self.screen_height)
+                pr.set_window_size(self.screen_width, self.screen_height)
+                if workarea is not None:
+                    y_pos = min(y_pos + frame_top,
+                                (workarea.y + workarea.height
+                                 - self.screen_height))
+                else:
+                    y_pos += frame_top
+                pr.set_window_position(x_pos, y_pos)
+            self.resize()
+            return
+
         maximized_info = (self.window_info if self.core.config.window_maximized
                           else None)
         monitor = pr.get_current_monitor()
@@ -287,7 +391,7 @@ class Graphics:
         """Return the screen sector currently occupied by the window."""
         if self.is_window_maximized():
             return 4
-        workarea = get_workarea()
+        workarea = self.get_desktop_workarea()
         if workarea is None:
             return 4
         wdw_wdt, wdw_hgt = pr.get_screen_width(), pr.get_screen_height()
@@ -318,14 +422,20 @@ class Graphics:
     def is_window_maximized(self) -> bool:
         """Check whether the window occupies the"""
         """available desktop work area."""
+        if sys.platform == "win32":
+            return bool(pr.is_window_state(pr.FLAG_WINDOW_MAXIMIZED))
+
         if self.window_id is None:
             return False
+
         workarea = get_workarea()
         if workarea is None:
             return False
+
         extents = get_frame_extents(self.window_id)
         if extents is None:
             return False
+
         expected_x = workarea.x + extents.left
         expected_y = workarea.y + extents.top
         expected_width = workarea.width - extents.left - extents.right
@@ -334,6 +444,7 @@ class Graphics:
         width = pr.get_screen_width()
         height = pr.get_screen_height()
         tolerance = 2
+
         return (abs(round(position.x) - expected_x) <= tolerance
                 and abs(round(position.y) - expected_y) <= tolerance
                 and abs(width - expected_width) <= tolerance

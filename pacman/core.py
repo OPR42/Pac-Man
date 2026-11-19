@@ -16,7 +16,7 @@ class Core:
     def __init__(self, config_filename: str = "") -> None:
         """Initialize the core components and default game state."""
         self.defaults = Defaults()
-        if getattr(sys, "frozen", False):
+        if getattr(sys, "frozen", False) or sys.platform == "win32":
             self.defaults.allow_terminal_display = False
         self.base_wait = (self.defaults.terminal_base_wait
                           if self.defaults.allow_terminal_display else 0)
@@ -25,10 +25,14 @@ class Core:
             self.defaults.game_title_includes_resolution)
         self.config_filename = config_filename
         self.term_step: int = 0
-        from .dashboard.termkeys import TerminalManager, KeyControl
-        self.terminal_manager = TerminalManager(self)
-        self.key_control = KeyControl(self, self.terminal_manager)
-        self.key_control.start()
+        if sys.platform == "win32":
+            self.terminal_manager = None
+            self.key_control = None
+        else:
+            from .dashboard.termkeys import TerminalManager, KeyControl
+            self.terminal_manager = TerminalManager(self)
+            self.key_control = KeyControl(self, self.terminal_manager)
+            self.key_control.start()
         from .dashboard.dashboard import Dashboard
         self.dashboard = Dashboard(self)
         self.gm_state = GameState()
@@ -240,20 +244,25 @@ class Core:
         return data
 
     def is_layout_azerty(self) -> bool:
-        """Detect whether the active GNOME keyboard layout is AZERTY."""
+        """Detect whether the active keyboard layout is AZERTY."""
+        if sys.platform == "win32":
+            import ctypes
+            user32 = ctypes.windll.user32
+            thread_id = user32.GetWindowThreadProcessId(
+                user32.GetForegroundWindow(), None)
+            layout = user32.GetKeyboardLayout(thread_id)
+            language_id = layout & 0xFFFF
+            return language_id in (0x040C, 0x080C)
+
         try:
             result = subprocess.run(
                 ["gsettings", "get", "org.gnome.desktop.input-sources",
                  "mru-sources"],
                 capture_output=True, text=True, check=True)
-
             output = result.stdout.strip()
-
             if output.startswith("@a(ss)"):
                 output = output[len("@a(ss)"):].strip()
-
             sources = ast.literal_eval(output)
-
             if sources:
                 layout = sources[0][1].lower()
                 return bool(layout.startswith(("fr", "be")))

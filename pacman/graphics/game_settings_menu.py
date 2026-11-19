@@ -162,12 +162,13 @@ class GameSettingsMenu:
             self.graphics.reposition_and_resize()
         elif focus.startswith("resolution_"):
             res_cur = (self.graphics.screen_width, self.graphics.screen_height)
-            max_wdt = 800
-            max_hgt = 450
-            if self.graphics.window_info:
-                workarea = self.graphics.window_info.workarea
-                max_wdt = workarea.width
-                max_hgt = workarea.height
+            max_wdt, max_hgt = self.graphics.get_max_dimensions()
+            # max_wdt = 800
+            # max_hgt = 450
+            # if self.graphics.window_info:
+            #     workarea = self.graphics.window_info.workarea
+            #     max_wdt = workarea.width
+            #     max_hgt = workarea.height
             reslist = [(800, 600), (1024, 768), (1280, 720), (1280, 800),
                        (1280, 1024), (1366, 768), (1440, 900), (1600, 900),
                        (1600, 1200), (1680, 1050), (1920, 1080), (1920, 1200),

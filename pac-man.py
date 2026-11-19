@@ -39,7 +39,8 @@ def main() -> int:
         return 1
 
     finally:
-        core.terminal_manager.restore()
+        if core.terminal_manager is not None:
+            core.terminal_manager.restore()
 
     return 0
 

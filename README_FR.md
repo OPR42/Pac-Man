@@ -1120,7 +1120,8 @@ $${\color{teal}⋘⊛⋙}$$
 <details><summary><strong>Sommaire de la section 🗂️</strong></summary>
 
 - [25.1. Résultats](#final_thoughts.results)
-- [25.2. Perspectives](#final_thoughts.perspectives)
+- [25.2. Chiffres](#final_thoughts.numbers)
+- [25.3. Perspectives](#final_thoughts.perspectives)
 
 </details>
 
@@ -1132,11 +1133,28 @@ $${\color{teal}⋘⊛⋙}$$
 
 Le projet satisfait les mécanismes attendus d’un Pac-Man multi-niveaux et s’est progressivement développé en un jeu doté de nombreux systèmes supplémentaires. Son intérêt technique réside autant dans le gameplay que dans la composition graphique procédurale, l’organisation des modules et les outils de validation.
 
+<a id="final_thoughts.numbers"></a>
+
+## **$${\color{violet}25.2. \space Chiffres}$$**
+
+Pac-Man - Escape from Flativerses, c'est aussi :
+
+| Catégorie | Quantité|
+|---|---|
+| Modules Python | **54** |
+| Classes | **106** |
+| Fonctions | **1 011** |
+| Lignes de code | **31 123** |
+| Lignes de texte | **7 378** |
+| Caractères | **1 790 949** |
+| Heures de travail | *Beaucoup* |
+| Heures de plaisir | *Beaucoup aussi* |
+
 <a id="final_thoughts.perspectives"></a>
 
-## **$${\color{violet}25.2. \space Perspectives}$$**
+## **$${\color{violet}25.3. \space Perspectives}$$**
 
-Une adaptation Windows pourra être étudiée ultérieurement sans faire partie du périmètre de livraison initial.\
+Ce projet peut également être généré et distribué sous la forme d’un exécutable Windows autonome, bien que la prise en charge de Windows ne fasse pas partie du périmètre initial du projet.\
 Il est peu probable que les projets futurs mentionnés au générique voient le jour. Nous nous en excusons.
 
 $${\color{teal}⋘⊛⋙}$$

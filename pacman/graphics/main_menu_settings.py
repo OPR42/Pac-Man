@@ -191,12 +191,13 @@ class MainMenuSettings:
             self.core.gm_state.on_timeout = index_updt
         elif focus.startswith("resolution_"):
             res_cur = (self.graphics.screen_width, self.graphics.screen_height)
-            max_wdt = 800
-            max_hgt = 450
-            if self.graphics.window_info:
-                workarea = self.graphics.window_info.workarea
-                max_wdt = workarea.width
-                max_hgt = workarea.height
+            max_wdt, max_hgt = self.graphics.get_max_dimensions()
+            # max_wdt = 800
+            # max_hgt = 450
+            # if self.graphics.window_info:
+            #     workarea = self.graphics.window_info.workarea
+            #     max_wdt = workarea.width
+            #     max_hgt = workarea.height
             reslist = [(800, 600), (1024, 768), (1280, 720), (1280, 800),
                        (1280, 1024), (1366, 768), (1440, 900), (1600, 900),
                        (1600, 1200), (1680, 1050), (1920, 1080), (1920, 1200),
@@ -445,6 +446,8 @@ class MainMenuSettings:
         self.graphics.screen_height = int(dimensions[1])
         self.core.config.window_width = int(dimensions[0])
         self.core.config.window_height = int(dimensions[1])
+        self.graphics.notmax_width = int(dimensions[0])
+        self.graphics.notmax_height = int(dimensions[1])
         self.core.config.window_position = (
             dflt.window_position.lower().replace(" ", ""))
         self.core.config.window_resizable = dflt.window_resizable
