@@ -11,9 +11,11 @@ from .shapes import Shapes
 
 
 class MenuActor:
+    """Represent an animated menu character with physical hitboxes."""
     def __init__(self, core: Core, x: float, y: float, vx: float, vy: float,
                  radius: int, kind: str = "pacman",
                  phase: float = 0.0) -> None:
+        """Initialize the actor's position, velocity and animation state."""
         self.core = core
         self.x = x
         self.y = y
@@ -28,6 +30,7 @@ class MenuActor:
 
     @property
     def hitboxes(self) -> tuple[SolidHitbox, ...]:
+        """Return the collision shapes matching the actor's appearance."""
         if self.kind == "pacman":
             return (CircleHitbox(center_x=self.x, center_y=self.y,
                                  radius=self.radius),)
@@ -39,10 +42,12 @@ class MenuActor:
                                 width=self.radius * 2.0, height=self.radius),)
 
     def blink(self, now: float) -> None:
+        """Start the actor's blinking animation if it is not already active."""
         if self.blink_start < 0.0:
             self.blink_start = now
 
     def eye_opening(self, now: float) -> float:
+        """Return the current eye opening factor during a blink."""
         if self.blink_start < 0.0:
             return 1.0
 
@@ -56,7 +61,9 @@ class MenuActor:
 
 
 class MainMenuBackground:
+    """Animate menu characters and manage their physical interactions."""
     def __init__(self, core: Core) -> None:
+        """Initialize the animated background and spawn its characters."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -74,12 +81,14 @@ class MainMenuBackground:
         self.spawn()
 
     def _viewport_geometry(self) -> RectangleGeometry:
+        """Return the geometry of the current game viewport."""
         vp_x, vp_y, vp_width, vp_height = self.graphics.viewport_rectangle
 
         return self.geometry.rectangle_geometry(vp_x, vp_y,
                                                 vp_width, vp_height)
 
     def _random_angle(self, margin: float = 12.0) -> float:
+        """Generate a random movement angle away from cardinal directions."""
         while True:
             angle = self.random.uniform(0.0, 360.0)
             mod = angle % 90.0
@@ -87,6 +96,7 @@ class MainMenuBackground:
                 return angle
 
     def _rebuild_physics_obstacles(self) -> None:
+        """Rebuild viewport boundaries when the physics generation changes."""
         if self.physics_generation == self.physics.generation:
             return
 
@@ -98,6 +108,7 @@ class MainMenuBackground:
         self.physics_generation = self.physics.generation
 
     def _new_actor(self, vp: RectangleGeometry, index: int = -1) -> MenuActor:
+        """Create a randomly positioned actor in an available location."""
         names = ["pacman", "blinky", "pinky", "inky", "clyde",
                  "scared", "dead", "disgusted"]
         weights = [4, 2, 2, 2, 2, 0, 0, 0]
@@ -123,6 +134,7 @@ class MainMenuBackground:
                 return actor
 
     def spawn(self) -> None:
+        """Populate the menu background with animated characters."""
         vp = self._viewport_geometry()
 
         self.actors = [self._new_actor(vp)
@@ -134,6 +146,8 @@ class MainMenuBackground:
         self.last_update = time.perf_counter()
 
     def resize(self) -> None:
+        """Adapt actor positions, sizes and velocities to"""
+        """the viewport scale."""
         vp = self._viewport_geometry()
         new_scale = self.graphics.rg(100) / 100.0
         factor = new_scale / self.scale if self.scale > 0.0 else 1.0
@@ -151,6 +165,7 @@ class MainMenuBackground:
         self.scale = new_scale
 
     def _highscores_geometry(self, kind: int = 0) -> RectangleGeometry:
+        """Return the high-score panel geometry for the selected layout."""
         rg = self.graphics.rg
         vp = self._viewport_geometry()
         x_to_ct = 125
@@ -166,6 +181,7 @@ class MainMenuBackground:
                                                 rg(470))
 
     def _resolve_obstacles(self, actor: MenuActor, now: float) -> None:
+        """Resolve an actor's collision with static menu obstacles."""
         collision = self.physics.first_collision(actor.hitboxes,
                                                  self.obstacles)
 
@@ -179,6 +195,7 @@ class MainMenuBackground:
 
     def _resolve_collision(self, a: MenuActor, b: MenuActor,
                            now: float) -> None:
+        """Resolve a collision between two animated menu characters."""
         if a.kind == "dead" or b.kind == "dead":
             return
 
@@ -210,6 +227,7 @@ class MainMenuBackground:
         b.vy -= impulse * ny
 
     def _ensure_min_speed(self, actor: MenuActor) -> None:
+        """Prevent an actor from moving below the configured minimum speed."""
         min_speed = self.graphics.rg(
             self.core.defaults.background_actors_min_speed)
         speed = math.hypot(actor.vx, actor.vy)
@@ -228,6 +246,7 @@ class MainMenuBackground:
             actor.vy = math.sin(angle) * min_speed
 
     def update(self) -> None:
+        """Advance actor movement and resolve physical collisions."""
         now = time.perf_counter()
         dt = min(now - self.last_update, 0.05)
         self.last_update = now
@@ -246,6 +265,7 @@ class MainMenuBackground:
             self._ensure_min_speed(actor)
 
     def draw(self) -> None:
+        """Render all animated menu characters."""
         now = time.perf_counter()
 
         for actor in self.actors:
@@ -267,5 +287,6 @@ class MainMenuBackground:
                                   wave=wave, name=actor.kind)
 
     def update_and_draw(self) -> None:
+        """Advance and render the animated menu background."""
         self.update()
         self.draw()

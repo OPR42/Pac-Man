@@ -23,6 +23,7 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 @dataclass
 class RuleFragment:
+    """Represent a text or control fragment in a minigame rule."""
     text: str
     kind: str = "text"
     width: int = 0
@@ -34,7 +35,9 @@ RuleLayout: TypeAlias = tuple[list[RuleLine], int, int]
 
 
 class MiniGames:
+    """Coordinate minigames, rules, transitions and replay options."""
     def __init__(self, core: Core) -> None:
+        """Initialize minigame instances and shared interface state."""
         self.core = core
         self.game = core.game
         self.controls = core.game.controls
@@ -56,18 +59,21 @@ class MiniGames:
         self.intro_ui_items: list[InterfaceItem] = []
         self.offer_ui_items: list[InterfaceItem] = []
         self.input_armed: bool = False
+        self.generic_intro_shown: bool = False
         self.snake = Snake(core)
         self.breaker = Breaker(core)
         self.tetris = Tetris(core)
         self.invaders = Invaders(core)
 
     def launch(self) -> None:
+        """Connect and launch all minigame controllers."""
         self.snake.launch()
         self.breaker.launch()
         self.tetris.launch()
         self.invaders.launch()
 
     def reset(self) -> None:
+        """Reset shared minigame state and individual controllers."""
         self.level = 0
         self.level_after = 0
         self.offer_panel_built = False
@@ -76,12 +82,14 @@ class MiniGames:
         self.intro_panel_built = False
         self.score_before = 0
         self.input_armed = False
+        self.generic_intro_shown = False
         self.snake.reset()
         self.breaker.reset()
         self.tetris.reset()
         self.invaders.reset()
 
     def start_level(self, level: int = 0, level_after: int = 0) -> None:
+        """Prepare and initialize the requested minigame level."""
         if not (-4 <= level <= -1
                 and 1 <= level_after <= len(self.core.config.levels)):
             return
@@ -126,27 +134,36 @@ class MiniGames:
         self.gameboard.gamehuds.livebox_set_lives(self.core.gm_state.lives_cur)
 
     def resume_from_pause(self, pause_duration: float) -> None:
+        """Resume minigame timing after a pause."""
         if self.level == -2:
             self.breaker.resume_from_pause(pause_duration)
 
     def resize(self) -> None:
+        """Rebuild the active minigame layout after resizing."""
         if self.level < 0:
             self.set_board_geometry(self.level)
             self.offer_panel_built = False
             self.intro_panel_built = False
 
     def command(self, cmd: str) -> None:
+        """Route commands to the active minigame or interface."""
         if not cmd:
             return
         if self.endgame or not self.acknowledge:
             if cmd == "enter":
                 cmd = self.graphics.interface.focus or ""
-            if cmd == "acknowledge":
+            if cmd == "generic_acknowledge":
+                self.game.audio.sound_play("click")
+                self.generic_intro_shown = True
+                self.intro_panel_built = False
+            elif cmd == "acknowledge":
+                self.game.audio.sound_play("click")
                 self.acknowledge = True
-                for i, item in enumerate(self.intro_ui_items):
+                for item in self.intro_ui_items:
                     if item.kind == "button" and item.code == "pause_menu":
                         item.disabled = False
             elif cmd == "continue":
+                self.game.audio.sound_play("click")
                 if self.game.one_level_only:
                     self.game._play_transition(9, 1, 1)
                     self.graphics.gameboard.reset()
@@ -158,6 +175,7 @@ class MiniGames:
                     self.game.start_new_level(self.level_after)
                     self.game.set_step(6)
             elif cmd == "again" and self.core.gm_state.lives_cur > 0:
+                self.game.audio.sound_play("click")
                 self.game._add_life(-1)
                 self.start_level(self.level, self.level_after)
             elif cmd in ("right", "down", "tab"):
@@ -177,6 +195,7 @@ class MiniGames:
             self.invaders.command(cmd)
 
     def update(self) -> None:
+        """Update the active minigame when input is enabled."""
         if not self.acknowledge:
             return
         if not self.input_armed:
@@ -195,6 +214,7 @@ class MiniGames:
             self.invaders.update()
 
     def set_board_geometry(self, level: int) -> None:
+        """Configure the active minigame board geometry."""
         if not -4 <= level <= -1:
             return
         if level == -1:
@@ -207,6 +227,7 @@ class MiniGames:
             self.invaders.set_board_geometry()
 
     def draw_minigames_board(self) -> None:
+        """Render the active minigame and its interface overlays."""
         gameboard = self.gameboard
 
         self.game.audio.ingame_update()
@@ -253,9 +274,8 @@ class MiniGames:
         if self.endgame:
             self.play_again_offer()
 
-        gameboard.write_board_texts()
-
     def display_rules(self) -> None:
+        """Display the active minigame instructions and controls."""
         gamemenus = self.gameboard.gamehuds.gamemenus
 
         if not gamemenus.background_built:
@@ -290,7 +310,24 @@ class MiniGames:
                 gamemenus.gamehuds.display_hud_buttons(i, rgb_factor)
 
         intro_texts = ["SNK_Htp", "BRK_Htp", "TRS_Htp", "NVD_Htp"]
-        text = lex(intro_texts[index])
+        if not self.generic_intro_shown:
+            text = lex("MGO_Gnr")
+        else:
+            text = lex(intro_texts[index])
+
+        esc_key = (lex("MGO_EscKeyFR") if self.core.azerty_layout
+                   else lex("MGO_EscKeyUS"))
+        space_key = (lex("MGO_SpaceKeyFR") if self.core.azerty_layout
+                     else lex("MGO_SpaceKeyUS"))
+        a_key = (lex("MGO_AKeyFR") if self.core.azerty_layout
+                 else lex("MGO_AKeyUS"))
+        w_key = (lex("MGO_WKeyFR") if self.core.azerty_layout
+                 else lex("MGO_WKeyUS"))
+        text = text.replace("$ESC$", esc_key)
+        text = text.replace("$SPACE$", space_key)
+        text = text.replace("$A$", a_key)
+        text = text.replace("$W$", w_key)
+
         cl_title = rcl.PACMAN_YELLOW
         cl_text = rcl.SAND
         cl_key_body = rcl.LIGHT_BEIGE
@@ -300,6 +337,7 @@ class MiniGames:
                              cl_key_body, cl_key_frame, cl_key_text)
 
     def build_panel_rules(self) -> None:
+        """Build the interactive panel containing minigame rules."""
         sround = self.utils.sym_round
         mvp = self.gameboard.mvp
         gamemenus = self.gameboard.gamehuds.gamemenus
@@ -310,13 +348,17 @@ class MiniGames:
         item_height = sround(min((avp.hgt / 8) * 0.7,
                                  ((avp.wdt / 4) * 0.8) / 4))
         self.intro_ui_items = []
+        self.core.azerty_layout = self.core.is_layout_azerty()
 
         for item in gamemenus.gamehuds.ui_items:
             self.intro_ui_items.append(item)
         button_y = avp.bct.y - sround(item_height * 1.2)
+        label = "MGO_Ack" if self.generic_intro_shown else "MGO_Gnb"
+        code = ("acknowledge" if self.generic_intro_shown
+                else "generic_acknowledge")
         self.intro_ui_items.append(InterfaceItem(
             avp.x + avp.wdt // 3, button_y, avp.wdt // 3, item_height,
-            "MGO_Ack", "acknowledge", "button", rel_to_center=False))
+            label, code, "button", rel_to_center=False))
         radius = self.geometry.rectangle_round_radius(avp.wdt, avp.hgt, 0.25)
         point = self.geometry.point_on_circle(Point(0, 0), radius, 45.0)
         margin = radius - point.x
@@ -332,13 +374,14 @@ class MiniGames:
     def rule_tokenize(self, line: str) -> list[str]:
         """Split a line while keeping consecutive key tags together."""
         pattern = re.compile(
-            r"(?:<(?:key|pad)=[^>]+>(?:\s*<(?:key|pad)=[^>]+>)*[^\s<]*)"
+            r"(?:<(?:key|pad|mouse)=[^>]+>"
+            r"(?:\s*<(?:key|pad|mouse)=[^>]+>)*[^\s<]*)"
             r"|[^\s<]+")
         return pattern.findall(line)
 
     def rule_measure(self, text: str, size: int) -> float:
         """Measure a line containing text and key tags."""
-        pattern = re.compile(r"<(key|pad)=([^>]+)>")
+        pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         width = 0.0
         cursor = 0
 
@@ -347,8 +390,11 @@ class MiniGames:
             if before:
                 text_width, _ = self.geometry.measure_text(before, size)
                 width += text_width
-            _, label = match.groups()
-            width += self.rule_key_width(label, size)
+            kind, label = match.groups()
+            if kind == "mouse":
+                width += size
+            else:
+                width += self.rule_key_width(label, size)
             cursor = match.end()
 
         after = text[cursor:]
@@ -360,6 +406,7 @@ class MiniGames:
         return width
 
     def rule_key_width(self, text: str, size: int) -> int:
+        """Calculate the display width of a rule control symbol."""
         sround = self.utils.sym_round
         size = (size // 2) * 2
         half_size = sround(size / 2)
@@ -369,11 +416,12 @@ class MiniGames:
     def draw_rules_text(self, text: str, cl_title: Color, cl_text: Color,
                         cl_key_body: Color, cl_key_frame: Color,
                         cl_key_text: Color) -> None:
+        """Render formatted minigame instructions and control symbols."""
         draw = self.graphics.shapes
         sround = self.utils.sym_round
         ivp = self.ivp
         max_width = ivp.wdt
-        pattern = re.compile(r"<(key|pad)=([^>]+)>")
+        pattern = re.compile(r"<(key|pad|mouse)=([^>]+)>")
         source_lines = text.split("\n")
         title_index = next(
             (i for i, line in enumerate(source_lines) if line.strip()), -1)
@@ -382,6 +430,7 @@ class MiniGames:
             return
 
         def prepare(size: int) -> RuleLayout:
+            """Prepare a rule fragment for layout and rendering."""
             title_size = size * 2
             line_height = sround(size * 1.35)
             title_height = sround(title_size * 1.35)
@@ -416,7 +465,9 @@ class MiniGames:
                                                       fragment_width))
                         line_width += fragment_width
                     kind, label = match.groups()
-                    fragment_width = self.rule_key_width(label, size)
+                    fragment_width = (
+                        size if kind == "mouse"
+                        else self.rule_key_width(label, size))
                     fragments.append(RuleFragment(label, kind, fragment_width))
                     line_width += fragment_width
                     cursor = match.end()
@@ -463,6 +514,12 @@ class MiniGames:
                     draw.text(x, center_y - sround(font_size / 2),
                               fragment.text, font, font_size,
                               cl_title if is_title else cl_text)
+                elif fragment.kind == "mouse":
+                    draw.mouse(x + sround(fragment.width / 2), center_y,
+                               font_size, fragment.text,
+                               cl_active=cl_key_text,
+                               cl_body=cl_key_body,
+                               cl_frame=cl_key_frame)
                 else:
                     draw.key(x + sround(fragment.width / 2), center_y,
                              fragment.text, font_size, cl=cl_key_text,
@@ -472,6 +529,7 @@ class MiniGames:
             y += height
 
     def play_again_offer(self) -> None:
+        """Display the endgame results and replay options."""
         gamemenus = self.gameboard.gamehuds.gamemenus
 
         if not gamemenus.background_built:
@@ -578,6 +636,7 @@ class MiniGames:
                 gamemenus.gamehuds.display_hud_buttons(i, rgb_factor)
 
     def build_panel_offer(self) -> None:
+        """Build the endgame replay and continuation controls."""
         sround = self.utils.sym_round
         mvp = self.gameboard.mvp
         gamemenus = self.gameboard.gamehuds.gamemenus

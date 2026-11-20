@@ -11,7 +11,9 @@ from .game_menus import GameMenus
 
 
 class GameCheatsMenu:
+    """Manage the layout and rendering of the cheat options menu."""
     def __init__(self, core: Core) -> None:
+        """Initialize cheat menu references and layout state."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -26,21 +28,24 @@ class GameCheatsMenu:
         self.top_rect: RectangleGeometry
         self.left_rect: RectangleGeometry
         self.right_rect: RectangleGeometry
-        self.bot_rect: RectangleGeometry
         self.label_size: int = 0
         self.focus_code: str = ""
 
     def launch(self) -> None:
+        """Initialize the cheat menu geometry."""
         self.build_cheats_geometry()
 
     def reset(self) -> None:
+        """Clear the cheat menu interface state."""
         self.cheats_ui_items = []
         self.label_size = 0
 
     def resize(self) -> None:
+        """Rebuild the cheat menu layout after a resize."""
         self.build_cheats_geometry()
 
     def build_cheats_geometry(self) -> None:
+        """Build the cheat menu panels, labels and interactive controls."""
         sround = self.utils.sym_round
         geo = self.geometry
         geo_rect = self.geometry.rectangle_geometry
@@ -186,6 +191,7 @@ class GameCheatsMenu:
             disabled=minigame_running))
 
     def draw_cheats_menu(self) -> None:
+        """Render cheat options and their current activation states."""
         elapsed = time.perf_counter() - self.gamemenus.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
         draw = self.graphics.shapes

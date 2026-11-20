@@ -15,6 +15,7 @@ Color: TypeAlias = tuple[int, int, int, int]
 
 @dataclass
 class InvadersProjectile:
+    """Represent a projectile fired during the Invaders minigame."""
     x: float
     y: float
     vx: float
@@ -27,6 +28,7 @@ class InvadersProjectile:
 
 @dataclass
 class Debris:
+    """Represent a temporary debris particle."""
     x: float
     y: float
     size: int
@@ -37,6 +39,7 @@ class Debris:
 
 @dataclass
 class Mothership:
+    """Store a mothership's position, health and animation state."""
     color: int
     x: float
     direction: int
@@ -49,6 +52,7 @@ class Mothership:
 
 @dataclass
 class Reinforcement:
+    """Represent a ghost reinforcement entering the swarm."""
     color: int
     x: float
     y: float
@@ -58,6 +62,7 @@ class Reinforcement:
 
 @dataclass
 class Crate:
+    """Represent a falling bonus crate."""
     x: float
     y: float
     size: int
@@ -66,6 +71,7 @@ class Crate:
 
 @dataclass
 class Explosion:
+    """Store the position and lifetime of an explosion."""
     x: float
     y: float
     created: float
@@ -73,7 +79,9 @@ class Explosion:
 
 
 class Invaders:
+    """Manage Invaders gameplay, enemies, projectiles and effects."""
     def __init__(self, core: Core) -> None:
+        """Initialize Invaders gameplay state and dependencies."""
         self.core = core
         self.game = core.game
         self.controls = core.game.controls
@@ -144,9 +152,11 @@ class Invaders:
         self.bomb_radius: float = 1.5
 
     def launch(self) -> None:
+        """Connect Invaders to the minigame coordinator."""
         self.minigames = self.core.game.minigames
 
     def reset(self) -> None:
+        """Restore the initial Invaders state."""
         self.cell_size = 0
         self.brick_size = 0
         self.over = False
@@ -189,7 +199,8 @@ class Invaders:
         self.lives = self.core.config.lives
         self.debris = []
         self.motherships = []
-        self.mothership_next_spawn = self.anim_time + random.uniform(5.0, 15.0)
+        self.mothership_next_spawn = (self.anim_time
+                                      + self.random.uniform(5.0, 15.0))
         self.mothership_next_direction = 1
         self.reinforcements = []
         self.falling_crates = []
@@ -200,6 +211,7 @@ class Invaders:
         self.explosions = []
 
     def initialize(self) -> None:
+        """Prepare a new Invaders gameplay session."""
         self.over = False
         self.last_update = time.perf_counter()
         self.board_dimensions = (
@@ -235,7 +247,8 @@ class Invaders:
             self.shields.append(shield_row)
         self.debris = []
         self.motherships = []
-        self.mothership_next_spawn = self.anim_time + random.uniform(5.0, 15.0)
+        self.mothership_next_spawn = (self.anim_time
+                                      + self.random.uniform(5.0, 15.0))
         self.mothership_next_direction = 1
         self.reinforcements = []
         self.falling_crates = []
@@ -248,6 +261,7 @@ class Invaders:
         self.explosions = []
 
     def initialize_swarm(self) -> None:
+        """Create a new ghost swarm and initialize its movement."""
         self.reinforcements.clear()
         self.swarm_base_speed = (
             self.core.defaults.minigame_invaders_swarm_speed
@@ -275,6 +289,7 @@ class Invaders:
         self.swarm_arrived = False
 
     def set_board_geometry(self) -> None:
+        """Configure the Invaders board and graphical layout."""
         sround = self.utils.sym_round
         gmstate = self.core.gm_state
         rg = self.graphics.rg
@@ -441,12 +456,14 @@ class Invaders:
         self.last_update = time.perf_counter()
 
     def command(self, cmd: str) -> None:
+        """Handle Invaders gameplay commands."""
         if not cmd or self.over or self.pacman_deathtime >= 0.0:
             return
         if cmd == "enter":
             self.pacman_shoot()
 
     def update(self) -> None:
+        """Advance Invaders gameplay, enemies and animations."""
         now = time.perf_counter()
         dt = min(now - self.last_update, 0.05)
         self.last_update = now
@@ -524,6 +541,7 @@ class Invaders:
         self.update_swarm_wave()
 
     def update_ghost_projectiles(self, dt: float) -> None:
+        """Update enemy projectiles and their collisions."""
         vvp = self.vvp
         cell_size = vvp.wdt / self.core.gm_state.maze_width
         radius = self.brick_size / (8.0 * cell_size)
@@ -611,6 +629,7 @@ class Invaders:
         self.ghost_projectiles = remaining
 
     def update_pacman_projectiles(self, dt: float) -> None:
+        """Update player projectiles and their collisions."""
         sround = self.utils.sym_round
         cell_size = self.vvp.wdt / self.core.gm_state.maze_width
         radius = self.brick_size / (8.0 * cell_size)
@@ -771,6 +790,7 @@ class Invaders:
                                    if not projectile.destroyed]
 
     def update_falling_crates(self, dt: float) -> None:
+        """Advance falling crates and detect collection."""
         sround = self.utils.sym_round
         lex = self.core.lexicon
         vvp = self.vvp
@@ -829,6 +849,7 @@ class Invaders:
 
     def spawn_falling_crate(self, x_cell: float, y_cell: float,
                             probability: float) -> None:
+        """Create a falling bonus crate."""
         if self.random.random() >= probability:
             return
 
@@ -855,6 +876,7 @@ class Invaders:
             x=x_cell, y=y_cell, size=self.brick_size, kind=crate_kind))
 
     def apply_crate_effect(self, kind: str = "") -> None:
+        """Apply the effect of a collected bonus crate."""
         if kind == "extra_life":
             self.lives += 1
         elif kind == "slow_swarm":
@@ -879,6 +901,7 @@ class Invaders:
             self.activate_effect(kind, 15.0)
 
     def activate_effect(self, kind: str, duration: float) -> None:
+        """Activate or extend a temporary bonus effect."""
         incompatible = {"slow_swarm": "fast_swarm",
                         "fast_swarm": "slow_swarm"}
         opposite = incompatible.get(kind)
@@ -894,6 +917,7 @@ class Invaders:
                 self.pacman_projectile_base_speed * 2.0)
 
     def update_effects(self, dt: float) -> None:
+        """Update the durations of active bonus effects."""
         for kind, remaining in list(self.active_effects.items()):
             remaining -= dt
             if remaining <= 0.0:
@@ -908,14 +932,17 @@ class Invaders:
                 self.active_effects[kind] = remaining
 
     def is_effect_active(self, kind: str) -> float:
+        """Check whether a named bonus effect is active."""
         return self.active_effects.get(kind, -1.0)
 
     def explode_bomb(self, x: float, y: float) -> None:
+        """Detonate a bomb and apply its area effects."""
         sround = self.utils.sym_round
         cell_size = self.vvp.wdt / self.core.gm_state.maze_width
         radius_sq = self.bomb_radius ** 2
 
         def inside(px: float, py: float) -> bool:
+            """Check whether a position lies within the blast radius."""
             return (px - x) ** 2 + (py - y) ** 2 <= radius_sq
 
         self.explosions.append(Explosion(
@@ -1002,6 +1029,7 @@ class Invaders:
             self.pacman_dies()
 
     def hit_mothership(self, index: int) -> None:
+        """Apply projectile damage to a mothership."""
         sround = self.utils.sym_round
         ship = self.motherships[index]
         ship.health -= 1
@@ -1026,10 +1054,11 @@ class Invaders:
             self.brick_size * 2, 5.0, 2.0, outlined=True)
         self.motherships.pop(index)
         if not self.motherships:
-            self.mothership_next_spawn = self.anim_time + random.uniform(5.0,
-                                                                         15.0)
+            self.mothership_next_spawn = (self.anim_time
+                                          + self.random.uniform(5.0, 15.0))
 
     def update_swarm(self, dt: float) -> None:
+        """Advance the ghost swarm's movement."""
         bounds = self.swarm_bounds()
         if bounds is None:
             return
@@ -1066,6 +1095,7 @@ class Invaders:
         self.swarm_grid_pos = (x, y)
 
     def update_swarm_wave(self) -> None:
+        """Manage completion and progression of ghost waves."""
         if self.pacman_final_death:
             return
 
@@ -1096,6 +1126,7 @@ class Invaders:
         return min(occupied), max(occupied)
 
     def update_swarm_collisions(self) -> None:
+        """Detect collisions involving the ghost swarm."""
         sround = self.utils.sym_round
         vvp = self.vvp
         cell_size = vvp.wdt / self.core.gm_state.maze_width
@@ -1166,6 +1197,7 @@ class Invaders:
                 return
 
     def ghost_shoot(self) -> None:
+        """Generate a projectile fired by the ghost swarm."""
         if self.over or self.pacman_deathtime >= 0.0:
             return
 
@@ -1194,6 +1226,7 @@ class Invaders:
             shooter_row=row))
 
     def ghost_choose_shooter(self, target_x: float) -> tuple[int, int] | None:
+        """Select a ghost eligible to fire a projectile."""
         occupied_columns = {projectile.column
                             for projectile in self.ghost_projectiles}
         swarm_x, _ = self.swarm_grid_pos
@@ -1221,6 +1254,7 @@ class Invaders:
 
     def ghost_choose_target(self, bunker_targets: list[float],
                             bonus_targets: list[float]) -> float:
+        """Select the target of an enemy projectile."""
         strategy = random.randrange(4)
 
         if strategy == 0:
@@ -1240,12 +1274,14 @@ class Invaders:
         return random.gauss(center, self.ghost_aim_sigma)
 
     def ghost_bunker_targets(self) -> list[float]:
+        """Identify bunker positions available as projectile targets."""
         return [4.5 + i * 6.0 for i in range(3)
                 if any(self.shields[j][i] > 0 for j in range(5))]
 
     def shield_debris(self, i: int, j: int, direction: str = "",
                       destroyed: bool = False,
                       impact_x: float | None = None) -> None:
+        """Generate debris from a damaged shield."""
         cell_size = self.vvp.wdt / self.core.gm_state.maze_width
         shields_y = (self.vvp.bct.y - cell_size * 4
                      - self.vvp.y) / cell_size
@@ -1268,6 +1304,7 @@ class Invaders:
                     color=color, created=self.anim_time, duration=2.0))
 
     def pacman_shoot(self) -> None:
+        """Fire a projectile from Pac-Man."""
         if self.over or self.pacman_deathtime >= 0.0:
             return
 
@@ -1302,6 +1339,7 @@ class Invaders:
             self.pacman_shots += 4
 
     def pacman_shoot_animation(self) -> tuple[float, float]:
+        """Update the visual animation of Pac-Man firing."""
         phase = self.anim_time * 2.0 * math.pi / 1.5
         mouth = 0.75 + 0.25 * math.cos(phase)
         eye = 1.0
@@ -1319,6 +1357,7 @@ class Invaders:
         return mouth, eye
 
     def pacman_respawn(self) -> None:
+        """Restore Pac-Man after losing a life."""
         self.pacman_pos = 0.0
         self.pacman_last_dir = "right"
         self.pacman_deathtime = -1.0
@@ -1326,6 +1365,7 @@ class Invaders:
         self.last_update = self.pacman_revival_starttime
 
     def pacman_dies(self, final: bool = False) -> None:
+        """Handle Pac-Man's death and remaining lives."""
         if final:
             self.pacman_final_death = True
         if self.pacman_deathtime >= 0.0:
@@ -1338,6 +1378,7 @@ class Invaders:
         self.pacman_deathtime = time.perf_counter()
 
     def draw_pacman_death(self) -> None:
+        """Render Pac-Man's death animation."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         vvp = self.vvp
@@ -1357,6 +1398,7 @@ class Invaders:
                     last_hor_dir=self.pacman_last_dir)
 
     def spawn_mothership(self, natural: bool = True) -> bool:
+        """Create a mothership entering the playfield."""
         if len(self.motherships) >= 7:
             return False
 
@@ -1383,6 +1425,7 @@ class Invaders:
         return True
 
     def update_motherships(self, dt: float) -> None:
+        """Update mothership movement and behavior."""
         if self.pacman_final_death:
             return
 
@@ -1423,13 +1466,14 @@ class Invaders:
         self.motherships = remaining
 
         if had_motherships and not self.motherships:
-            self.mothership_next_spawn = now + random.uniform(5.0, 15.0)
+            self.mothership_next_spawn = now + self.random.uniform(5.0, 15.0)
 
         if not self.motherships and now >= self.mothership_next_spawn:
             if self.spawn_mothership():
                 self.mothership_next_spawn = -1.0
 
     def can_drop_reinforcements(self, ship: Mothership) -> bool:
+        """Check whether reinforcements can enter the swarm."""
         row = ship.color - 1
 
         if not 0 <= row < len(self.swarm):
@@ -1446,6 +1490,7 @@ class Invaders:
         return pacman_y - target_y > 4.0
 
     def drop_reinforcements(self, ship: Mothership) -> None:
+        """Release reinforcements from a mothership."""
         row = ship.color - 1
 
         if row >= len(self.swarm):
@@ -1468,6 +1513,7 @@ class Invaders:
                 color=ship.color, x=ship.x, y=1.0, row=row, column=column))
 
     def update_reinforcements(self, dt: float) -> None:
+        """Advance reinforcements toward their swarm positions."""
         swarm_x, swarm_y = self.swarm_grid_pos
         remaining: list[Reinforcement] = []
 
@@ -1490,6 +1536,7 @@ class Invaders:
         self.reinforcements = remaining
 
     def draw_board(self) -> None:
+        """Render the Invaders board, actors and effects."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -1659,6 +1706,7 @@ class Invaders:
     def projectile_rect_hit(x0: float, y0: float, x1: float, y1: float,
                             left: float, top: float, right: float,
                             bottom: float, radius: float) -> float | None:
+        """Test whether a projectile intersects a rectangle."""
         left -= radius
         right += radius
         top -= radius
@@ -1685,4 +1733,5 @@ class Invaders:
 
     @property
     def swarm_speed_multiplier(self) -> float:
+        """Return the speed multiplier for the current swarm wave."""
         return 1.1 ** (self.swarm_wave - 1)

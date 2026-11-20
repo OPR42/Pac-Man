@@ -46,6 +46,7 @@ class Player:
         self._stop_pilot()
 
     def dies(self) -> None:
+        """Set Pac-Man to the dying state."""
         actor = self.state
         actor.status = 0
         actor.activity = 4
@@ -93,18 +94,6 @@ class Player:
             self._apply_movement(actor, radius, move_px_x, move_px_y)
 
         return self._update_cell()
-
-    def _nearest_available_cell_to_pos(self, world_x: int, world_y: int,
-                                       origin: tuple[int, int]
-                                       ) -> tuple[int, int] | None:
-        maze = self.core.game.maze
-        gameboard = self.core.game.graphics.gameboard
-        candidates = maze.find_nearest_available_cells(*origin)
-        if not candidates:
-            return None
-        return min(candidates, key=lambda cell: sum(
-            (a - b) ** 2 for a, b in zip(gameboard.cell_center_coords(
-                *cell), (world_x, world_y))))
 
     def pilot(self, cmd: str = "", direct: bool = False) -> None:
         """Set or cancel mouse piloting target."""
@@ -260,6 +249,8 @@ class Player:
             self._stop_pilot()
             return 0.0, 0.0
 
+        if speed <= 0.0:
+            return 0.0, 0.0
         ratio = min(1.0, distance / speed)
 
         return dx / distance * ratio, dy / distance * ratio
@@ -318,7 +309,8 @@ class Player:
 
         if not moved_x and move_px_x != 0 and move_px_y == 0:
             if self._assist_opening(actor, radius, move_px_x, horizontal=True):
-                self._move_body_axis(actor, radius, move_px_x, horizontal=True)
+                moved_x = self._move_body_axis(actor, radius, move_px_x,
+                                               horizontal=True)
             if not moved_x and self.core.cht_table.jackhammer:
                 self._jackhammer(actor, move_px_x, horizontal=True)
 
@@ -328,8 +320,8 @@ class Player:
         if not moved_y and move_px_y != 0 and move_px_x == 0:
             if self._assist_opening(actor, radius, move_px_y,
                                     horizontal=False):
-                self._move_body_axis(actor, radius, move_px_y,
-                                     horizontal=False)
+                moved_y = self._move_body_axis(actor, radius, move_px_y,
+                                               horizontal=False)
             if not moved_y and self.core.cht_table.jackhammer:
                 self._jackhammer(actor, move_px_y, horizontal=False)
 

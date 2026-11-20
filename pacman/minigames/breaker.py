@@ -12,9 +12,11 @@ from pacman.graphics.colors import RenderColors as rcl
 
 
 class BreakerActor:
+    """Represent a moving actor in the Breaker minigame."""
     def __init__(self, core: Core, x: float, y: float, angle: float,
                  vx: float, vy: float, radius: int, kind: str = "pacman",
                  phase: float = 0.0) -> None:
+        """Initialize a moving Breaker actor and its animation state."""
         self.core = core
         self.x = x
         self.y = y
@@ -32,6 +34,7 @@ class BreakerActor:
 
     @property
     def hitboxes(self) -> tuple[SolidHitbox, ...]:
+        """Return the collision shapes associated with the actor."""
         if self.kind == "pacman":
             return (CircleHitbox(center_x=self.x, center_y=self.y,
                                  radius=self.radius),)
@@ -43,10 +46,12 @@ class BreakerActor:
                                 width=self.radius * 2.0, height=self.radius),)
 
     def blink(self, now: float) -> None:
+        """Start the actor's blinking animation."""
         if self.blink_start < 0.0:
             self.blink_start = now
 
     def eye_opening(self, now: float) -> float:
+        """Calculate the actor's current eye opening."""
         if self.blink_start < 0.0:
             return 1.0
 
@@ -61,13 +66,16 @@ class BreakerActor:
 
 @dataclass
 class BreakerExplosion:
+    """Store the position and start time of a Breaker explosion."""
     x: float
     y: float
     started_at: float
 
 
 class Breaker:
+    """Manage Breaker gameplay, collisions, bonuses and rendering."""
     def __init__(self, core: Core) -> None:
+        """Initialize Breaker gameplay state and dependencies."""
         self.core = core
         self.game = core.game
         self.controls = core.game.controls
@@ -119,9 +127,11 @@ class Breaker:
         self.explosions: list[BreakerExplosion] = []
 
     def launch(self) -> None:
+        """Connect Breaker to the minigame coordinator."""
         self.minigames = self.core.game.minigames
 
     def reset(self) -> None:
+        """Restore the initial Breaker state."""
         self.over = False
         self.cell_size = 0
         self.brick_size = 0
@@ -161,6 +171,7 @@ class Breaker:
         self.explosions = []
 
     def initialize(self) -> None:
+        """Prepare a new Breaker board and gameplay session."""
         self.over = False
         self.grid = [
             [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
@@ -244,6 +255,7 @@ class Breaker:
         self.rebuilding = False
 
     def resume_from_pause(self, pause_duration: float) -> None:
+        """Adjust Breaker timers after a pause."""
         self.last_update += pause_duration
 
         if self.returning:
@@ -260,6 +272,7 @@ class Breaker:
                 pacman.blink_start += pause_duration
 
     def set_board_geometry(self) -> None:
+        """Calculate the Breaker board layout and graphical resources."""
         old_cell_size = self.cell_size
         old_mvp = self.gameboard.mvp if old_cell_size > 0 else None
         sround = self.utils.sym_round
@@ -382,6 +395,7 @@ class Breaker:
         self.last_update = time.perf_counter()
 
     def command(self, cmd: str) -> None:
+        """Handle Breaker gameplay commands."""
         if not cmd:
             return
         if cmd == "enter":
@@ -391,6 +405,7 @@ class Breaker:
                 self.launch_pacman()
 
     def triple_pac(self) -> None:
+        """Duplicate active Pac-Man balls up to the configured limit."""
         if not self.pacman_launched or self.returning or self.rebuilding:
             return
 
@@ -418,6 +433,7 @@ class Breaker:
                 remaining -= 1
 
     def update(self) -> None:
+        """Advance Breaker physics, effects and animations."""
         now = time.perf_counter()
         real_dt = now - self.last_update
         self.last_update = now
@@ -516,6 +532,7 @@ class Breaker:
                     break
 
     def launch_pacman(self) -> None:
+        """Launch Pac-Man from the paddle."""
         if self.pacman_launched or self.returning or self.rebuilding:
             return
         self.mouse_aiming = False
@@ -526,6 +543,7 @@ class Breaker:
         self.pacman_launched = True
 
     def pacman_empty_crossing(self, pacman: BreakerActor) -> None:
+        """Handle a Pac-Man crossing through an empty board cell."""
         if abs(pacman.vy) >= abs(pacman.vx) * 0.25:
             pacman.empty_crossings = 0
             return
@@ -542,6 +560,7 @@ class Breaker:
             math.sqrt(max(0.0, speed ** 2 - pacman.vy ** 2)), pacman.vx)
 
     def pacman_wall_collisions(self, pacman: BreakerActor) -> None:
+        """Resolve collisions between Pac-Man and board boundaries."""
         mvp = self.gameboard.mvp
         radius = pacman.radius
 
@@ -566,6 +585,7 @@ class Breaker:
                 pacman.vy = -abs(pacman.vy)
 
     def pacman_paddle_collision(self, pacman: BreakerActor) -> None:
+        """Resolve a Pac-Man collision with the paddle."""
         width = self.paddle_width * self.cell_size
         height = max(1, self.brick_size // 4)
         paddle_x = (self.gameboard.mvp.ct.x + self.paddle_pos *
@@ -585,6 +605,7 @@ class Breaker:
         pacman.vy = math.sin(angle) * self.pacman_speed * self.cell_size
 
     def pacman_brick_collision(self, pacman: BreakerActor) -> bool:
+        """Process Pac-Man impacts against destructible bricks."""
         sround = self.utils.sym_round
         mvp = self.gameboard.mvp
         radius = pacman.radius
@@ -671,6 +692,7 @@ class Breaker:
         return hit
 
     def bomb_brick_collision(self, bomb: BreakerActor) -> bool:
+        """Process a bomb collision with a brick."""
         mvp = self.gameboard.mvp
         radius = bomb.radius
         cell_size = self.cell_size
@@ -698,6 +720,7 @@ class Breaker:
 
     def spawn_falling_crate(self, x_cell: int, y_cell: int,
                             probability: float) -> None:
+        """Create a falling bonus crate."""
         if self.random.random() >= probability:
             return
 
@@ -735,6 +758,7 @@ class Breaker:
             radius=self.brick_size // 2, kind=crate_kind))
 
     def update_bombs(self, dt: float) -> None:
+        """Update bomb movement and collisions."""
         mvp = self.gameboard.mvp
 
         for bomb in self.bombs[:]:
@@ -765,6 +789,7 @@ class Breaker:
                                                      bomb.vx)) % 360.0
 
     def explode_bomb(self, x: float, y: float) -> None:
+        """Trigger a bomb explosion and its effects."""
         now = time.perf_counter()
         sround = self.utils.sym_round
         self.explosions.append(BreakerExplosion(x, y, now))
@@ -807,6 +832,7 @@ class Breaker:
                 self.start_rebuild(self.pacmans[0])
 
     def update_explosion_victims(self, now: float) -> None:
+        """Apply explosion effects to nearby game objects."""
         active_explosions = [explosion for explosion in self.explosions
                              if now - explosion.started_at < 0.5]
 
@@ -816,6 +842,7 @@ class Breaker:
         radius = 5.0 * self.cell_size
 
         def inside_explosion(actor: BreakerActor) -> bool:
+            """Check whether a position lies inside the explosion area."""
             return any(math.hypot(actor.x - explosion.x,
                                   actor.y - explosion.y
                                   ) <= radius + actor.radius
@@ -850,6 +877,7 @@ class Breaker:
             self.reset_pacman()
 
     def update_falling_crates(self, dt: float) -> None:
+        """Advance falling crates and detect paddle collection."""
         mvp = self.gameboard.mvp
         paddle_width = self.paddle_width * self.cell_size
         paddle_x = mvp.ct.x + self.paddle_pos * (mvp.wdt - paddle_width) / 2
@@ -869,6 +897,7 @@ class Breaker:
                 self.collect_crate(crate.kind, crate.x, crate.y)
 
     def collect_crate(self, kind: str, x: float, y: float) -> None:
+        """Apply the bonus contained in a collected crate."""
         lex = self.core.lexicon
         sround = self.utils.sym_round
         self.game.audio.sound_play("eat_superpacgum")
@@ -893,7 +922,8 @@ class Breaker:
         elif kind == "triple_pac":
             self.triple_pac()
         elif kind == "safety_net":
-            self.activate_effect(kind, 20.0)
+            safety_net_duration = 20.0 * (0.9 ** self.board_count)
+            self.activate_effect(kind, safety_net_duration)
         elif kind == "large_paddle":
             self.activate_effect(kind, 20.0)
         elif kind == "tiny_paddle":
@@ -908,6 +938,7 @@ class Breaker:
             self.prepare_bomb()
 
     def activate_effect(self, kind: str, duration: float) -> None:
+        """Activate or extend a temporary Breaker bonus."""
         incompatible = {"large_paddle": "tiny_paddle",
                         "tiny_paddle": "large_paddle",
                         "slow_motion": "fast_motion",
@@ -926,6 +957,7 @@ class Breaker:
             self.set_pacman_speed(self.pacman_base_speed / 1.6)
 
     def update_effects(self, dt: float) -> None:
+        """Update the durations of active bonus effects."""
         for kind, remaining in list(self.active_effects.items()):
             remaining -= dt
             if remaining <= 0.0:
@@ -942,9 +974,11 @@ class Breaker:
                 self.active_effects[kind] = remaining
 
     def is_effect_active(self, kind: str) -> float:
+        """Check whether a named bonus effect is active."""
         return self.active_effects.get(kind, -1.0)
 
     def set_pacman_speed(self, speed: float) -> None:
+        """Update Pac-Man ball speed according to active effects."""
         self.pacman_speed = speed
         target_speed = speed * self.cell_size
 
@@ -957,6 +991,7 @@ class Breaker:
             pacman.vy *= factor
 
     def prepare_bomb(self) -> None:
+        """Prepare a bomb for aiming and launching."""
         if self.bomb_ready or self.bombs:
             return
 
@@ -968,6 +1003,7 @@ class Breaker:
         self.update_bomb_position()
 
     def update_bomb_position(self) -> None:
+        """Update the position of a bomb before launch."""
         if not self.bomb_ready or self.bomb_projectile is None:
             return
 
@@ -980,6 +1016,7 @@ class Breaker:
         self.bomb_projectile.angle = self.bomb_angle
 
     def launch_bomb(self) -> None:
+        """Launch the prepared bomb."""
         if (not self.bomb_ready or self.bomb_projectile is None
                 or self.returning or self.rebuilding or self.over):
             return
@@ -995,6 +1032,7 @@ class Breaker:
         self.mouse_aiming = False
 
     def start_rebuild(self, pacman: BreakerActor) -> None:
+        """Begin the brick reconstruction animation."""
         self.bombs.clear()
         self.bomb_projectile = None
         self.bomb_ready = False
@@ -1018,6 +1056,7 @@ class Breaker:
         self.pacman_speed = min(4200.0, self.pacman_speed)
 
     def update_return(self, now: float) -> None:
+        """Animate Pac-Man returning to the paddle."""
         if not self.returning:
             return
 
@@ -1038,6 +1077,7 @@ class Breaker:
             self.rebuild_start = now
 
     def update_rebuild(self, now: float) -> None:
+        """Advance the brick reconstruction sequence."""
         if not self.rebuilding:
             return
 
@@ -1061,6 +1101,7 @@ class Breaker:
             self.rebuilding = False
 
     def pacman_lost(self, pacman: BreakerActor) -> None:
+        """Handle the loss of a Pac-Man ball."""
         if not self.pacman_launched:
             return
 
@@ -1087,6 +1128,7 @@ class Breaker:
             self.reset_pacman()
 
     def reset_pacman(self) -> None:
+        """Restore Pac-Man to its initial paddle position."""
         self.pacmans = [self.pacman]
         self.pacman_launched = False
         self.pacman.vx = 0.0
@@ -1102,6 +1144,7 @@ class Breaker:
         self.pacman.empty_crossings = 0
 
     def draw_board(self) -> None:
+        """Render the Breaker board, actors and effects."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -1226,6 +1269,7 @@ class Breaker:
         gameboard.gamehuds.draw_huds()
 
     def draw_paddle(self) -> None:
+        """Render the Breaker paddle."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         gameboard = self.gameboard

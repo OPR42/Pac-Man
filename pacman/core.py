@@ -12,9 +12,11 @@ from pacman.engine.physics import Physics
 
 
 class Core:
+    """Coordinate game initialization, configuration and shared state."""
     def __init__(self, config_filename: str = "") -> None:
+        """Initialize the core components and default game state."""
         self.defaults = Defaults()
-        if getattr(sys, "frozen", False):
+        if getattr(sys, "frozen", False) or sys.platform == "win32":
             self.defaults.allow_terminal_display = False
         self.base_wait = (self.defaults.terminal_base_wait
                           if self.defaults.allow_terminal_display else 0)
@@ -23,10 +25,14 @@ class Core:
             self.defaults.game_title_includes_resolution)
         self.config_filename = config_filename
         self.term_step: int = 0
-        from .dashboard.termkeys import TerminalManager, KeyControl
-        self.terminal_manager = TerminalManager(self)
-        self.key_control = KeyControl(self, self.terminal_manager)
-        self.key_control.start()
+        if sys.platform == "win32":
+            self.terminal_manager = None
+            self.key_control = None
+        else:
+            from .dashboard.termkeys import TerminalManager, KeyControl
+            self.terminal_manager = TerminalManager(self)
+            self.key_control = KeyControl(self, self.terminal_manager)
+            self.key_control.start()
         from .dashboard.dashboard import Dashboard
         self.dashboard = Dashboard(self)
         self.gm_state = GameState()
@@ -56,7 +62,8 @@ class Core:
         self.physics = Physics()
         self.azerty_layout: bool = False
 
-    def launch(self, arg: str = "") -> None:
+    def launch(self) -> None:
+        """Initialize the game environment and start the main game loop."""
         self.dashboard.launch()
         self._emit(
             LogEvent(source="  core  ", type="start",
@@ -87,6 +94,7 @@ class Core:
         self.dashboard.receive_event(event)
 
     def load_config_to_environment(self) -> None:
+        """Apply configuration settings to the game state and points table."""
         self.gm_state.status = 0
         self.gm_state.skin = 0
         self.gm_state.frame_and_banner = self.config.frame_and_banner
@@ -185,6 +193,8 @@ class Core:
             text = text.replace("”", "\"")
             text = text.replace("« ", "\"")
             text = text.replace(" »", "\"")
+            text = text.replace("„", "\"")
+            text = text.replace("“", "\"")
             text = text.replace("`", "'")
             text = text.replace("’", "'")
             text = text.replace("‘", "'")
@@ -205,6 +215,7 @@ class Core:
         return languages
 
     def _load_language_file(self, path: Path) -> dict[str, str] | None:
+        """Load and validate a language dictionary from a JSON file."""
         try:
             with path.open("r", encoding="utf-8") as file:
                 data = json.load(file)
@@ -214,9 +225,17 @@ class Core:
         if not isinstance(data, dict):
             return None
 
-        if not all(isinstance(key, str) and isinstance(value, str)
-                   for key, value in data.items()):
-            return None
+        for key, value in data.items():
+            if not isinstance(key, str):
+                return None
+
+            if isinstance(value, list):
+                if not all(isinstance(item, str) for item in value):
+                    return None
+                data[key] = "".join(value)
+
+            elif not isinstance(value, str):
+                return None
 
         for key in list(data):
             if key.startswith("__") and key.endswith("__"):
@@ -225,19 +244,25 @@ class Core:
         return data
 
     def is_layout_azerty(self) -> bool:
+        """Detect whether the active keyboard layout is AZERTY."""
+        if sys.platform == "win32":
+            import ctypes
+            user32 = ctypes.windll.user32
+            thread_id = user32.GetWindowThreadProcessId(
+                user32.GetForegroundWindow(), None)
+            layout = user32.GetKeyboardLayout(thread_id)
+            language_id = layout & 0xFFFF
+            return language_id in (0x040C, 0x080C)
+
         try:
             result = subprocess.run(
                 ["gsettings", "get", "org.gnome.desktop.input-sources",
                  "mru-sources"],
                 capture_output=True, text=True, check=True)
-
             output = result.stdout.strip()
-
             if output.startswith("@a(ss)"):
                 output = output[len("@a(ss)"):].strip()
-
             sources = ast.literal_eval(output)
-
             if sources:
                 layout = sources[0][1].lower()
                 return bool(layout.startswith(("fr", "be")))

@@ -5,6 +5,7 @@ from pacman.core import Core
 
 
 def main() -> int:
+    """Validate arguments, launch the game and restore the terminal."""
     if len(sys.argv) != 2:
         print("\033[1;31m[ERROR]: Invalid number of arguments - "
               f"2 required, {len(sys.argv)} received")
@@ -35,9 +36,11 @@ def main() -> int:
               "\033[3mOR\033[0m, easier :\n\n"
               "\033[1;93m ⌨ \33[0;97m\33[0;48;2;16;32;96m make run_uv"
               "\033[0m\033[1;93m ↩\033[0m\n\n")
+        return 1
 
     finally:
-        core.terminal_manager.restore()
+        if core.terminal_manager is not None:
+            core.terminal_manager.restore()
 
     return 0
 

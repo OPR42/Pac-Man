@@ -16,7 +16,9 @@ RaylibObject: TypeAlias = Any
 
 
 class Interludes:
+    """Manage narrative interludes and animated text presentation."""
     def __init__(self, core: Core) -> None:
+        """Initialize interlude state and rendering dependencies."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -27,7 +29,6 @@ class Interludes:
         self.index: int = -1
         self.active: bool = False
         self.anim_start: float = time.perf_counter()
-        self.anim_finished: bool = False
         self.anim_skip: bool = False
         self.anim_duration: float = 0.0
         self.input_armed: bool = False
@@ -36,20 +37,20 @@ class Interludes:
         self.special_level_was_running: bool = False
 
     def set_interlude(self, index: int) -> None:
-        if index not in (0, 1, 10102, 10203, 10304, 10405, 10506, 10607,
+        """Activate or reset the selected narrative interlude."""
+        if index not in (0, 1, 999, 10102, 10203, 10304, 10405, 10506, 10607,
                          10708, 10809, 10910, 11011, 11112,
                          90001, 90002, 90003, 90004):
             self.index = -1
             self.game.controls.set_mouse_cursor("arrow")
             self.active = False
             self.anim_start = time.perf_counter()
-            self.anim_finished = False
             self.anim_skip = False
             self.anim_duration = 0.0
             self.discoveries_diary_text = ""
             return
         self.special_level_was_running = self.game.special_level_running
-        if index == 0 and not self.active:
+        if index in (0, 999) and not self.active:
             self.game.audio.sound_play("transition_0")
         if index in (10102, 10203, 10304, 10405, 10506, 10607, 10708, 10809,
                      10910, 11011, 11112):
@@ -66,6 +67,7 @@ class Interludes:
         self.input_armed = False
 
     def build_discoveries_diary(self) -> None:
+        """Build a diary entry from newly reported item discoveries."""
         lex = self.lex
         reports = self.game.inventory.discoveries
         list_seen: list[int] = []
@@ -115,6 +117,7 @@ class Interludes:
         self.discoveries_diary_text = "\n".join(lines)
 
     def play_interlude(self) -> None:
+        """Render the current interlude and process its progression."""
         lex = self.lex
         if self.index == 0:
             body = "\n".join(lex(f"INT_{index:03d}") for index in range(1, 10))
@@ -123,7 +126,7 @@ class Interludes:
             self.draw_interlude(rcl.PAPER_OLD, body, True, reference, scribe)
         elif self.index == 1:
             years, months, days = self.elapsed_since_namco_release()
-            txt = lex("INT_051")
+            txt = lex("INT_10001")
             txt = txt.replace("$YEARS$", f"{years:,}")
             txt = txt.replace("$MONTHS$", f"{months:,}")
             txt = txt.replace("$DAYS$", f"{days:,}")
@@ -134,13 +137,18 @@ class Interludes:
             txt = txt.replace("$MPLURAL$", mplural)
             txt = txt.replace("$DPLURAL$", dplural)
             self.draw_interlude(rcl.PAPER, txt, True)
+        elif self.index == 999:
+            body = "\n".join(lex(f"INT_{index:03d}") for index in range(31,
+                                                                        42))
+            reference = lex("INT_051")
+            scribe = lex("INT_056")
+            self.draw_interlude(rcl.PAPER_OLD, body, True, reference, scribe)
         elif self.index in (10102, 10304, 10405, 10506, 10607, 10708, 10809,
                             10910, 11011, 11112):
             txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
             if self.special_level_was_running:
                 txt = lex("INT_90000") + txt
             self.draw_interlude(rcl.PAPER, txt, True)
-
         elif self.index == 10203:
             years, months, days = self.elapsed_since_namco_release()
             txt = lex(f"INT_{self.index}") + self.discoveries_diary_text
@@ -150,11 +158,9 @@ class Interludes:
             if self.special_level_was_running:
                 txt = lex("INT_90000") + txt
             self.draw_interlude(rcl.PAPER, txt, True)
-
         elif self.index in (90001, 90002, 90003, 90004):
             txt = lex(f"INT_{self.index}")
             self.draw_interlude(rcl.PAPER, txt, True)
-
         else:
             self.set_interlude(-1)
             return
@@ -169,6 +175,7 @@ class Interludes:
         self.update_interlude()
 
     def _continue_transition(self) -> None:
+        """Execute the pending action after an interlude transition."""
         action = self.transition_action
         self.transition_action = ""
 
@@ -180,6 +187,10 @@ class Interludes:
             self.set_interlude(-1)
             self.graphics.gameboard.launch()
             self.game._start_transition(6, 7, 4)
+        elif action == "end_win_game":
+            self.set_interlude(-1)
+            self.game.victory.cutscene_running = True
+            self.game._start_transition(6, 7, 2)
         elif action in ("01to02", "02to03", "03to04", "04to05", "05to06",
                         "06to07", "07to08", "08to09", "09to10", "10to11",
                         "11to12"):
@@ -191,6 +202,7 @@ class Interludes:
             self.game._start_transition(6, 7, 2)
 
     def update_interlude(self) -> None:
+        """Handle input to skip or advance the current interlude."""
         if not self.input_armed:
             if not self.game.controls.get_enter():
                 self.input_armed = True
@@ -208,6 +220,9 @@ class Interludes:
             self.game._start_transition(6, 7, 1)
         elif self.index == 1:
             self.transition_action = "launch_game"
+            self.game._start_transition(6, 7, 3)
+        elif self.index == 999:
+            self.transition_action = "end_win_game"
             self.game._start_transition(6, 7, 3)
         elif self.index == 10102:
             self.transition_action = "01to02"
@@ -257,6 +272,7 @@ class Interludes:
 
     def draw_interlude(self, cl_background: RaylibObject, txt: str, anim: bool,
                        reference: str = "", scribe: str = "") -> None:
+        """Render an interlude using the selected paper and text style."""
         sround = self.utils.sym_round
         draw = self.shapes
         rg = self.graphics.rg
@@ -307,6 +323,7 @@ class Interludes:
     def _draw_old_paper_texture(
             self, vp: RectangleGeometry, roundness: float = 0.0,
             corners_color: tuple[int, int, int, int] = (0, 0, 0, 255)) -> None:
+        """Draw the textured background of an old-paper panel."""
         rg = self.graphics.rg
         inset = rg(0)
 
@@ -320,6 +337,7 @@ class Interludes:
 
     def _glyph_progress(self, elapsed: float, start_time: float,
                         fade_duration: float) -> float:
+        """Compute the eased fade-in progress of a character."""
         if self.core.config.disable_transitions:
             fade_duration = 0.00001
 
@@ -330,6 +348,7 @@ class Interludes:
 
     def _draw_standard_text(self, vp: RectangleGeometry, text: str,
                             font_size: int, anim: bool) -> None:
+        """Render centered text with progressive character appearance."""
         font = self.graphics.font_italic
         text_width, text_height = self._measure_written_block(
             text, font, font_size, space_factor=1.0)
@@ -351,6 +370,7 @@ class Interludes:
             font_size: int, elapsed: float, start_time: float,
             char_delay: float = 0.020, fade_duration: float = 0.100,
             space_factor: float = 1.50) -> float:
+        """Draw a text block with individually animated characters."""
         sround = self.utils.sym_round
         if self.core.config.disable_transitions:
             char_delay, fade_duration = 0.00001, 0.00001
@@ -394,6 +414,7 @@ class Interludes:
 
     def _written_text_duration(self, text: str,
                                char_delay: float = 0.020) -> float:
+        """Calculate the duration of a progressively written text."""
         if self.core.config.disable_transitions:
             char_delay = 0.00001
 
@@ -415,6 +436,7 @@ class Interludes:
                              reference: str, scribe: str, body_size: int,
                              reference_size: int, scribe_size: int,
                              anim: bool) -> None:
+        """Render the body, reference and signature on old paper."""
         rg = self.graphics.rg
         font = self.graphics.font_script
         margin_x = rg(40)
@@ -459,6 +481,7 @@ class Interludes:
                               + block_pause + scribe_duration + fade_duration)
 
     def animation_finished(self) -> bool:
+        """Check whether the current text animation has completed."""
         if self.anim_skip:
             return True
 
@@ -468,6 +491,7 @@ class Interludes:
     def _measure_written_block(self, text: str, font: RaylibObject,
                                font_size: int, space_factor: float = 1.50
                                ) -> tuple[float, float]:
+        """Measure the dimensions of a text block using a given font."""
         line_height = font_size * 1.10
         current_width = 0.0
         max_width = 0.0
@@ -493,6 +517,7 @@ class Interludes:
     def _fit_written_text_size(self, text: str, font: RaylibObject,
                                max_width: float, max_height: float,
                                max_size: int, min_size: int = 1) -> int:
+        """Find the largest font size fitting the available space."""
         size = max_size
 
         while size > min_size:
@@ -505,6 +530,7 @@ class Interludes:
 
     def _old_paper_geometry(self, body: str, reference: str, scribe: str
                             ) -> tuple[RectangleGeometry, int, int, int]:
+        """Calculate the old-paper panel geometry and text sizes."""
         sround = self.utils.sym_round
         rg = self.graphics.rg
         font = self.graphics.font_script
@@ -543,6 +569,7 @@ class Interludes:
         return panel, body_size, reference_size, scribe_size
 
     def elapsed_since_namco_release(self) -> tuple[int, int, int]:
+        """Return elapsed years, months and days since Pac-Man's release."""
         today = date.today()
         years = today.year - 1980
         months = today.month - 5

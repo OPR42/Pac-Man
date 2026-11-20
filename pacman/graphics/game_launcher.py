@@ -13,7 +13,10 @@ FONT_CODEPOINTS = list(range(32, 256))
 
 
 class GameLauncher:
+    """Load graphical and audio resources while displaying"""
+    """a progress screen."""
     def __init__(self, core: Core) -> None:
+        """Initialize the resource lists and loading progress counters."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -32,8 +35,8 @@ class GameLauncher:
                                                 "gunmetal",
                                                 "wood",
                                                 "darkerwood",
-                                                "granular"]
-    # brushed_metal, lightwood
+                                                "granular",
+                                                "stars"]
         self.sounds_to_load: list[str] = ["applause",
                                           "break",
                                           "death",
@@ -49,9 +52,16 @@ class GameLauncher:
                                           "time's_up",
                                           "transition_0",
                                           "transition_1",
-                                          "warp"]
+                                          "warp",
+                                          "elec_buzz",
+                                          "elec_hiccup",
+                                          "chime",
+                                          "click",
+                                          "bip"]
 
     def launch(self) -> None:
+        """Load fonts, textures and sounds before enabling"""
+        """gameplay rendering."""
         pr.clear_window_state(
             pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
         screen_w, screen_h = pr.get_screen_width(), pr.get_screen_height()
@@ -126,6 +136,7 @@ class GameLauncher:
                 pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
 
     def draw_loading_screen(self) -> None:
+        """Render the resource loading progress and status indicators."""
         draw = self.graphics.shapes
         vp = self.vp
         rg = self.graphics.rg
@@ -149,9 +160,6 @@ class GameLauncher:
                     mouth_opening=mouth_opening)
         draw.stick_text(vp.ct.x, vp.ct.y - base_height * 2,
                         lex("LDR_Lbl"), base_height, thick=rg(2), cl=cl_alt)
-        # draw.stick_text(vp.ct.x, vp.ct.y + base_height * 2,
-        #                 f"{self.nb_loaded:02}/{self.nb_elements:02}",
-        #                 base_height, thick=rg(2), cl=cl_alt)
         draw.stick_text(vp.ct.x, vp.ct.y + base_height * 2,
                         f"{round(progress * 100)}%",
                         base_height, thick=rg(2), cl=cl_alt)

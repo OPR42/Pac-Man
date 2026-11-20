@@ -46,6 +46,7 @@ class LogBook:
         self.bot_view: int = self.height - 1
 
     def _log_to_string(self) -> str:
+        """Convert the complete logbook grid into plain text."""
         dump_log = ""
 
         for line in self.grid:
@@ -56,6 +57,7 @@ class LogBook:
         return dump_log
 
     def save_temp_log(self) -> None:
+        """Save the current logbook to a temporary file."""
         log_dir = Path(self.dashboard.core.config.data_dir) / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         temp_file = log_dir / "~temp_log.txt"
@@ -67,6 +69,7 @@ class LogBook:
         writing_file.replace(temp_file)
 
     def recover_temp_log(self) -> None:
+        """Preserve a previous temporary log as a crash report."""
         log_dir = Path(self.dashboard.core.config.data_dir) / "logs"
         temp_file = log_dir / "~temp_log.txt"
 
@@ -79,6 +82,7 @@ class LogBook:
         temp_file.rename(crash_file)
 
     def dump_log_to_file(self) -> None:
+        """Export the current logbook to a timestamped text file."""
         log_dir = Path(self.dashboard.core.config.data_dir) / "logs"
         log_dir.mkdir(parents=True, exist_ok=True)
         timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -127,6 +131,7 @@ class LogBook:
             self.scroll_logbook(missing, jump=jump)
 
     def read_log_line_part(self, x: int, y: int, length: int) -> str:
+        """Return a horizontal text segment from the logbook grid."""
         if (x < self.canvas_x_start or x > self.canvas_x_end
            or y < self.canvas_y_start or y + length > self.canvas_y_end
            or length <= 0):
@@ -282,7 +287,7 @@ class LogBook:
             move = -move
 
         if jump:
-            self.top_view += move
+            self.top_view += move * way
             self.top_view = max(0, min(self.top_view,
                                        self.last_line - self.disp_height + 1))
             self.scroll_bar()

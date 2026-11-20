@@ -1,5 +1,6 @@
 import ctypes
 import pyray as pr
+import sys
 import time
 
 from collections.abc import Iterable, Iterator
@@ -20,25 +21,17 @@ from .raylib_log_formatter import RaylibLogFormatter
 from .shapes import Shapes
 from .textures import Textures
 from .x11_geometry import (get_frame_extents, get_window_info, get_workarea,
-                           WindowInfo)
+                           WindowInfo, WorkArea)
 
 RaylibObject: TypeAlias = Any
 
 FONT_CODEPOINTS = list(range(32, 256))
 
-libc = ctypes.CDLL(None)
-
-libc.vsnprintf.argtypes = [
-    ctypes.c_void_p,
-    ctypes.c_size_t,
-    ctypes.c_void_p,
-    ctypes.c_void_p,
-]
-libc.vsnprintf.restype = ctypes.c_int
-
 
 class Graphics:
+    """Manage the game window, rendering resources and graphical layout."""
     def __init__(self, core: Core) -> None:
+        """Initialize rendering configuration, window state and resources."""
         self.core = core
         self.game = core.game
         self.utils = Utils()
@@ -79,15 +72,17 @@ class Graphics:
         self.audio_volume_value: float = 0.0
         self.audio_volume_label: str = ""
         self.banner_skin = -1
-        self.window_info: WindowInfo
+        self.window_info: WindowInfo | None = None
         self.window_id: int | None = None
         self.restore_resizable = False
 
     def launch(self) -> None:
+        """Initialize the Raylib window and configure its initial placement."""
         self.pr = pr
         self.shapes = Shapes(self.core)
         self.textures = Textures(self.core)
-        pr.set_trace_log_callback(self._raylib_callback)
+        if self._raylib_callback is not None:
+            pr.set_trace_log_callback(self._raylib_callback)
         pr.set_trace_log_level(pr.LOG_INFO)  # type: ignore[attr-defined]
         flags = pr.FLAG_WINDOW_HIDDEN  # type: ignore[attr-defined]
         if self.core.config.window_resizable:
@@ -131,7 +126,9 @@ class Graphics:
 
         pr.set_window_size(self.screen_width, self.screen_height)
         pr.set_window_position(x_pos, y_pos)
-
+        if sys.platform == "win32" and self.core.config.window_maximized:
+            pr.clear_window_state(pr.FLAG_WINDOW_HIDDEN)
+            pr.maximize_window()
         if maximized_info is not None:
             pr.set_window_opacity(0.0)
 
@@ -140,6 +137,10 @@ class Graphics:
         pr.end_drawing()
         pr.clear_window_state(
             pr.FLAG_WINDOW_HIDDEN)  # type: ignore[attr-defined]
+
+        if sys.platform == "win32" and self.core.config.window_maximized:
+            self.screen_width = pr.get_screen_width()
+            self.screen_height = pr.get_screen_height()
 
         if maximized_info is not None:
             timeout = time.perf_counter() + 0.5
@@ -189,6 +190,7 @@ class Graphics:
                 duration=time.perf_counter() - self.core.gm_state.starttime))
 
     def launch_sequel(self) -> None:
+        """Load graphical resources and initialize rendering subsystems."""
         from .game_launcher import GameLauncher
         self.gamelauncher = GameLauncher(self.core)
         self.gamelauncher.launch()
@@ -208,7 +210,114 @@ class Graphics:
         self.main_menu = MainMenu(self.core)
         self.gameboard = GameBoard(self.core)
 
+    def get_max_dimensions(self) -> tuple[int, int]:
+        """Return maximum client dimensions fitting the desktop."""
+        if self.window_info:
+            workarea = self.window_info.workarea
+            return workarea.width, workarea.height
+
+        if sys.platform == "win32":
+            from ctypes import wintypes
+            rect = wintypes.RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(
+                    0x0030, 0, ctypes.byref(rect), 0):
+                width = rect.right - rect.left
+                height = rect.bottom - rect.top
+                return max(1, width - 16), max(1, height - 40)
+
+        monitor = pr.get_current_monitor()
+        return (pr.get_monitor_width(monitor),
+                pr.get_monitor_height(monitor))
+
+    def get_desktop_workarea(self) -> WorkArea | None:
+        """Return the usable desktop area for the current platform."""
+        if self.window_info:
+            return self.window_info.workarea
+
+        if sys.platform == "win32":
+            from ctypes import wintypes
+            rect = wintypes.RECT()
+            if ctypes.windll.user32.SystemParametersInfoW(
+                    0x0030, 0, ctypes.byref(rect), 0):
+                return WorkArea(x=rect.left,
+                                y=rect.top,
+                                width=rect.right - rect.left,
+                                height=rect.bottom - rect.top)
+
+        return None
+
+    def get_window_frame_margins(self) -> tuple[int, int, int, int]:
+        """Return Windows window-frame margins (left, top, right, bottom)."""
+        if sys.platform != "win32":
+            return (0, 0, 0, 0)
+
+        from ctypes import wintypes
+
+        user32 = ctypes.windll.user32
+        hwnd = user32.GetActiveWindow()
+        if not hwnd:
+            return (0, 0, 0, 0)
+
+        window_rect = wintypes.RECT()
+        client_rect = wintypes.RECT()
+        client_origin = wintypes.POINT(0, 0)
+
+        if not user32.GetWindowRect(hwnd, ctypes.byref(window_rect)):
+            return (0, 0, 0, 0)
+        if not user32.GetClientRect(hwnd, ctypes.byref(client_rect)):
+            return (0, 0, 0, 0)
+        if not user32.ClientToScreen(hwnd, ctypes.byref(client_origin)):
+            return (0, 0, 0, 0)
+
+        left = client_origin.x - window_rect.left
+        top = client_origin.y - window_rect.top
+        client_width = client_rect.right - client_rect.left
+        client_height = client_rect.bottom - client_rect.top
+        right = window_rect.right - client_origin.x - client_width
+        bottom = window_rect.bottom - client_origin.y - client_height
+
+        return (left, top, right, bottom)
+
     def reposition_and_resize(self) -> None:
+        """Apply the configured window size and position."""
+        if sys.platform == "win32":
+            if self.core.config.window_maximized:
+                pr.maximize_window()
+                self.screen_width = pr.get_screen_width()
+                self.screen_height = pr.get_screen_height()
+            else:
+                pr.restore_window()
+                self.screen_width = self.notmax_width
+                self.screen_height = self.notmax_height
+                monitor = pr.get_current_monitor()
+                monitor_width = pr.get_monitor_width(monitor)
+                monitor_height = pr.get_monitor_height(monitor)
+                frame_left, frame_top, frame_right, frame_bottom = (
+                    self.get_window_frame_margins())
+                workarea = self.get_desktop_workarea()
+                if workarea is not None:
+                    x_pos, y_pos = self.get_window_position(
+                        workarea.width, workarea.height,
+                        self.screen_width, self.screen_height)
+                    x_pos += workarea.x
+                    y_pos += workarea.y
+                else:
+                    monitor = pr.get_current_monitor()
+                    x_pos, y_pos = self.get_window_position(
+                        pr.get_monitor_width(monitor),
+                        pr.get_monitor_height(monitor),
+                        self.screen_width, self.screen_height)
+                pr.set_window_size(self.screen_width, self.screen_height)
+                if workarea is not None:
+                    y_pos = min(y_pos + frame_top,
+                                (workarea.y + workarea.height
+                                 - self.screen_height))
+                else:
+                    y_pos += frame_top
+                pr.set_window_position(x_pos, y_pos)
+            self.resize()
+            return
+
         maximized_info = (self.window_info if self.core.config.window_maximized
                           else None)
         monitor = pr.get_current_monitor()
@@ -236,6 +345,7 @@ class Graphics:
         self.resize()
 
     def update_resizable_state(self, force: bool = False) -> None:
+        """Enable or disable window resizing according to configuration."""
         if self.core.config.window_resizable or force:
             pr.set_window_state(
                 pr.FLAG_WINDOW_RESIZABLE)  # type: ignore[attr-defined]
@@ -246,6 +356,7 @@ class Graphics:
     def get_window_position(self, monitor_width: int, monitor_height: int,
                             screen_width: int,
                             screen_height: int) -> tuple[int, int]:
+        """Calculate the window position for the configured screen sector."""
         wdw_left_to_center = (monitor_width - screen_width) // 2
         wdw_top_to_center = (monitor_height - screen_height) // 2
         if self.core.config.window_position == "right":
@@ -277,9 +388,10 @@ class Graphics:
         return (x_pos, y_pos)
 
     def get_window_screensector(self) -> int:
+        """Return the screen sector currently occupied by the window."""
         if self.is_window_maximized():
             return 4
-        workarea = get_workarea()
+        workarea = self.get_desktop_workarea()
         if workarea is None:
             return 4
         wdw_wdt, wdw_hgt = pr.get_screen_width(), pr.get_screen_height()
@@ -308,14 +420,22 @@ class Graphics:
         return sector_x + sector_y * 3
 
     def is_window_maximized(self) -> bool:
+        """Check whether the window occupies the"""
+        """available desktop work area."""
+        if sys.platform == "win32":
+            return bool(pr.is_window_state(pr.FLAG_WINDOW_MAXIMIZED))
+
         if self.window_id is None:
             return False
+
         workarea = get_workarea()
         if workarea is None:
             return False
+
         extents = get_frame_extents(self.window_id)
         if extents is None:
             return False
+
         expected_x = workarea.x + extents.left
         expected_y = workarea.y + extents.top
         expected_width = workarea.width - extents.left - extents.right
@@ -324,12 +444,14 @@ class Graphics:
         width = pr.get_screen_width()
         height = pr.get_screen_height()
         tolerance = 2
+
         return (abs(round(position.x) - expected_x) <= tolerance
                 and abs(round(position.y) - expected_y) <= tolerance
                 and abs(width - expected_width) <= tolerance
                 and abs(height - expected_height) <= tolerance)
 
     def draw_window(self) -> None:
+        """Render the current game screen and graphical overlays."""
         now = time.perf_counter()
         pr.begin_drawing()
         pr.clear_background(rcl.BASE_BLACK)
@@ -357,11 +479,13 @@ class Graphics:
         elif self.game.step in (1, 3, 4, 5, 16):
             self.main_menu.draw_main_menu()
 
-        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
+        elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 17):
             if self.core.gm_state.level >= 0:
                 self.gameboard.draw_gameboard()
             else:
                 self.game.minigames.draw_minigames_board()
+
+        self.gameboard.write_board_texts()
 
         if (self.show_hints
             and (now - self.interface.hint_wait
@@ -380,7 +504,9 @@ class Graphics:
         pr.end_drawing()
 
     def _raylib_log(self, level: int, text: object, args: object) -> None:
+        """Forward Raylib log messages to the game logging system."""
         def _raylib_log_type(level: int) -> str:
+            """Map a Raylib log level to a game log category."""
             return {1: "info", 2: "info", 3: "info", 4: "warning", 5: "error",
                     6: "error"}.get(level, "info")
 
@@ -390,20 +516,25 @@ class Graphics:
                                  message=message))
 
     def rx(self, value: float) -> int:
+        """Scale a horizontal dimension to the current window width."""
         return round(value * self.ratio_x)
 
     def ry(self, value: float) -> int:
+        """Scale a vertical dimension to the current window height."""
         return round(value * self.ratio_y)
 
     def rg(self, value: float) -> int:
+        """Scale a dimension using the common graphical scale factor."""
         return round(value * self.ratio_g)
 
     def mouse_inside_window(self) -> bool:
+        """Return whether the mouse pointer is inside the game window."""
         mouse = pr.get_mouse_position()
         return (mouse.x >= 0 and mouse.x < self.screen_width and mouse.y >= 0
                 and mouse.y < self.screen_height)
 
     def exit_window(self) -> None:
+        """Release graphical resources and close the game window."""
         self.core._emit(
             LogEvent(source="graphics", type="info", message="Exiting"))
         nb_tex, nb_img, nb_shd = self.textures.unload_all()
@@ -415,10 +546,12 @@ class Graphics:
         pr.close_window()
 
     def window_should_close(self) -> bool:
+        """Return whether Raylib has requested the window to close."""
         return pr.window_should_close()
 
     def show_audio_volume(self, label: str = "", volume: float = 0.0,
                           begin: bool = False, mute: bool = False) -> None:
+        """Display or update the temporary audio volume indicator."""
         if begin:
             self.audio_volume_mute = mute
             self.audio_volume_value = max(0.0, min(1.0, volume))
@@ -471,15 +604,8 @@ class Graphics:
                                cl=rcl.PACMAN_YELLOW, filled=True)
 
     def check_window_resized(self) -> None:
+        """Handle window resizing and update the stored window dimensions."""
         if pr.is_window_resized():
-            # width = pr.get_screen_width()
-            # height = pr.get_screen_height()
-            # if height > width:
-            #     self.notmax_width = width
-            #     self.notmax_height = width
-            #     self.reposition_and_resize()
-            # else:
-            #     self.resize()
             self.resize()
         elif self.last_resize_time > -1.0:
             if time.perf_counter() - self.last_resize_time >= 0.5:
@@ -494,6 +620,7 @@ class Graphics:
                 self.last_resize_time = -1.0
 
     def toggle_frame_and_banner(self) -> None:
+        """Toggle the decorative frame and rebuild the graphical layout."""
         if self.core.gm_state.frame_and_banner:
             self.core.gm_state.frame_and_banner = False
         else:
@@ -501,6 +628,7 @@ class Graphics:
         self.resize()
 
     def resize(self) -> None:
+        """Recalculate graphical dimensions and rebuild dependent resources."""
         self.last_resize_time = time.perf_counter()
         self.screen_width = pr.get_screen_width()
         self.screen_height = pr.get_screen_height()
@@ -527,8 +655,12 @@ class Graphics:
             self.main_menu.resize()
         elif self.game.step in (6, 7, 8, 9, 10, 11, 12, 13, 14, 15):
             self.gameboard.resize()
+        elif self.game.step == 17:
+            self.gameboard.resize()
+            self.game.victory.resize()
 
     def reload_fonts(self) -> None:
+        """Reload fonts at the size required by the current display scale."""
         pr.set_trace_log_level(
             pr.LOG_WARNING)  # type: ignore[attr-defined]
 
@@ -568,6 +700,7 @@ class Graphics:
             pr.LOG_INFO)  # type: ignore[attr-defined]
 
     def draw_ui_frame(self) -> None:
+        """Render the decorative frame surrounding the game viewport."""
         if (((self.core.gm_state.level >= 0
               and self.banner_skin != self.core.gm_state.skin)
              or (self.core.gm_state.level < 0
@@ -583,6 +716,8 @@ class Graphics:
                         color: tuple[int, int, int, int],
                         bold: bool = False, italic: bool = False,
                         thin: bool = False) -> None:
+        """Render character-based decorative graphics using drawing"""
+        """primitives."""
         draw = self.shapes
         rg = self.rg
 
@@ -637,7 +772,9 @@ class Graphics:
                     if (last_ch == "╱"):
                         add_line = True
                         if dy + 1 < len(lines) and dx > 2:
-                            if lines[dy + 1][dx - 2] == "╲":
+                            next_line = lines[dy + 1]
+                            if (dx - 2 < len(next_line)
+                                    and next_line[dx - 2] == "╲"):
                                 add_line = False
                         if add_line:
                             draw.line(gx - char_width, gy + char_height, gx,
@@ -669,7 +806,8 @@ class Graphics:
                               thick=thick, cl=color)
                     add_line = True
                     if dy + 1 < len(lines):
-                        if lines[dy + 1][dx] == "│":
+                        next_line = lines[dy + 1]
+                        if dx < len(next_line) and next_line[dx] == "│":
                             add_line = False
                     if add_line:
                         draw.line(gx, gy + char_height, gx + char_width,
@@ -682,6 +820,7 @@ class Graphics:
     def create_deco_texture(self, texture_name: str,
                             source: str | Iterable[str],
                             color: tuple[int, int, int, int]) -> None:
+        """Generate a texture from a character-based decorative pattern."""
         if isinstance(source, str):
             lines = source.splitlines()
         else:
@@ -701,6 +840,7 @@ class Graphics:
             self.textures.end()
 
     def create_ui_frame_texture(self, texture_name: str) -> None:
+        """Generate the decorative frame texture for the current game mode."""
         draw = self.shapes
         rx, rg = self.rx, self.rg
         width, height = pr.get_screen_width(), pr.get_screen_height()
@@ -796,6 +936,7 @@ class Graphics:
 
     def draw_deco_zone(self, texture_name: str, x: int, y: int,
                        width: int, height: int) -> None:
+        """Tile a decorative texture inside a clipped rectangular area."""
         texture_size = self.textures.size(texture_name)
 
         if texture_size is None:
@@ -810,6 +951,7 @@ class Graphics:
     @contextmanager
     def clip(self, x: int, y: int,
              width: int, height: int) -> Iterator[None]:
+        """Temporarily restrict rendering to a rectangular region."""
         if width <= 0 or height <= 0:
             yield
             return

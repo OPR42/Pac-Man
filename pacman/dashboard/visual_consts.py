@@ -1,4 +1,5 @@
 class Banners:
+    """Store terminal banners, titles and decorative text graphics."""
     LEFT_BANNER = [
         "  ◢◤ ◤█ ",
         " ◢◤  ◢◤ ",
@@ -229,6 +230,7 @@ class Banners:
 
 
 class Elements:
+    """Store terminal banners, titles and decorative text graphics."""
     LARGE_DIGITS = [
         "┏━┓╺┓ ┏━┓┏━┓╻ ╻┏━╸┏━┓┏━┓┏━┓┏━┓",
         "┃ ┃ ┃ ┏━┛ ╺┫┗━┫┗━┓┣━┓  ┃┣━┫┗━┫",

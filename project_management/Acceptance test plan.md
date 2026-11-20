@@ -1,6 +1,6 @@
 # Acceptance test plan
 
-## Summary
+## 📋 Summary
 
 1. [Launch](#1-launch)
 2. [Configuration file](#2-configuration-file)
@@ -19,65 +19,65 @@
 
 |Test performed|Command|Result||
 |---|---|---|---|
-|Normal launch|`python3 pac-man.py data/config.json`|Game launches -> main menu|☑️❌|
-|No config file|`python3 pac-man.py`|Game launches with default values|☑️❌|
-|Too many arguments|`python3 pac-man.py test.json test2.json`|Extra arguments are ignored|☑️❌|
-|Non-existent config file|`python3 pac-man nothing.json`|Game launches with default values|☑️❌|
-|Permission denied on config file|`python3 pac-man.py data/config.json`|Game launches with default values|☑️❌|
-|Non-json config file|`python3 pac-man some_file.txt`|Game launches with default values|☑️❌|
+|Normal launch|`python3 pac-man.py data/config.json`|Game launches -> main menu|☑️|
+|No config file|`python3 pac-man.py`|Game launches with default values|☑️|
+|Too many arguments|`python3 pac-man.py test.json test2.json`|Extra arguments cause an error|☑️|
+|Non-existent config file|`python3 pac-man nothing.json`|Game launches with default values and creates config file|☑️|
+|Permission denied on config file|`python3 pac-man.py data/config.json`|Game launches with default values and tries to recreate a valid config file with default values|☑️|
+|Non-json config file|`python3 pac-man some_file.txt`|Game launches with default values and fixes config file|☑️|
 
 ## 2. Configuration file
 
 |Test performed|Command|Result||
 |---|---|---|---|
-|Empty JSON|`{}`|Config file is rewritten with default values, game launches|☑️❌|
-|Missing key|Delete a key from the JSON|Game launches with a default value|☑️❌|
-|Invalid key (replace)|Replace a key by something else|Game launches with an overwritten default value|☑️❌|
-|Invalid key (add)|Add a random `key: value` pair|Game launches, key is ignored|☑️❌|
-|Invalid value (type)|`"level_max_time": "time"`|Game launches with an overwritten default value|☑️❌|
-|Value too high|`level_max_time` > 180|Game launches with an overwritten default value|☑️❌|
-|Negative value|`level_max_time` < 0|Game launches with an overwritten default value|☑️❌|
+|Empty JSON|`{}`|Config file is rewritten with default values, game launches|☑️|
+|Missing key|Delete a key from the JSON|Game launches with a default value|☑️|
+|Invalid key (replace)|Replace a key by something else|Game launches with an overwritten default value|☑️|
+|Invalid key (add)|Add a random `key: value` pair|Game launches, key is ignored|☑️|
+|Invalid value (type)|`"level_max_time": "time"`|Game launches with an overwritten default value|☑️|
+|Value out of range|`level_max_time` > 180|Game launches with an overwritten default value|☑️|
+|Negative value|`level_max_time` < 0|Game launches with an overwritten default value|☑️|
 
 ## 3. Level generation
 
 |Test performed|Result||
 |---|---|---|
-|Fixed seed for level 1|The first level is always the same|☑️❌|
-|Random seed for next levels|Levels after 1 are randomly generated|☑️❌|
-|Configurable size|The maze takes on the indicated dimensions|☑️❌|
-|Flag `Perfect=False`|The maze contains loops and is Pac-man-compatible|☑️❌|
-|Failed generation|[...]|☑️❌|
+|Fixed seed for level 1|The first level is always the same|☑️|
+|Random seed for next levels|Levels after 1 are randomly generated|☑️|
+|Configurable size|The maze takes on the indicated dimensions|☑️|
+|Flag `Perfect=False`|The maze contains loops and is Pac-Man-compatible|☑️|
+|Failed generator|Error logged and program stops without traceback|☑️|
 
 
 ## 4. Player
 
 |Test performed|Action|Result||
 |---|---|---|---|
-|Collision|Move towards a wall|Pac-man stops|☑️❌|
-|Move up|Press < up_key >|Pac-man moves upwards if he does not encounter a wall.|☑️❌|
-|Move down|Press < down_key >|Pac-man moves downwards if he does not encounter a wall.|☑️❌|
-|Move right|Press < right_key >|Pac-man moves to the right if he does not encounter a wall.|☑️❌|
-|Move left|Press < left_key >|Pac-man moves to the left if he does not encounter a wall.|☑️❌|
-|Contact with a ghost|Move onto a ghost|Pac-man loses a life and reappears in the center.|☑️❌|
-|Last life loss|Move onto a ghost|Game ends|☑️❌|
+|Collision|Move towards a wall|Pac-Man stops|☑️|
+|Move up|Press < up_key >|Pac-Man moves upwards if he does not encounter a wall|☑️|
+|Move down|Press < down_key >|Pac-Man moves downwards if he does not encounter a wall|☑️|
+|Move right|Press < right_key >|Pac-Man moves to the right if he does not encounter a wall|☑️|
+|Move left|Press < left_key >|Pac-Man moves to the left if he does not encounter a wall|☑️|
+|Contact with a ghost|Move onto a ghost|Pac-Man loses a life and reappears in the center|☑️|
+|Last life loss|Move onto a ghost|Game ends|☑️|
 
 
 ## 5. Ghosts
 
 |Test performed|Action|Result||
 |---|---|---|---|
-|Non-edible ghost|Auto|Chases the player|☑️❌|
-|Edible ghost|Auto|Runs away from the player|☑️❌|
-|Disgusted ghost|Use sage|Flees from the player within a certain radius|☑️❌|
-|Contact with Pac-man (non-edible)|Move onto a ghost|Eats Pac-man and continues on its way|☑️❌|
-|Contact with Pac-man (edible)|Move onto a ghost|Is eaten, respawns in its corner|☑️❌|
+|Non-edible ghost|Auto|Chases the player|☑️|
+|Edible ghost|Auto|Runs away from the player|☑️|
+|Disgusted ghost|Use sage|Flees from the player if closer than 5 cells|☑️|
+|Contact with Pac-Man (non-edible)|Move onto a ghost|Eats Pac-Man and continues on its way|☑️|
+|Contact with Pac-Man (edible)|Move onto a ghost|Is eaten, returns at its corner and become dangerous again|☑️|
 
 ## 6. Pacgums and Super-pacgums
 
 |Test performed|Action|Result||
 |---|---|---|---|
-|Eat a pacgum|Move onto a pacgum|Pacgum disappears, score increases|☑️❌|
-|Eat a super-pacgum|Move onto a super-pacgum|Super-pacgum disappears, score increases, ghosts become edible|☑️❌|
+|Eat a pacgum|Move onto a pacgum|Pacgum disappears, score increases|☑️|
+|Eat a super-pacgum|Move onto a super-pacgum|Super-pacgum disappears, score increases, ghosts become edible|☑️|
 
 ## 7. Cheat mode
 
@@ -88,13 +88,13 @@
 
 |Test performed|Result||
 |---|---|---|
-|Invulnerable|Harmless ghosts|☑️❌|
-|Sprinter|Doubles movement speed|☑️❌|
-|Out A Time|Freezes time and ghosts|☑️❌|
-|Wall Denier|Ignores obstacles|☑️❌|
-|Jack Hammer|Destructs obstacles|☑️❌|
-|Gum Charmer|Attracts pacgums|☑️❌|
-|Gluttonous|Vulnerable ghosts|☑️❌|
+|Invulnerable|Harmless ghosts|☑️|
+|Sprinter|Doubles movement speed|☑️|
+|Out A Time|Freezes time and ghosts|☑️|
+|Wall Denier|Ignores obstacles|☑️|
+|Jack Hammer|Destructs walls inside maze and leading to a valid cell|☑️|
+|Gum Charmer|Attracts pacgums|☑️|
+|Gluttonous|Vulnerable ghosts|☑️|
 
 <span style='color:purple'>
 
@@ -103,25 +103,25 @@
 
 |Test performed|Result||
 |---|---|---|
-|Add 10 lives|Adds 10 lives. Right-click removes 10 lives|☑️❌|
-|Add 10,000 points|Adds 10,000 points. Right-click removes 10,000 points|☑️❌|
-|Reset time|Restores remaining time to its initial value. Right-click sets it to 10 seconds|☑️❌|
-|Phase out ghosts|Ghosts become ethereal. Right-click to cancel|☑️❌|
-|Reset current level|Resets this level to its original state.|☑️❌|
-|Advance to next level|Completes this level and starts the next one. Right-click to return to the previous level|☑️❌|
-|Fill inventory|Adds each item type to the inventory. Right-click to empty it|☑️❌|
+|Add 10 lives|Adds 10 lives. Right-click removes 10 lives|☑️|
+|Add 10,000 points|Adds 10,000 points. Right-click removes 10,000 points|☑️|
+|Reset time|Restores remaining time to its initial value. Right-click sets it to 10 seconds|☑️|
+|Phase out ghosts|Ghosts become ethereal. Right-click to cancel|☑️|
+|Reset current level|Resets this level to its original state|☑️|
+|Advance to next level|Completes this level and starts the next one. Right-click to return to the previous level|☑️|
+|Fill inventory|Adds 10 items of each type to the inventory. Right-click to remove 10 of ech of them|☑️|
 
 ## 8. Scoring
 
 |Test performed|Result||
 |---|---|---|
-|Eat a pacgum|Score increased by 10 points|☑️❌|
-|Eat a super-pacgum|Score increased by 50 points|☑️❌|
-|Eat an edible ghost|Score increased by 200 points|☑️❌|
-|Take a crate|Score increased by X points|☑️❌|
-|Finish a level with time left|Score increased by X points / second left|☑️❌|
-|Finish the game with lives left|Score increases by one-fifth of the points required to earn a life for each remaining life.|☑️❌|
-|Decrease the score|No action (other than cheating) can decrease the score|☑️❌|
+|Eat a pacgum|Score increased by 10 points (configurable)|☑️|
+|Eat a super-pacgum|Score increased by 50 points (configurable)|☑️|
+|Eat an edible ghost|Score increased by 200 points (configurable)|☑️|
+|Take a crate|Score increased by 400 to 900 points (configurable)|☑️|
+|Finish a level with time left|Score increased by 5 points / second left|☑️|
+|Finish the game with lives left|Score increases by one-fifth of the points required to earn a life for each remaining life.|☑️|
+|Decrease the score|No action (other than cheating) can decrease the score|☑️|
 
 ## 9. Game progression
 
@@ -132,12 +132,12 @@
 
 |Test performed|Result||
 |---|---|---|
-|Reach the time limit for a level|Depends on the configuration *|☑️❌|
-|Complete a level|Move to the next level|☑️❌|
-|Complete all levels|No crash observed|☑️❌|
-|Complete the final level|Game ends|☑️❌|
-|Pause the game|Opens pause menu to access several options|☑️❌|
-|Game ends (win or lose)|Final score is displayed|☑️❌|
+|Reach the time limit for a level|Depends on the configuration *|☑️|
+|Complete a level|Move to the next level|☑️|
+|Complete all levels|Triggers game end with victory condition|☑️|
+|Complete the final level|Plays cutscene|☑️|
+|Pause the game|Opens pause menu to access several options|☑️|
+|Game ends (win or lose)|Final score is displayed, eventually with highscore record|☑️|
 
 <i>
 * Reaching the time limit can either:  
@@ -145,7 +145,7 @@
 - Double the ghosts' movement speed
 - Remove 1 life
 - Trigger a "Game over"
-- Kill Pacman
+- Kill Pac-Man
 </i>
 
 <span style='color: purple'>
@@ -155,8 +155,8 @@
 
 |Test performed|Result||
 |---|---|---|
-|Score retained between levels|Score for level N is displayed at level N+1|☑️❌|
-|Lives retained between levels|Remaining lives for level N are displayed at level N+1|☑️❌|
+|Score retained between levels|Score for level N is displayed at level N+1|☑️|
+|Lives retained between levels|Remaining lives for level N are displayed at level N+1|☑️|
 
 ## 10. User interface
 
@@ -167,10 +167,12 @@
 
 |Test performed|Result||
 |---|---|---|
-|Start game|[...]|☑️❌|
-|View highscores|[...]|☑️❌|
-|Instructions|[...]|☑️❌|
-|Exit|[...]|☑️❌|
+|Play game|Starts the game with the configured settings|☑️|
+|Quick access (right-click on Play)|Starts the wanted level, including mini-games|☑️|
+|Settings|Opens the `settings` menu|☑️|
+|Guide|Opens the guide that explains how the game works|☑️|
+|Quit|Quits and closes the game|☑️|
+|Credits|Opens the credits|☑️|
 
 <span style='color: purple'>
 
@@ -179,11 +181,11 @@
 
 |Test performed|Result||
 |---|---|---|
-|Current score|[...]|☑️❌|
-|Remaining lives|[...]|☑️❌|
-|Current level|[...]|☑️❌|
-|Remaining time|[...]|☑️❌|
-|Inventory|||
+|Current score|Displays the total score of the player|☑️|
+|Remaining lives|Displays how many lives the player has left|☑️|
+|Current level|Displays the current level number|☑️|
+|Remaining time|Displays the time remaining to complete the level|☑️|
+|Inventory|Displays which items the player can use, and in what quantity |☑️|
 
 <span style='color: purple'>
 
@@ -192,11 +194,41 @@
 
 |Test performed|Result||
 |---|---|---|
-|Resume|[...]|☑️❌|
-|Back to main menu|[...]|☑️❌|
-|Settings|[...]|☑️❌|
-|Cheats|[...]|☑️❌|
-|Exit|[...]|☑️❌|
+|Resume|Resumes game|☑️|
+|Settings|Minimal ingame settings|☑️|
+|Main Menu|Asks for confirmation then returns to back menu|☑️|
+|Quit Game|Asks for confirmation then quits the software|☑️|
+|Cheat Options|Displays available cheat modes|☑️|
+
+<span style='color: purple'>
+
+### Settings menu
+</span>
+
+Please note that the in-game settings menu contains fewer options, as some can only be modified before launching the game.
+
+|Test performed|Result||
+|---|---|---|
+|**Interface:**|||
+|Language|The language changes for the entire game.|☑️|
+|Tooltips|Tooltips are enabled/disabled for the entire game.|☑️|
+|Screensaver|The idle time on the main menu before the screensaver starts changes|☑️|
+|**Window:**|||
+|Maximized|Enables or disables maximum size mode|☑️|
+|Resolution|Changes the width and height of the window|☑️|
+|Position|Changes the position of the window on screen|☑️|
+|Resizable|Allows/disallows the window to be resized|☑️|
+|Frame and banner|Enables/disables the frame and banner surrounding the game area|☑️|
+|**Audio:**|||
+|Master volume|Increases/decreases the game's master volume|☑️|
+|Music volume|Increases/decreases the game music volume only|☑️|
+|Sound volume|Increases/decreases the volume of game sounds only|☑️|
+|**Gameplay:**|||
+|Starting lives|Changes the number of lives available at start|☑️|
+|Extra life|Changes the score threshold for earning an extra life|☑️|
+|Time limit|Changes the time available to complete a level without penalty|☑️|
+|On timeout|Changes what happens when the player runs out of time|☑️|
+|Mini-games|Enables/disables mini-games|☑️|
 
 <span style='color: purple'>
 
@@ -205,8 +237,8 @@
 
 |Test performed|Result||
 |---|---|---|
-|Final score display|[...]|☑️❌|
-|Enter name|[...]|☑️❌|
+|Final score display|Displays the score|☑️|
+|Enter name|Allow the input of gamer's name, using a virtual keyboard|☑️|
 
 <span style='color: purple'>
 
@@ -215,15 +247,15 @@
 
 |Test performed|Result||
 |---|---|---|
-|Final score display|[...]|☑️❌|
-|Enter name|[...]|☑️❌|
+|Final score display|Displays the score|☑️|
+|Enter name|Allow the input of gamer's name, using a virtual keyboard|☑️|
 
 ## 11. General operation
 
 |Test performed|Result||
 |---|---|---|
-|Norm|No flake8 or mypy errors|☑️❌|
-|No crashes|All errors are catched and displayed|☑️❌
+|Norm|No flake8 or mypy errors|☑️|
+|No crashes|All errors are catched and displayed|☑️|
 
 ## 12. Bugs fixed
 
@@ -259,8 +291,8 @@
 ### ⚠️ Game
 </span>
 
-- In point-and-click mode, when clicking on a blocked tile, Pacman always targets the nearest tile in a clockwise direction (1st up, 2nd right, etc.)  
-↳ Issue: Pacman should target a tile based on the section of the clicked square.
+- In point-and-click mode, when clicking on a blocked tile, Pac-Man always targets the nearest tile in a clockwise direction (1st up, 2nd right, etc.)  
+↳ Issue: Pac-Man should target a tile based on the section of the clicked square.
 
 - Cheat menu is accessible even when not visible : it is hidden, not disabled.  
 ↳ Issue: Anyone can access it simply by knowing that it's here.
@@ -285,3 +317,20 @@
 
 - In the settings menu, unchecking the "resizable" box and then restoring default settings messes up the whole "Window" section.  
 ↳ Issue: Confusion for the player
+
+<span style='color: goldenrod'>
+
+### ⚠️ User guide
+</span>
+
+- Once the guide is opened, it remains in the language in which it was opened; it does not reload after a language change.
+↳ Issue: The guide is not translated, even after changing the language.
+
+<span style='color: goldenrod'>
+
+### ⚠️ Package creation
+</span>
+
+- If the package is created from a computer that does not have audio available (such as the lbonnet session), audio will also be unavailable to users of the package.
+↳ Issue: The users to whom the package is distributed do not have the game's sound.
+

@@ -13,7 +13,9 @@ RaylibObject: TypeAlias = Any
 
 
 class Transitions:
+    """Manage animated transitions between game screens."""
     def __init__(self, core: Core) -> None:
+        """Initialize transition state and rendering dependencies."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -30,8 +32,8 @@ class Transitions:
         self.eat_clip: tuple[bool, str, int, int, int, int] = (False, "",
                                                                0, 0, 0, 0)
 
-    def start(self, src: int = 0, dst: int = 0,
-              phase: int = 0) -> None:
+    def start(self, src: int = 0, dst: int = 0, phase: int = 0) -> None:
+        """Start a transition between two game screens."""
         self.active = True
         self.animation_done = False
         self.start_time = time.perf_counter()
@@ -41,7 +43,7 @@ class Transitions:
         self.phase = ""
         sdp = self.road
 
-        if sdp in ((0, 1, 0), (16, 1, 2)):
+        if sdp in ((0, 1, 0), (9, 1, 2), (16, 1, 2)):
             self.phase = "fade_in"
 
         elif sdp in ((1, 2, 1), (1, 3, 1), (1, 4, 1), (1, 6, 1), (1, 16, 1)):
@@ -86,6 +88,7 @@ class Transitions:
             self.graphics.interface.unlock()
 
     def draw(self) -> None:
+        """Update and render the active transition."""
         if not self.active or self.animation_done:
             return
 
@@ -177,6 +180,7 @@ class Transitions:
                     self._finish()
 
     def _finish(self) -> None:
+        """Complete the transition and restore normal interface state."""
         self.phase = ""
         self.animation_done = True
         self.active = False
@@ -184,11 +188,13 @@ class Transitions:
         self.graphics.interface.unlock()
 
     def owns_button(self, code: str) -> bool:
+        """Check whether the transition currently controls a button."""
         return (self.active and self.button_code == code
                 and self.phase in (
                     "turn_button_pacmen", "pacmen_eat_button", "fade_out"))
 
     def _button_geometry(self) -> RectangleGeometry | None:
+        """Return the geometry of the button involved in the transition."""
         if self.button_code is None:
             return None
 
@@ -200,6 +206,7 @@ class Transitions:
         return geometry.rectangle
 
     def _turn_button_pacmen(self, now: float) -> bool:
+        """Animate the Pac-Men turning toward the selected button."""
         if self.core.config.disable_transitions:
             return True
 
@@ -223,6 +230,7 @@ class Transitions:
         return progress >= 1.0
 
     def _pacmen_eat_button(self, now: float) -> bool:
+        """Animate the Pac-Men eating the selected button."""
         if self.core.config.disable_transitions:
             return True
 
@@ -259,6 +267,7 @@ class Transitions:
 
     def _fade_out(self, now: float, audio_fade: bool = False,
                   pacmen: bool = True, quit: bool = False) -> bool:
+        """Animate a screen fade-out with optional audio fading."""
         if self.core.config.disable_transitions:
             return True
 
@@ -305,6 +314,7 @@ class Transitions:
         return False
 
     def _fade_in(self, now: float, audio_fade: bool = False) -> bool:
+        """Animate a screen fade-in with optional audio fading."""
         if self.core.config.disable_transitions:
             return True
 
@@ -322,6 +332,7 @@ class Transitions:
     def _draw_negative_circle(self, vp: RectangleGeometry, radius: float,
                               cl: RaylibObject, center_x: float | None = None,
                               center_y: float | None = None) -> None:
+        """Fill the viewport outside a circular opening."""
         sround = self.utils.sym_round
         draw = self.shapes
         cx = float(vp.ct.x if center_x is None else center_x)
@@ -378,6 +389,7 @@ class Transitions:
                                    cl=cl, filled=True)
 
     def _iris_fade_in(self, now: float, audio_fade: bool = False) -> bool:
+        """Animate a circular opening that reveals the screen."""
         if self.core.config.disable_transitions:
             return True
 
@@ -402,6 +414,7 @@ class Transitions:
     def _iris_fade_out(self, now: float, center_x: float | None = None,
                        center_y: float | None = None,
                        audio_fade: bool = False) -> bool:
+        """Animate a circular closing centered on a screen position."""
         if self.core.config.disable_transitions:
             return True
 
@@ -427,63 +440,8 @@ class Transitions:
 
         return progress >= 1.0
 
-    def _diaphragm_fade_in(self, now: float, audio_fade: bool = False) -> bool:
-        if self.core.config.disable_transitions:
-            return True
-
-        duration = 2.0
-        progress = min(1.0, (now - self.start_time) / duration)
-        fade = 0.5 + 0.5 * math.cos(progress * math.pi)
-        opening = 1.0 - fade
-
-        if audio_fade:
-            self.game.audio.fade(1.0 - fade)
-
-        base_x, base_y, base_w, base_h = (self.graphics.viewport_rectangle)
-        vp = self.geometry.rectangle_geometry(base_x, base_y, base_w, base_h)
-        center_x = vp.ct.x
-        center_y = vp.ct.y
-        half_w = vp.wdt / 2.0
-        half_h = vp.hgt / 2.0
-        diagonal = math.hypot(half_w, half_h)
-        outer_radius = diagonal / math.cos(math.pi / 8.0)
-        inner_radius = outer_radius * opening
-        twist = math.radians(9.0) * fade
-        outer_angle = -math.pi / 8.0
-        inner_angle = outer_angle + twist
-        outer_points: list[tuple[float, float]] = []
-        inner_points: list[tuple[float, float]] = []
-        for index in range(8):
-            angle = outer_angle + index * math.pi / 4.0
-            outer_points.append((center_x + math.cos(angle) * outer_radius,
-                                 center_y + math.sin(angle) * outer_radius))
-            angle = inner_angle + index * math.pi / 4.0
-            inner_points.append((center_x + math.cos(angle) * inner_radius,
-                                 center_y + math.sin(angle) * inner_radius))
-        draw = self.shapes
-
-        def triangle(p1: tuple[float, float],
-                     p2: tuple[float, float],
-                     p3: tuple[float, float]) -> None:
-            sround = self.utils.sym_round
-            draw.triangle(sround(p1[0]), sround(p1[1]),
-                          sround(p2[0]), sround(p2[1]),
-                          sround(p3[0]), sround(p3[1]), 1, (0, 0, 0, 255),
-                          filled=True)
-
-        with self.graphics.clip(vp.x, vp.y, vp.wdt, vp.hgt):
-            for index in range(8):
-                next_index = (index + 1) % 8
-                outer_a = outer_points[index]
-                outer_b = outer_points[next_index]
-                inner_a = inner_points[index]
-                inner_b = inner_points[next_index]
-                triangle(outer_a, outer_b, inner_b)
-                triangle(outer_a, inner_b, inner_a)
-
-        return progress >= 1.0
-
     def _draw_fade(self, fade: float) -> None:
+        """Draw a full-screen black overlay with variable opacity."""
         sround = self.utils.sym_round
         alpha = max(0, min(255, sround(255 * fade)))
         vp_x, vp_y, vp_width, vp_height = (self.graphics.viewport_rectangle)

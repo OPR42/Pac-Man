@@ -18,7 +18,7 @@
 ### Risk 01 - Incompatible A-Maze-ing package
 </span>
 
-text
+Detection of misbehaviors from the provided package, error logging and program exit.
 
 <span style="color: orange">
 
@@ -75,7 +75,7 @@ pre-submission checks, just as it is for risk 04.
 
 <span style="color: gold">
 
-### Risk 06 - Possible lag depending on the system
+### Risk 06 - Possible slowdown depending on the system
 </span>
 
-text
+Each move and animation are based on time quantums, so even if the host system is slow the game will run at the same speed. If slowdown happen, it will affect fluidity and not playability.

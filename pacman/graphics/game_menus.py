@@ -14,7 +14,10 @@ RaylibObject: TypeAlias = Any
 
 
 class GameMenus:
+    """Manage pause, confirmation, settings and endgame menus."""
     def __init__(self, core: Core) -> None:
+        """Initialize menu geometry, interface state and background"""
+        """resources."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
@@ -41,6 +44,7 @@ class GameMenus:
         self.endgame_anim_starttime: float = -1.0
 
     def launch(self) -> None:
+        """Build menu layouts and initialize specialized menu controllers."""
         self.mvp = self.gameboard.mvp
         self.lvp = self.gameboard.lvp
         self.rvp = self.gameboard.rvp
@@ -59,6 +63,7 @@ class GameMenus:
         self.gamesettingsmenu.launch()
 
     def reset(self) -> None:
+        """Reset menu state and release the cached background."""
         self.clear_background()
         self.focus_anim_start = time.perf_counter()
         self.pause_ui_items = []
@@ -71,6 +76,7 @@ class GameMenus:
         self.gamesettingsmenu.reset()
 
     def resize(self) -> None:
+        """Rebuild menu layouts and resources after resizing."""
         self.clear_background()
         self.mvp = self.gameboard.mvp
         self.lvp = self.gameboard.lvp
@@ -83,6 +89,7 @@ class GameMenus:
         self.gamesettingsmenu.resize()
 
     def draw_menus(self) -> None:
+        """Render the active menu over the captured game background."""
         if not self.background_built:
             self.build_background()
         self.draw_background()
@@ -113,6 +120,7 @@ class GameMenus:
             self.gamesettingsmenu.draw_settings_menu()
 
     def build_pause_geometry(self) -> None:
+        """Build the pause menu layout and interactive controls."""
         sround = self.utils.sym_round
         mvp = self.mvp
         gmstate = self.core.gm_state
@@ -121,7 +129,7 @@ class GameMenus:
                                                mvp.wdt - margin * 2,
                                                mvp.hgt - margin * 2)
         self.pvp = pvp
-        resign_option = gmstate.level > 0 and not self.game.one_level_only
+        resign_option = gmstate.level < 0 and not self.game.one_level_only
         row_height = sround(pvp.hgt / (6 if resign_option else 5))
         self.ref_row_height = row_height
         item_height, item_width = sround(row_height * 0.7), sround(pvp.wdt / 2)
@@ -198,6 +206,7 @@ class GameMenus:
             "game_time", "zone", rel_to_center=False))
 
     def build_confirm_geometry(self) -> None:
+        """Build the confirmation dialog layout and buttons."""
         sround = self.utils.sym_round
         mvp = self.mvp
         cvp = self.geometry.rectangle_geometry(
@@ -221,6 +230,7 @@ class GameMenus:
             rel_to_center=False))
 
     def build_endgame_geometry(self) -> None:
+        """Build the game-over and victory menu layouts."""
         sround = self.utils.sym_round
         mvp = self.mvp
         evp = self.geometry.rectangle_geometry(
@@ -245,6 +255,7 @@ class GameMenus:
             rel_to_center=False))
 
     def background_geometry(self) -> tuple[int, int, int, int]:
+        """Return the screen rectangle covered by menu backgrounds."""
         rg = self.graphics.rg
         mvp = self.gameboard.mvp
         lvp = self.gameboard.lvp
@@ -261,6 +272,7 @@ class GameMenus:
         return x, y, width, height
 
     def build_background(self) -> None:
+        """Capture the game background for menu rendering."""
         if self.background_built:
             return
         if self.background_texture is not None:
@@ -271,6 +283,7 @@ class GameMenus:
         self.background_built = True
 
     def draw_background(self) -> None:
+        """Restore the captured background with a grayscale effect."""
         if self.background_texture is None:
             return
         x, y, _, _ = self.background_geometry()
@@ -278,6 +291,7 @@ class GameMenus:
             self.background_texture, x, y, "grayscale")
 
     def clear_background(self) -> None:
+        """Release the cached menu background texture."""
         if not self.background_built:
             return
         if self.background_texture is not None:
@@ -286,6 +300,7 @@ class GameMenus:
         self.background_built = False
 
     def draw_pause_menu(self) -> None:
+        """Render the pause menu and its interactive elements."""
         sround = self.utils.sym_round
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
@@ -331,6 +346,7 @@ class GameMenus:
                     self._draw_pause_menu_widgets(item)
 
     def _draw_pause_menu_widgets(self, item: InterfaceItem) -> None:
+        """Render gameplay statistics displayed in the pause menu."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         rg = self.graphics.rg
@@ -395,6 +411,7 @@ class GameMenus:
 
     def _draw_pause_menu_icons(self, box: RectangleGeometry, code: str,
                                value1: int = 0, value2: int = 0) -> None:
+        """Draw icons representing pause menu statistics."""
         sround = self.utils.sym_round
         draw = self.graphics.shapes
         geo = self.geometry
@@ -451,6 +468,7 @@ class GameMenus:
                           box.bct.y - rg(5), cl=cl_alt, filled=True)
 
     def draw_confirm_menu(self) -> None:
+        """Render the confirmation dialog and its buttons."""
         sround = self.utils.sym_round
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
@@ -482,6 +500,7 @@ class GameMenus:
                             self.graphics.font_regular, cl, justify="center")
 
     def draw_gameover_menu(self, victory: bool = False) -> None:
+        """Render the game-over or victory summary screen."""
         sround = self.utils.sym_round
         elapsed = time.perf_counter() - self.focus_anim_start
         rgb_factor = 1.10 + 0.25 * math.cos(elapsed * math.pi)
@@ -567,6 +586,7 @@ class GameMenus:
             self.draw_gameover_anim()
 
     def draw_gameover_anim(self) -> None:
+        """Animate Pac-Man and ghosts on the game-over screen."""
         now = time.perf_counter()
         sround = self.utils.sym_round
         draw = self.graphics.shapes
@@ -628,6 +648,7 @@ class GameMenus:
                            wave=wave, name="pinky", texture_free=True)
 
     def draw_victory_anim(self) -> None:
+        """Animate the victory sequence featuring Pac-Man and ghosts."""
         now = time.perf_counter()
         sround = self.utils.sym_round
         draw = self.graphics.shapes

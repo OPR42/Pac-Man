@@ -6,6 +6,7 @@ from dataclasses import dataclass, field
 from typing import TypeAlias, Any
 
 from pacman.base.geometry import Geometry, RectangleGeometry
+from pacman.base.utils import Utils
 from pacman.core import Core
 
 from .colors import RenderColors as rcl
@@ -25,6 +26,7 @@ CreditsPanelLayout: TypeAlias = tuple[
 
 @dataclass
 class CreditStyle:
+    """Define the font size, typeface and color of a credit line."""
     size: float = 1.0
     font: str = "regular"
     color: str = "sand"
@@ -32,6 +34,7 @@ class CreditStyle:
 
 @dataclass
 class CreditLine:
+    """Store a credit line and its measured rendering dimensions."""
     text: str
     style: CreditStyle
     font_size: int = 0
@@ -41,21 +44,26 @@ class CreditLine:
 
 @dataclass
 class CreditSection:
+    """Group credit lines belonging to the same section."""
     key: str
     lines: list[CreditLine] = field(default_factory=list)
 
 
 class MainMenuCredits:
+    """Build, render and scroll the game's credits."""
     def __init__(self, core: Core) -> None:
+        """Initialize credits layout, scrolling state and"""
+        """rendering dependencies."""
         self.core = core
         self.game = core.game
         self.graphics = core.game.graphics
         self.main_menu = core.game.graphics.main_menu
+        self.utils = Utils()
         self.shapes = Shapes(core)
         self.geometry = Geometry(self.core)
         self.cvp: RectangleGeometry
         self.svp: RectangleGeometry
-        self.duration: float = 90.0
+        self.duration: float = 124.0
         self.progress: float = 0.0
         self.width: int = 0
         self.height: int = 0
@@ -68,9 +76,11 @@ class MainMenuCredits:
         self.base_text_size: int = 0
 
     def resize(self) -> None:
+        """Mark the credits geometry for rebuilding."""
         self.geometry_built = False
 
     def enter(self) -> None:
+        """Reset credits scrolling and start the credits music."""
         if self.game.audio.jukebox_load("credits"):
             self.game.audio.jukebox_play()
         self.core.azerty_layout = self.core.is_layout_azerty()
@@ -79,6 +89,7 @@ class MainMenuCredits:
         self.scroll_start = time.perf_counter()
 
     def parse_credits_text(self, key: str) -> CreditSection:
+        """Parse a localized credits section and its formatting directives."""
         text = self.core.lexicon(key)
         section = CreditSection(key=key)
         style = CreditStyle()
@@ -112,6 +123,7 @@ class MainMenuCredits:
         return section
 
     def prepare_credits_texts(self) -> None:
+        """Load and parse all localized credits sections."""
         keys = ("CRD_Title", "CRD_Authors", "CRD_Developers", "CRD_Graphics",
                 "CRD_Management", "CRD_Testers", "CRD_Musics",
                 "CRD_Inspirations", "CRD_Thanks", "CRD_NextToCome",
@@ -119,6 +131,7 @@ class MainMenuCredits:
         self.sections = [self.parse_credits_text(key) for key in keys]
 
     def fit_credits_texts(self) -> None:
+        """Find suitable font sizes for the available credits viewport."""
         measure = self.geometry.measure_text
         max_width = self.width
         max_height = self.svp.hgt
@@ -167,6 +180,7 @@ class MainMenuCredits:
                 line.height = max(line.font_size, round(height))
 
     def build_credits_geometry(self) -> None:
+        """Build the credits viewport and generate its rendered panels."""
         base_vp_x, base_vp_y, base_vp_wdt, base_vp_hgt = (
             self.graphics.viewport_rectangle)
         cvp = self.geometry.rectangle_geometry(
@@ -186,6 +200,7 @@ class MainMenuCredits:
         self.geometry_built = True
 
     def draw_credits_section(self, section: CreditSection, y: int) -> int:
+        """Render a credits section and return the next vertical position."""
         draw = self.graphics.shapes
         fonts = {"regular": self.graphics.font_regular,
                  "bold": self.graphics.font_bold,
@@ -206,22 +221,25 @@ class MainMenuCredits:
         return y
 
     def credits_section_height(self, section: CreditSection) -> int:
+        """Return the total rendered height of a credits section."""
         return sum(line.height for line in section.lines)
 
     def credits_panel_layouts(self) -> tuple[CreditsPanelLayout, ...]:
+        """Define the sections, characters and spacing"""
+        """of each credits panel."""
         return (
             # Sections, Pac-Man (angle, mouth_opening, scale), margins
             (("CRD_Title", "CRD_Authors"),
              ((4, "pacman", 340, 0.25, 2),),
              3, 3, (3,)),
             (("CRD_Developers", "CRD_Graphics", "CRD_Management"),
-             ((1, "suppacgum", 0, 0.0, 1),
-              (2, "pacgum", 0, 0.0, 1),
-              (3, "pacgum", 0, 0.0, 1),
+             ((1, "suppacgum", 0, 0.0, 2),
+              (2, "pacgum", 0, 0.0, 2),
+              (3, "pacgum", 0, 0.0, 2),
               (4, "pacman", 0, 0.80, 1),
-              (5, "pacgum", 0, 0.0, 1),
-              (6, "pacgum", 0, 0.0, 1),
-              (7, "suppacgum", 0, 0.0, 1)),
+              (5, "pacgum", 0, 0.0, 2),
+              (6, "pacgum", 0, 0.0, 2),
+              (7, "suppacgum", 0, 0.0, 2)),
              2, 2, (1, 1)),
             (("CRD_Testers",),
              ((2, "blinky", 50, 0.30, 1),
@@ -257,25 +275,30 @@ class MainMenuCredits:
              ((1, "portal_blue", 0, 0.0, 2),
               (4, "pacman", 0, 0.25, 2),
               (7, "portal_orange", 0, 0.0, 2)),
-             4, 3, ()),
+             4, 4, ()),
             (("CRD_LastWord",),
              ((2, "pacman", 210, 0.70, 2),
               (6, "pacman", 330, 0.70, 2),),
              12, 3, ()),
             (("CRD_LastJoke",),
              ((3, "heart", 0, 0.00, 1),
-              (4, "heart", 0, 0.00, 1),
+              (4, "school42", 0, 0.00, 2),
               (5, "heart", 0, 0.00, 1),),
              2, 3, ()),
         )
 
     def credits_actor_x(self, cell: int) -> int:
+        """Return the horizontal position of an actor"""
+        """in the nine-cell layout."""
         if not 0 <= cell <= 8:
             raise ValueError(f"Invalid credits scene cell: {cell}")
         return round((cell + 0.5) * self.width / 9)
 
     def draw_credits_actor(self, actor: CreditActor, y: int,
                            base_size: int) -> None:
+        """Render a decorative character or object in the credits."""
+        sround = self.utils.sym_round
+        tex = self.graphics.textures
         draw = self.graphics.shapes
         cell, actor_type, angle, cycle, scale = actor
         x = self.credits_actor_x(cell)
@@ -292,40 +315,54 @@ class MainMenuCredits:
             draw.pacgum(x, y, size // 2, superpg=True)
         elif actor_type == "crate_sage":
             draw.companion_square(x, y, size * 2, rcl.SAGE_GREEN)
-            draw.circle(x, y, size // 2, cl=rcl.SAGE_GREEN, filled=True)
+            tex.draw("item_sage", x - size // 2, y - size // 2,
+                     size, size, angle=42)
         elif actor_type == "crate_life":
             draw.companion_square(x, y, size * 2, rcl.PACMAN_YELLOW)
-            draw.circle(x, y, size // 2, cl=rcl.PACMAN_YELLOW, filled=True)
+            tex.draw("item_pacman", x - size // 2, y - size // 2,
+                     size, size, angle=345)
         elif actor_type == "crate_bowtie":
             draw.companion_square(x, y, size * 2, rcl.BOWTIE_RED)
-            draw.circle(x, y, size // 2, cl=rcl.BOWTIE_RED, filled=True)
+            tex.draw("item_bowtie", x - size // 2, y - size // 2,
+                     size, size, angle=10)
         elif actor_type == "crate_slime":
             draw.companion_square(x, y, size * 2, rcl.SLIME_GREEN)
-            draw.circle(x, y, size // 2, cl=rcl.SLIME_GREEN, filled=True)
+            tex.draw("item_slime", x - size // 2, y - size // 2,
+                     size, size, angle=0)
         elif actor_type == "crate_hourglass":
             draw.companion_square(x, y, size * 2, rcl.HOURGLASS_WOOD)
-            draw.circle(x, y, size // 2, cl=rcl.HOURGLASS_WOOD, filled=True)
+            tex.draw("item_hourglass", x - size // 2, y - size // 2,
+                     size, size, angle=30)
         elif actor_type == "crate_bomb":
             draw.companion_square(x, y, size * 2, rcl.BOMB_VIOLET)
-            draw.circle(x, y, size // 2, cl=rcl.BOMB_VIOLET, filled=True)
+            tex.draw("item_bomb", x - size // 2, y - size // 2,
+                     size, size, angle=25)
+        elif actor_type == "crate_stetson":
+            draw.companion_square(x, y, size * 2, rcl.STETSON_IVORY)
+            tex.draw("item_stetson", x - size // 2, y - size // 2,
+                     size, size, angle=15)
         elif actor_type == "heart":
             draw.heart(x, y, size, cl=rcl.PORTAL_BLUE)
+        elif actor_type == "school42":
+            draw.school42(x, y, size, cl=rcl.PORTAL_BLUE)
         elif actor_type in ("portal_blue", "portal_orange"):
             cl = (rcl.PORTAL_BLUE if actor_type == "portal_blue"
                   else rcl.PORTAL_ORANGE)
             inner_cl = rcl.scale_rgb(cl, 0.1)
             radius_y = size * 1.35
             radius_x = radius_y * 0.6
-            draw.ellipse(x, y, radius_x, radius_y,
-                         thick=self.graphics.rg(8), cl=cl, filled=False)
-            draw.ellipse(x, y, radius_x, radius_y, cl=inner_cl, filled=True)
+            draw.ellipse(x, y, radius_x, radius_y, cl=cl, filled=True)
+            draw.ellipse(x, y, sround(radius_x * 0.90),
+                         sround(radius_y * 0.90), cl=inner_cl, filled=True)
 
     def create_credits_panels(self) -> None:
+        """Generate the textures composing the scrolling credits."""
         tex = self.graphics.textures
         base = self.base_text_size
         width = self.width
         sections = {section.key: section for section in self.sections}
         self.panel_heights = []
+        self.game.inventory._create_inventory_textures(base)
 
         for index, layout in enumerate(self.credits_panel_layouts()):
             keys, scene, top_margin, scene_bottom, gaps = layout
@@ -351,9 +388,11 @@ class MainMenuCredits:
         self.height = sum(self.panel_heights)
 
     def set_scroll_direction(self, direction: int) -> None:
+        """Set the credits scrolling direction within the allowed range."""
         self.scroll_direction = max(-1, min(1, direction))
 
     def update_scroll(self) -> None:
+        """Advance the credits scroll position according to elapsed time."""
         now = time.perf_counter()
         delta = now - self.scroll_start
         self.scroll_start = now
@@ -371,6 +410,7 @@ class MainMenuCredits:
         self.progress = max(0.0, min(1.0, self.progress))
 
     def draw_credits(self) -> None:
+        """Render the scrolling credits and their surrounding decorations."""
         if not self.geometry_built:
             self.build_credits_geometry()
         draw = self.graphics.shapes
@@ -407,6 +447,7 @@ class MainMenuCredits:
         self.draw_credits_indications()
 
     def draw_credits_indications(self) -> None:
+        """Render keyboard instructions for controlling the credits."""
         draw = self.graphics.shapes
         lex = self.core.lexicon
         measure = self.geometry.measure_text
@@ -459,6 +500,7 @@ class MainMenuCredits:
 
     def draw_credits_arrow(self, x: int, y: int,
                            size: int, up: bool, inv: bool) -> None:
+        """Render an upward or downward arrow for a credits control."""
         draw = self.graphics.shapes
         thick = max(1, size // 5)
         center_x = x + round(size / 2)
@@ -479,6 +521,7 @@ class MainMenuCredits:
 
     def draw_credits_key(self, x: int, y: int, width: int, height: int,
                          label: str, font_size: int) -> None:
+        """Render a keyboard key or arrow used in the credits instructions."""
         draw = self.graphics.shapes
         inv = False
         if ((label == "up" and self.scroll_direction == -1)
